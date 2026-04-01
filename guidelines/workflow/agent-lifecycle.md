@@ -39,3 +39,44 @@ If in doubt, ask first. The cost of asking is low; the cost of an unwanted actio
 - If an approach is blocked, do not retry the same action in a loop.
 - Consider alternative approaches or ask the user for direction.
 - Do not use destructive actions (e.g., `--no-verify`, `reset --hard`) as shortcuts.
+
+## Common Failure Modes
+
+Agent self-deception patterns to watch for:
+
+### Execution Failures
+
+| Excuse | Truth | Correct Action |
+|--------|-------|----------------|
+| "Code looks correct" | Reading code is not verification | Run it |
+| "Probably fine" | "Probably" is not evidence | Verify it |
+| "This would take too long" | Not your call — inform the user of estimated time, then do it | Inform and proceed |
+| "Let me read the code first" | May be procrastinating action | Run a command directly |
+
+### Quality Failures
+
+| Excuse | Truth | Correct Action |
+|--------|-------|----------------|
+| "Tests already pass" | Tests can be self-referential | Verify independently |
+| "This edge case is unlikely" | Anything can happen in production | Handle it or document why not |
+| "Refactoring is too big, leave it for now" | Tech debt does not resolve itself | At minimum, record a TODO |
+| "I'll add docs/comments later" | "Later" usually means never | Do it now |
+
+### Delegation Failures
+
+| Excuse | Truth | Correct Action |
+|--------|-------|----------------|
+| "Let the worker figure it out" | Avoiding synthesis work | Understand first, then give precise instructions |
+| "Based on earlier research" | Worker cannot see earlier context | Provide complete information |
+
+## Failure Escalation
+
+- First failure: retry once with a focused fix based on the error.
+- Second failure: change approach entirely — do not repeat the same strategy.
+- Third failure: report to the user with a summary of what was tried and why each approach failed.
+- Never let a failing approach loop more than three times.
+
+## Related Techniques
+
+- See `techniques/coordination-patterns.md` for multi-agent coordination and worker failure handling.
+- See `techniques/worker-instructions.md` for writing effective sub-agent prompts.

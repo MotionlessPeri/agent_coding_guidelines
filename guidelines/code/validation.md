@@ -18,6 +18,17 @@
   ```
 - For new commands or API endpoints: verify the happy path works end-to-end.
 
+## Adversarial Mindset
+
+- The goal of verification is to try to break the change, not just confirm it works.
+- Reading code is not verification — run commands and observe actual output.
+- Do not write explanations of why code is correct; run the code and show evidence.
+- Always test at least one non-happy-path scenario (error case, boundary value, edge case).
+- Tests passing is necessary but not sufficient — tests can be self-referential. Verify
+  behavior independently when practical.
+- For change-type-specific verification steps (frontend, backend, CLI, infra, bug fix,
+  refactor), see `techniques/adversarial-verification.md`.
+
 ## Tool/Command Additions
 
 When adding a new command, tool, or API endpoint, verify:
@@ -34,3 +45,8 @@ When adding a new command, tool, or API endpoint, verify:
 
 - Only say "done" or "fixed" after running verification and confirming it passes.
 - Include the verification output or a summary in your report to the user.
+
+## Related Techniques
+
+- See `techniques/adversarial-verification.md` for detailed procedural checklists and
+  adversarial probes.
