@@ -12,25 +12,25 @@ Extracted and generalized from real projects. Project-specific rules are exclude
 | `guidelines/workflow/` | Commit, documentation, and lifecycle rules |
 | `guidelines/code/` | Code constraints and validation requirements |
 | `guidelines/collaboration/` | Multi-agent setup and artifact placement |
-| `docs/plans/` | Design and implementation plans |
+| `techniques/` | Procedural patterns and operational guides |
 
 ## How to Connect to Your Projects
 
 **Option 1 — Global (all sessions on this machine):**
 Add to `~/.claude/CLAUDE.md`:
 ```
-@E:/xd_projects/agent_coding_guidelines/AGENTS.md
+@/path/to/agent_coding_guidelines/AGENTS.md
 ```
 
 **Option 2 — Per project:**
 Add to the project's `AGENTS.md`:
 ```
-@E:/xd_projects/agent_coding_guidelines/AGENTS.md
+@/path/to/agent_coding_guidelines/AGENTS.md
 ```
 
 **Option 3 — Project-local copy:**
 For projects that need customized rules, the agent copies and adapts relevant sections
-into the project's own `AGENTS.md`.
+into the project's own `AGENTS.md`. The agent decides what to include based on project context.
 
 ## Adding New Guidelines
 

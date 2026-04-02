@@ -13,12 +13,14 @@ Guidelines are grouped by topic under `guidelines/`:
 | `guidelines/workflow/` | Commit rules, documentation rules, agent lifecycle, handoff workflow |
 | `guidelines/code/` | Code constraints, validation requirements |
 | `guidelines/collaboration/` | Multi-agent setup, private docs policy |
+| `techniques/` | Procedural patterns and step-by-step operational guides |
 
-**Adding new guidelines:**
+**Adding new files:**
 - Place new files in the appropriate subdirectory.
 - If no existing category fits, create a new subdirectory.
 - Add a reference to the new file in this AGENTS.md under the relevant section.
 - Keep each file focused on one topic. Split if it covers 3+ independent concerns or exceeds ~200-300 lines.
+- `guidelines/` = declarative rules ("always do X, never do Y"). `techniques/` = procedural patterns ("step 1, step 2, step 3").
 
 ---
 
@@ -39,3 +41,13 @@ Guidelines are grouped by topic under `guidelines/`:
 @guidelines/collaboration/multi-agent.md
 
 @guidelines/collaboration/private-docs-policy.md
+
+---
+
+## Techniques
+
+@techniques/adversarial-verification.md
+
+@techniques/coordination-patterns.md
+
+@techniques/worker-instructions.md
