@@ -13,6 +13,7 @@ Guidelines are grouped by topic under `guidelines/`:
 | `guidelines/workflow/` | Commit rules, documentation rules, agent lifecycle |
 | `guidelines/code/` | Code constraints, validation requirements |
 | `guidelines/collaboration/` | Multi-agent setup, private docs policy |
+| `guidelines/ue/` | Unreal Engine editor and graph development rules |
 | `techniques/` | Procedural patterns and step-by-step operational guides |
 
 **Adding new files:**
@@ -40,6 +41,10 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/collaboration/private-docs-policy.md
 
+@guidelines/ue/graph-editor-constraints.md
+
+@guidelines/ue/editor-runtime-separation.md
+
 ---
 
 ## Techniques
@@ -49,3 +54,5 @@ Guidelines are grouped by topic under `guidelines/`:
 @techniques/coordination-patterns.md
 
 @techniques/worker-instructions.md
+
+@techniques/ue-custom-graph-editor.md
