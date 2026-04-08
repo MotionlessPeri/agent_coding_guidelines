@@ -45,6 +45,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/editor-runtime-separation.md
 
+@guidelines/ue/graph-data-ownership.md
+
 ---
 
 ## Techniques
