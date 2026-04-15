@@ -47,6 +47,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/graph-data-ownership.md
 
+@guidelines/ue/blueprint-auto-override-api.md
+
 ---
 
 ## Techniques
