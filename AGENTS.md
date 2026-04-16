@@ -33,6 +33,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/workflow/agent-lifecycle.md
 
+@guidelines/workflow/code-review.md
+
 @guidelines/code/constraints.md
 
 @guidelines/code/validation.md
