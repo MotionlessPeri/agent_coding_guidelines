@@ -33,7 +33,7 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/workflow/agent-lifecycle.md
 
-@guidelines/workflow/handoffs.md
+@guidelines/workflow/code-review.md
 
 @guidelines/code/constraints.md
 
@@ -46,6 +46,10 @@ Guidelines are grouped by topic under `guidelines/`:
 @guidelines/ue/graph-editor-constraints.md
 
 @guidelines/ue/editor-runtime-separation.md
+
+@guidelines/ue/graph-data-ownership.md
+
+@guidelines/ue/blueprint-auto-override-api.md
 
 ---
 
