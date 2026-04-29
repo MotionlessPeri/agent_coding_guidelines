@@ -64,3 +64,5 @@ Guidelines are grouped by topic under `guidelines/`:
 @techniques/worker-instructions.md
 
 @techniques/ue-custom-graph-editor.md
+
+@techniques/claude-code-autonomous-permissions.md
