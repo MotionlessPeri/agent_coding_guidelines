@@ -70,6 +70,17 @@ Each verification item should include:
 
 **Anti-pattern**: "I read the code and the logic correctly validates..." -- this is not evidence. Evidence requires running a command.
 
+## Diagnostic Log Discipline
+
+When debugging a bug that requires adding diagnostic logs:
+
+- **Do not remove diagnostic logs until the user confirms the fix works.** A premature
+  cleanup forces re-adding the same logs if the fix turns out to be wrong.
+- Add logs, build, let the user reproduce, read the logs, propose a fix, build again —
+  but keep the logs in place.
+- Only remove logs in a separate cleanup step after the user explicitly confirms the
+  issue is resolved.
+
 ## Completion Checklist
 
 Before reporting verification complete:
