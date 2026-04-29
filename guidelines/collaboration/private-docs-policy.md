@@ -8,6 +8,10 @@ Keep the following **outside** the project directory (e.g. in a sibling `_agent_
 - Temporary analysis scratch files
 - One-off investigation notes
 - MCP/tool-generated artifacts not relevant to the codebase
+- **Session logs and handoff documents** — these are agent-to-agent communication,
+  not project deliverables. Store in the Claude memory directory
+  (e.g. `~/.claude/projects/<project>/sessions/`) or `_agent_private/`.
+  **Never commit session logs or inter-agent handoff docs to git.**
 
 This keeps the project clean for sharing, export, and code review.
 
