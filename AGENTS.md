@@ -10,7 +10,7 @@ Guidelines are grouped by topic under `guidelines/`:
 
 | Directory | Contents |
 |-----------|----------|
-| `guidelines/workflow/` | Commit rules, documentation rules, agent lifecycle |
+| `guidelines/workflow/` | Commit rules, documentation rules, agent lifecycle, handoff workflow |
 | `guidelines/code/` | Code constraints, validation requirements |
 | `guidelines/collaboration/` | Multi-agent setup, private docs policy |
 | `guidelines/ue/` | Unreal Engine editor and graph development rules |
