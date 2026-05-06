@@ -57,6 +57,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/blueprint-auto-override-api.md
 
+@guidelines/ue/asset-definition-can-duplicate-limit.md
+
 ---
 
 ## Techniques
