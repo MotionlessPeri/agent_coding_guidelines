@@ -39,6 +39,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/workflow/knowledge-promotion.md
 
+@guidelines/code/clarify-before-implementing.md
+
 @guidelines/code/constraints.md
 
 @guidelines/code/validation.md
