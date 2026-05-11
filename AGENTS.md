@@ -41,6 +41,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/code/clarify-before-implementing.md
 
+@guidelines/code/reuse-before-implementing.md
+
 @guidelines/code/constraints.md
 
 @guidelines/code/validation.md
@@ -48,6 +50,8 @@ Guidelines are grouped by topic under `guidelines/`:
 @guidelines/collaboration/multi-agent.md
 
 @guidelines/collaboration/private-docs-policy.md
+
+@guidelines/ue/reference-engine-source.md
 
 @guidelines/ue/graph-editor-constraints.md
 
