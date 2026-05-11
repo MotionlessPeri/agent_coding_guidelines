@@ -55,8 +55,10 @@ Phase 3: Per-Milestone Implementation
     → invoke superpowers:executing-plans for THIS Milestone only
     → invoke superpowers:test-driven-development AND tdd-with-fixtures
       for test discipline — milestone NOT done if tests fail
-    → run validation per guidelines/code/validation.md
-    → commit (per guidelines/workflow/commits.md format)
+    → validate (build / tests / smoke as appropriate). Reading code is NOT
+      validation — run commands and observe output.
+    → commit. Format: `<type>: <subject>`. One theme per commit. Commit only at
+      stable points (build passes, tests pass).
 
     [GATE 3 — fires per Milestone] User reviews this Milestone.
       Output: what was done, files changed, commits made, test results,

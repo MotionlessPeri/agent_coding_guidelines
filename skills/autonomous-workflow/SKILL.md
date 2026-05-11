@@ -48,6 +48,9 @@ Phase 0: Setup
     e.g. "fix-session-expiry", "add-patrol-callback")
   → create handoff dir at <handoff-root>/<task-slug>/
   → initialize four files: brief.md, context.md, worklog.md, result.md (placeholder)
+  → PRE-FLIGHT: check commit permission state (see "Commit Permission Pre-Flight"
+    section below). If commit is gated by `ask`, surface finding at plan gate so
+    user picks a handling option before Phase 3 starts.
 
 Phase 1: Self-Brainstorm
   → invoke superpowers:brainstorming mentally — do NOT pause for user
@@ -77,8 +80,12 @@ Phase 3: Per-Milestone Implementation (TDD-strict, no gates)
     a. Invoke superpowers:test-driven-development AND tdd-with-fixtures
        — tests come BEFORE implementation, milestone NOT done if tests fail
     b. Implement to pass tests
-    c. Run validation per guidelines/code/validation.md
-    d. Commit per guidelines/workflow/commits.md
+    c. Validate (build / tests / smoke as appropriate). Reading code is NOT
+       validation — run commands and observe output. If failure, fix or escalate;
+       do not advance to next Milestone with red state.
+    d. Commit. Format: `<type>: <subject>` (e.g. `feat:` / `fix:` / `refactor:` /
+       `docs:`). One theme per commit. Commit only at stable points
+       (build passes, tests pass).
     e. Append entry to worklog.md (format below)
 
   Escalation conditions (stop and notify user):
@@ -90,6 +97,10 @@ Phase 3: Per-Milestone Implementation (TDD-strict, no gates)
 Phase 4: Self-Review and Result
   → invoke superpowers:requesting-code-review adversarially against your own work
     (focus: cross-Milestone consistency, integration risks not visible per Milestone)
+  → IF Option B was chosen at plan gate (agent lifted commit gate at Phase 0):
+       restore the `ask` rule by reverse-editing the same settings file(s).
+       Verify by reading the setting back. Record restoration in result.md.
+       Restoration is NON-NEGOTIABLE — workflow is not complete without it.
   → write result.md with conclusion, all changes, commits, test results,
     known limitations, recommended next steps
   → notify user: "task complete, result at <path>"
@@ -203,6 +214,49 @@ One entry per Milestone. Append-only — **never edit prior entries**.
 - <follow-up items, if any>
 ```
 
+## Commit Permission Pre-Flight
+
+Autonomous Phase 3 commits per Milestone. If `git commit` is gated by a `permissions.ask` rule in user or project settings, every commit prompts — user is offline (that's the point of autonomous) → workflow stalls indefinitely.
+
+### Detection (Phase 0)
+
+Read `~/.claude/settings.json` and (if present) the project's `.claude/settings.json` / `.claude/settings.local.json`. Look for `Bash(git commit:*)` or `Bash(git commit*)` in the `permissions.ask` list.
+
+If found in ANY of these files → commit is gated. Surface at plan gate.
+
+### If Gated: Surface at Plan Gate
+
+Plan gate output must include a "Pre-flight notice" section listing the gated location(s) and presenting three options to the user:
+
+**A. User lifts before approving the plan.**
+- User opens the relevant settings file(s)
+- Moves the `Bash(git commit:*)` entry from `permissions.ask` to `permissions.allow`
+- Verifies by running one trivial commit — should NOT prompt
+- Tells agent to proceed
+- User restores `ask` rule at task end (or opens a follow-up reminder)
+
+**B. User authorizes agent to lift, agent restores at Phase 4 end.**
+- Agent edits the same settings file(s): moves entry `ask` → `allow`
+- Verifies (read setting back; or attempt trivial commit if safe)
+- Records the lift in worklog.md including which file(s) were modified
+- At Phase 4 end: reverse-edits the same files, verifies restoration, records in result.md
+- Restoration is non-negotiable; result.md is NOT complete without it
+
+**C. Proceed unlifted (will stall).**
+- Phase 3 runs until first commit, halts on prompt, escalates to user
+- Effectively switches to supervised behavior at commit time
+- Useful only if user is briefly available at commit moments
+
+### Discipline (Option B specifics)
+
+- Authorization is **scoped to this task only**. Do not extend the lift to other operations or future tasks.
+- If agent picks B but later fails to restore at Phase 4 end: escalate immediately, do not close result.md, do not declare the workflow complete.
+- If user revokes authorization mid-task: stop, restore immediately, then continue under Option C or pause for redirection.
+
+### Reference
+
+Full rationale (safety net principles, scope precedence, diagnostic patterns for "why is it still prompting"): see `techniques/claude-code-autonomous-permissions.md` in the agent_coding_guidelines repo. The operational core above is sufficient for runtime; the technique doc is the deeper read.
+
 ## TDD Is Mandatory Here
 
 The plan gate catches strategic bias; it does NOT catch missing tests during execution. Once the plan is approved and Phase 3 starts, there is **no user gate during implementation** — `tdd-with-fixtures` is the only safety net for per-Milestone correctness.
@@ -275,6 +329,9 @@ When composing these, **follow each composed skill's discipline fully**. Autonom
 | Treating autonomous as "no rules" | Skipping commits, skipping tests, skipping docs | Autonomous removes per-Milestone gates, not discipline. Discipline + plan gate are the substitutes. |
 | Silent scope expansion | Realizing brief.md was too narrow, expanding without notifying user | Escalate. Scope changes require user input. |
 | Committing handoff docs | brief.md ends up in `git status` | Move to private location per `private-docs-policy.md` |
+| Stalling on commit prompt | Phase 3 halts at first Milestone commit because `Bash(git commit:*)` is in `ask` list | Pre-flight should have caught this. Escalate; workflow cannot continue without commit gate lifted. See Commit Permission Pre-Flight section. |
+| Skipping pre-flight | Started Phase 1 / 2 without checking commit settings | Restart Phase 0 to do the check. Better caught early than at first commit. |
+| Failing to restore after Option B | Phase 4 completed without restoring `ask` rule | Restoration is non-negotiable. Restore immediately, verify, append note to result.md. Workflow is not complete until restoration is confirmed. |
 
 ## Related
 
@@ -283,5 +340,6 @@ When composing these, **follow each composed skill's discipline fully**. Autonom
 - `guidelines/collaboration/private-docs-policy.md` — handoff docs must NOT be committed
 - `guidelines/code/validation.md` — verification at each Milestone
 - `guidelines/workflow/commits.md` — commit format
+- `techniques/claude-code-autonomous-permissions.md` — full rationale for commit permission lift; operational core is inlined above in Commit Permission Pre-Flight
 - `skills/tdd-with-fixtures/SKILL.md` — mandatory test discipline, the safety net
 - `skills/supervised-workflow/SKILL.md` — sibling workflow with gates; switch to this if user wants in-the-loop review
