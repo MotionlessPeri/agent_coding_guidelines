@@ -96,5 +96,5 @@ Guidelines are grouped by topic under `guidelines/`:
 当前 skills：
 
 - [`skills/supervised-workflow/SKILL.md`](skills/supervised-workflow/SKILL.md) — high-touch 工作流，三个 hard user-review gate（plan / impl-plan / per-milestone）
-- [`skills/autonomous-workflow/SKILL.md`](skills/autonomous-workflow/SKILL.md) — low-touch 工作流，无 gate；handoff 文档（brief / context / worklog / result）+ 强 TDD 作安全网
+- [`skills/autonomous-workflow/SKILL.md`](skills/autonomous-workflow/SKILL.md) — low-touch 工作流，仅 plan gate（实施阶段无 gate）；handoff 文档（brief / context / worklog / result）+ 强 TDD 作执行期安全网
 - [`skills/tdd-with-fixtures/SKILL.md`](skills/tdd-with-fixtures/SKILL.md) — augment superpowers TDD，加 milestone-level discipline + fixture/manual case escape hatch

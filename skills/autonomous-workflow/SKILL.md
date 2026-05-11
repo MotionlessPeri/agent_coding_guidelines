@@ -1,15 +1,25 @@
 ---
 name: autonomous-workflow
-description: Low-touch workflow orchestrator for substantial tasks the user wants the agent to execute independently. Composes superpowers brainstorming, writing-plans, executing-plans, and requesting-code-review WITHOUT user review gates. Replaces gates with two safety nets — (1) handoff-style documentation (brief / context / worklog / result) so the user can audit the work afterward, and (2) mandatory tdd-with-fixtures discipline so failing tests block milestone advancement. Use when the user explicitly requests autonomous workflow OR when the task is functional-only with a clear pre-defined pipeline and the user signals unavailability. Skip for trivial tasks and for tasks where architectural decisions need user involvement.
-when_to_use: User explicitly says "use autonomous / 自主 / agent-led / 你自己来" workflow, OR user asks agent to evaluate workflow choice and the task is functional-only with a clear pipeline AND the user signals unavailability for review. Skip when supervised workflow is selected, when the task is trivial, or when architectural decisions need user input.
+description: Low-touch workflow orchestrator for substantial tasks. Composes superpowers brainstorming, writing-plans, executing-plans, and requesting-code-review with EXACTLY ONE user-review gate — at the plan stage. After the user approves the plan, execution runs without further gates. Three safety nets: (1) plan gate catches strategic bias before any code is written, (2) handoff-style documentation (brief / context / worklog / result) lets the user audit afterward, (3) mandatory tdd-with-fixtures discipline blocks milestone advancement on failing tests. Use when the user explicitly requests autonomous workflow OR when the task is functional-only with a clear pre-defined pipeline and the user does not want to be in the loop for per-milestone reviews. Skip for trivial tasks and for tasks where architectural decisions need user involvement throughout.
+when_to_use: User explicitly says "use autonomous / 自主 / agent-led / 你自己来" workflow, OR user asks agent to evaluate workflow choice and the task is functional-only with a clear pipeline AND the user does not want per-milestone review (one plan-review checkpoint is still required). Skip when supervised workflow is selected, when the task is trivial, or when architectural decisions need user input throughout.
 ---
 
 # Autonomous Workflow
 
-Orchestrator skill. Same composition chain as `supervised-workflow` but **no user-review gates**. Two replacement safety nets:
+Orchestrator skill. Same composition chain as `supervised-workflow` but only **one user-review gate** — at the plan stage. After plan approval, execution runs without further gates. Three safety nets:
 
-1. **Documentation** — durable handoff artifacts the user can audit after the fact
-2. **TDD discipline** — `tdd-with-fixtures` is mandatory, not optional; failing tests block milestone advancement
+1. **Plan gate** — catches strategic bias (wrong scope / wrong approach / wrong milestone breakdown) BEFORE any code is written. Cheapest possible insurance, highest leverage of the three.
+2. **Documentation** — durable handoff artifacts (brief / context / worklog / result) let the user audit afterward. Worklog is append-only and readable as a status check anytime.
+3. **TDD discipline** — `tdd-with-fixtures` is mandatory; failing tests block milestone advancement. Acts as the safety net during the gateless execution phase.
+
+**Diff vs `supervised-workflow`:**
+
+| Phase | supervised | autonomous |
+|---|---|---|
+| Brainstorm output | gate | folded into plan; no separate gate |
+| Impl-plan | gate | **gate (only one in this workflow)** |
+| Per-milestone | gate per Milestone | no gate; tests + worklog cover |
+| Final | requesting-code-review w/ user | self-review + result.md for user to read later |
 
 ## When This Fires
 
@@ -30,7 +40,7 @@ If unsure, **ask the user** which workflow to use. Do not silently default to au
 
 ## The Chain
 
-Five phases. No gates between phases. Each phase has explicit doc artifacts.
+Five phases. **Exactly one hard gate** — after Phase 2 (plan). Phases 3 and 4 run without further interruption. Each phase has explicit doc artifacts.
 
 ```
 Phase 0: Setup
@@ -50,6 +60,17 @@ Phase 2: Self-Plan
   → break into 3-7 Milestones (see supervised-workflow for granularity guidance)
   → append plan section to brief.md with Milestone list:
     each Milestone has goal, files touched, test approach, completion criteria
+
+[GATE — the only gate in this workflow]
+  → output to user: framing summary (from brief.md) + Milestone list,
+    one-screen total. Concise, not the full file dump.
+  → wait for explicit user response:
+    - confirms → advance to Phase 3
+    - redirects (scope wrong / milestones wrong / approach wrong)
+      → restart at Phase 1 or 2 with adjustments
+    - aborts → stop, leave the handoff dir intact for next attempt
+  → DO NOT proceed on silence. DO NOT interpret vague replies as approval.
+    Wait until you get a clear confirm.
 
 Phase 3: Per-Milestone Implementation (TDD-strict, no gates)
   For each Milestone in order:
@@ -184,7 +205,7 @@ One entry per Milestone. Append-only — **never edit prior entries**.
 
 ## TDD Is Mandatory Here
 
-Inside autonomous workflow there is **no user gate** catching missing tests. `tdd-with-fixtures` is the only safety net.
+The plan gate catches strategic bias; it does NOT catch missing tests during execution. Once the plan is approved and Phase 3 starts, there is **no user gate during implementation** — `tdd-with-fixtures` is the only safety net for per-Milestone correctness.
 
 - Every Milestone must pass its tests before being marked complete in worklog.md
 - A Milestone with `Tests: N fail > 0` is **not done** — do not advance to next Milestone
@@ -245,11 +266,13 @@ When composing these, **follow each composed skill's discipline fully**. Autonom
 
 | Failure | Looks like | Correct action |
 |---|---|---|
+| Skipping the plan gate | Advancing from Phase 2 to Phase 3 without explicit user approval of plan | Hard stop after Phase 2. Output framing + milestones, wait for confirm. Vague replies do not count. |
+| Treating plan approval as carte blanche | Major scope expansion or design changes mid-implementation | Approval covers the approved plan. Anything outside it = scope change = escalate. |
 | Skipping documentation | "I implemented it, no need to write worklog" | All four files are mandatory artifacts, not optional. Write them. |
 | Advancing past failing tests | Mark Milestone done with red tests | Milestone NOT done. Fix or escalate. |
 | Looping on a failed approach | 5th attempt on same Milestone | Stop at attempt 3, escalate per agent-lifecycle.md |
 | Editing past worklog entries | Rewriting Milestone 1 entry after Milestone 3 found issues | worklog is append-only. Add a new entry noting the correction. |
-| Treating autonomous as "no rules" | Skipping commits, skipping tests, skipping docs | Autonomous removes user gates, not discipline. Discipline is the substitute. |
+| Treating autonomous as "no rules" | Skipping commits, skipping tests, skipping docs | Autonomous removes per-Milestone gates, not discipline. Discipline + plan gate are the substitutes. |
 | Silent scope expansion | Realizing brief.md was too narrow, expanding without notifying user | Escalate. Scope changes require user input. |
 | Committing handoff docs | brief.md ends up in `git status` | Move to private location per `private-docs-policy.md` |
 
