@@ -44,8 +44,9 @@ Five phases. **Exactly one hard gate** — after Phase 2 (plan). Phases 3 and 4 
 
 ```
 Phase 0: Setup
-  → generate task slug (short kebab-case from task description,
-    e.g. "fix-session-expiry", "add-patrol-callback")
+  → generate task slug: YYYY-MM-DD-<short-kebab-case>
+    e.g. "2026-05-11-fix-session-expiry", "2026-05-11-add-patrol-callback"
+    (date prefix is mandatory — see "Task Slug Convention" below)
   → create handoff dir at <handoff-root>/<task-slug>/
   → initialize four files: brief.md, context.md, worklog.md, result.md (placeholder)
   → PRE-FLIGHT: check commit permission state (see "Commit Permission Pre-Flight"
@@ -104,20 +105,78 @@ Phase 4: Self-Review and Result
   → write result.md with conclusion, all changes, commits, test results,
     known limitations, recommended next steps
   → notify user: "task complete, result at <path>"
+  → DO NOT auto-archive the handoff dir. Let it stay at `handoffs/<task-slug>/`
+    until the user explicitly decides to archive (see "Completion and Archival" below).
 ```
 
 ## Document Locations
 
-Per `guidelines/collaboration/private-docs-policy.md`: handoff documents are agent-to-agent / agent-to-future-user communication, **NOT** project deliverables. They must not be committed to project git.
+Per `guidelines/collaboration/private-docs-policy.md`: agent artifacts (everything tied to a single task — design plans, impl plans, kickoff prompts, session logs, handoffs, research scratch, etc.) are agent-to-agent / agent-to-future-user communication, **NOT** project deliverables. They must never be committed to project git.
 
-**Default `<handoff-root>` resolution order:**
+### Agent Artifact Layout
 
-1. If project AGENTS.md specifies a handoff directory → use it
-2. If `_agent_private/<project-name>/handoffs/` exists at workspace level → use it
-3. If `~/.claude/projects/<project>/sessions/` exists → use it
-4. Otherwise: create `_agent_private/<project-name>/handoffs/` at workspace level and use it (notify user of the choice)
+Agent artifacts live under `~/.claude/projects/<project>/`, organized into 5 sibling subdirectories:
+
+| Subdirectory | Holds | Used by |
+|--------------|-------|---------|
+| `sessions/` | Session execution logs (per-session summaries) | All workflows |
+| `handoffs/<task-slug>/` | Autonomous workflow four files (brief / context / worklog / result), and cross-session handoff docs | Autonomous workflow; cross-session/agent handoff |
+| `plans/` | Task-level design + impl-plan (the per-task ones, NOT the project-deliverable ones) | Supervised workflow, ad-hoc discussion |
+| `research/` | Pre-implementation research, scratch analysis, third-party comparison | Any workflow that needs investigation |
+| `prompts/` | Kickoff prompts for next session, starter-kit material, collaboration prompts for teammates | Cross-session continuation |
+
+Each subdirectory has its own `Archive/` for completed / superseded artifacts. Archival is **user-driven** — the agent does not auto-archive.
+
+The `memory/` subdirectory at the same level is the auto-memory system. It is orthogonal to these 5 — it holds long-term user / feedback / project / reference memories, not single-task artifacts.
+
+Distinction from project deliverables: a `design.md` or `impl-plan.md` that the user has explicitly committed to project git (e.g. inside `Plugins/<Plugin>/Docs/Plans/`) is a project deliverable, not an agent artifact. Promotion / demotion between the two categories is always user-decided; the agent does not propose moves.
+
+### `<handoff-root>` Resolution
+
+For autonomous workflow specifically, `<handoff-root>` = `~/.claude/projects/<project>/handoffs/` (the `handoffs/` row in the table above).
+
+Resolution order (in priority):
+1. If project AGENTS.md specifies a handoff directory → use it (project override)
+2. Default: `~/.claude/projects/<project>/handoffs/` (matches the Agent Artifact Layout)
+3. Fallback when no `<project>` directory mapping is available: create `_agent_private/<project-name>/handoffs/` at workspace level and use it (notify user of the choice)
 
 **Never** put handoff docs inside the project tree where they would be committed.
+
+### Task Slug Convention
+
+Format: `YYYY-MM-DD-<short-kebab-case>/`
+
+Examples:
+- `2026-05-11-fix-session-expiry/`
+- `2026-05-11-add-patrol-callback/`
+- `2026-05-11-refactor-dialogue-cache/`
+
+Date prefix is **mandatory**. Reasons:
+- Keeps the directory tree sorted chronologically — recent tasks are at the bottom
+- Aligns with the existing `sessions/` and `plans/` naming conventions in this layout
+- When the same task is redone or revised, a new date prefix makes the relationship to prior runs visible without overwriting
+
+### Autonomous Task Artifact Convergence
+
+An autonomous workflow run produces **all** its task artifacts inside the single directory `handoffs/<task-slug>/`. Do NOT scatter to sibling subdirectories (`plans/` / `research/` / `prompts/`).
+
+Specifically:
+- `brief.md` / `context.md` / `worklog.md` / `result.md` — the four standard files
+- Task-internal research notes → inline section in `context.md`, not a separate file in `research/`
+- Task-internal design / impl-plan → covered by `brief.md`'s "Milestone Plan" section, not a separate file in `plans/`
+
+Other workflows (supervised, ad-hoc discussion) may use `plans/` / `research/` / `prompts/` directly — that is fine. The convergence rule applies only to artifacts produced inside an autonomous workflow run.
+
+### Completion and Archival
+
+After Phase 4 completes (result.md written, user notified):
+- The `handoffs/<task-slug>/` directory **stays in place** by default. Do not delete, do not move automatically.
+- Archival is user-decided. The user may either:
+  - Manually move `handoffs/<task-slug>/` to `handoffs/Archive/<task-slug>/`
+  - Explicitly tell the agent: "archive task X" / "归档 task X" → agent moves it
+- Do NOT auto-archive even when the user says the task is "done" or "ship 了". The artifact stays accessible for ad-hoc audit until the user actively decides it is no longer needed.
+
+The same rule applies to artifacts in the other 4 subdirectories: archival is always user-driven.
 
 ## Document Discipline
 
