@@ -59,6 +59,10 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/asset-definition-can-duplicate-limit.md
 
+@guidelines/ue/localization-pitfalls.md
+
+@guidelines/ue/settings-persistence.md
+
 ---
 
 ## Techniques
