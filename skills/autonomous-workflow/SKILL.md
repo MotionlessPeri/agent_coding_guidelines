@@ -102,8 +102,24 @@ Phase 4: Self-Review and Result
        restore the `ask` rule by reverse-editing the same settings file(s).
        Verify by reading the setting back. Record restoration in result.md.
        Restoration is NON-NEGOTIABLE — workflow is not complete without it.
+  → SKILL-WORTHY LESSON AUDIT: self-question against the worklog —
+       "Did anything emerge during this task that should fire automatically
+        for FUTURE work (a pattern, contract, anti-pattern, or convention)?"
+     For each candidate, classify:
+       - **Project skill candidate**: the rule only makes sense in THIS project
+         (uses project helpers / business invariants / data conventions).
+         Target location: `<project>/.claude/skills/<name>/SKILL.md`. Low bar.
+       - **Global skill candidate**: rule applies across projects / framework
+         level. Target location: `agent_coding_guidelines/skills/`. Higher bar:
+         needs evidence per knowledge-promotion.md (two-strike rule, hidden
+         contract, validated workflow pattern, etc.)
+     Surface candidates in result.md "Skill Candidates" section.
+     DO NOT auto-create skill files — propose only. User decides whether/how
+     to create.
+     If nothing skill-worthy emerged, explicitly say so in result.md (avoids
+     ambiguity between "nothing emerged" and "agent forgot to audit").
   → write result.md with conclusion, all changes, commits, test results,
-    known limitations, recommended next steps
+    known limitations, recommended next steps, AND skill candidates
   → notify user: "task complete, result at <path>"
   → DO NOT auto-archive the handoff dir. Let it stay at `handoffs/<task-slug>/`
     until the user explicitly decides to archive (see "Completion and Archival" below).
@@ -268,6 +284,12 @@ One entry per Milestone. Append-only — **never edit prior entries**.
 
 ## Known Limitations
 - <anything the user should know that wasn't in scope>
+
+## Skill Candidates
+<from Phase 4 audit; classify each as project / global>
+- **Project skill candidate**: <name + one-line rule>. Rationale: <why this should fire automatically for future work in this project>.
+- **Global skill candidate**: <name + one-line rule>. Rationale: <evidence of cross-project applicability or hidden contract>.
+- (or "None — nothing skill-worthy emerged in this task" if audit found nothing)
 
 ## Recommended Next Steps
 - <follow-up items, if any>

@@ -69,6 +69,18 @@ Phase 4: Overall Review
   → invoke superpowers:requesting-code-review
   → cover all Milestones together, focus on cross-Milestone consistency,
     architecture coherence, and integration risks not visible at Milestone scope.
+  → SKILL-WORTHY LESSON AUDIT: self-question against the work done —
+    "Did anything emerge during this task that should fire automatically for
+     FUTURE work (a pattern, contract, anti-pattern, or convention)?"
+    For each candidate, classify:
+      - **Project skill candidate**: only makes sense in THIS project. Target
+        location: `<project>/.claude/skills/<name>/SKILL.md`. Low bar.
+      - **Global skill candidate**: applies across projects. Target location:
+        `agent_coding_guidelines/skills/`. Higher bar (knowledge-promotion.md
+        criteria: two-strike rule / hidden contract / validated pattern).
+    Surface candidates in the overall review output for user to act on.
+    DO NOT auto-create skill files — propose only. User decides.
+    If nothing skill-worthy emerged, explicitly say so (avoids ambiguity).
 ```
 
 ## Gate Behavior
