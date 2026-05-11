@@ -13,6 +13,8 @@ Extracted and generalized from real projects. Project-specific rules are exclude
 | `guidelines/code/` | Code constraints and validation requirements |
 | `guidelines/collaboration/` | Multi-agent setup and artifact placement |
 | `techniques/` | Procedural patterns and operational guides |
+| `skills/` | Claude Code skills (lazy-loaded by Claude Code at invocation, not eager-imported). Sync via `scripts/sync-skills.ps1` |
+| `scripts/` | Repo maintenance scripts (skill sync, etc.) |
 
 ## How to Connect to Your Projects
 
@@ -32,10 +34,22 @@ Add to the project's `AGENTS.md`:
 For projects that need customized rules, the agent copies and adapts relevant sections
 into the project's own `AGENTS.md`. The agent decides what to include based on project context.
 
-## Adding New Guidelines
+## Using the Skills
 
-1. Create a `.md` file in the appropriate `guidelines/` subdirectory.
-2. Add a `@` reference to it in `AGENTS.md`.
-3. Keep each file focused on one topic.
+Skills under `skills/` are Claude Code's lazy-loaded skill format (each skill = a directory with a `SKILL.md`). To install them locally:
 
-See `AGENTS.md` for the full organization rules.
+```
+pwsh ./scripts/sync-skills.ps1
+```
+
+This copies skill directories from `skills/` to `~/.claude/skills/` (Claude Code's personal-scope discovery location). The script is one-way (repo → local) and never deletes skills you've added manually to `~/.claude/skills/`.
+
+Re-run after pulling repo updates to propagate skill changes.
+
+## Adding New Content
+
+1. **Guideline** (declarative rule): create a `.md` under the appropriate `guidelines/` subdirectory; add a `@` reference in `AGENTS.md`.
+2. **Technique** (procedural pattern): create a `.md` under `techniques/`; add a `@` reference in `AGENTS.md`.
+3. **Skill** (Claude Code skill): create `skills/<name>/SKILL.md` with frontmatter (`description` + `when_to_use`); add a line under AGENTS.md's Skills section; run the sync script.
+
+Keep each file focused on one topic. See `AGENTS.md` for the full organization rules.
