@@ -13,7 +13,7 @@ Guidelines are grouped by topic under `guidelines/`:
 | `guidelines/workflow/` | Commit rules, documentation rules, agent lifecycle, handoff workflow |
 | `guidelines/code/` | Code constraints, validation requirements |
 | `guidelines/collaboration/` | Multi-agent setup, private docs policy |
-| `guidelines/ue/` | Unreal Engine editor and graph development rules |
+| `guidelines/ue/` | **当前最重的子目录**（~1400 行 / 8 份 guidelines）。Unreal Engine framework hidden contracts + idiom 集中在此。**非 UE 项目可整段 skip**。完整索引 + 按场景导航见 [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md) |
 | `techniques/` | Procedural patterns and step-by-step operational guides |
 
 **Adding new files:**
