@@ -84,6 +84,17 @@ Phase 3: Per-Milestone Implementation (TDD-strict, no gates)
     c. Validate (build / tests / smoke as appropriate). Reading code is NOT
        validation — run commands and observe output. If failure, fix or escalate;
        do not advance to next Milestone with red state.
+    c.5. Audit (if project-side audit skills exist). After build/tests pass
+       and BEFORE commit, check whether the project has audit skills under
+       `<project>/.claude/skills/` (typical: `code-size-audit`,
+       `code-clarity-audit`). For each existing one, invoke it on files
+       modified by this Milestone. Findings are **non-blocking** — they do
+       NOT stop the commit. Record findings in worklog.md "Audit Findings"
+       sub-entry as input for a future cleanup commit or refactor task. If
+       no such skill exists, skip silently. When multiple audit skills
+       overlap on the same finding (e.g. size + clarity both report a long
+       function), one main report + cross-reference is enough — do not
+       duplicate the finding text.
     d. Commit. Format: `<type>: <subject>` (e.g. `feat:` / `fix:` / `refactor:` /
        `docs:`). One theme per commit. Commit only at stable points
        (build passes, tests pass).
@@ -120,7 +131,17 @@ Phase 4: Self-Review and Result
      ambiguity between "nothing emerged" and "agent forgot to audit").
   → write result.md with conclusion, all changes, commits, test results,
     known limitations, recommended next steps, AND skill candidates
-  → notify user: "task complete, result at <path>"
+  → DAILY LOG + OPEN-ITEMS SYNC: per `guidelines/workflow/daily-and-open-items.md`:
+       - Append entry to today's `~/.claude/daily/YYYY-MM-DD.md` under the
+         relevant project section, with reference to `handoffs/<task-slug>/result.md`
+       - Sync task status to `~/.claude/projects/<project>/open-items.md`:
+         - task fully done → remove or close the in-flight item; record under
+           daily's "Open Items Δ → Closed"
+         - task escalated / incomplete → ensure an in-flight item exists with
+           "paused at X" reference; record under daily's "Open Items Δ → Added"
+           if newly added
+       - daily.md is append-only; open-items.md can be freely edited
+  → notify user: "task complete, result at <path>; daily logged"
   → DO NOT auto-archive the handoff dir. Let it stay at `handoffs/<task-slug>/`
     until the user explicitly decides to archive (see "Completion and Archival" below).
 ```
@@ -259,6 +280,7 @@ One entry per Milestone. Append-only — **never edit prior entries**.
   - Auto: <N pass / M fail>
   - Manual cases verified: <TC-id list>
 **Deviations from plan**: <none / description with reason>
+**Audit Findings**: <"no audit skills present" / "no findings" / bullet list per audit skill (e.g. "size: 2 findings; clarity: 1 finding") with optional severity>
 **Notes**: <anything notable>
 ```
 
@@ -393,6 +415,7 @@ This skill is an **orchestrator**:
 - `superpowers:executing-plans` — owns the per-Milestone execution structure in Phase 3
 - `superpowers:test-driven-development` — invoked inside each Milestone in Phase 3 (red/green/refactor cycle)
 - `tdd-with-fixtures` — invoked inside each Milestone in Phase 3 (milestone discipline + fixture/manual escape hatch). **Non-negotiable** — autonomous workflow cannot suspend its rules.
+- Project-side audit skills (optional, plural) — typical names: `code-size-audit`, `code-clarity-audit`. If the project has any under `<project>/.claude/skills/`, invoke each at Phase 3 step c.5 (after build/tests pass, before commit) for each Milestone. Findings are **non-blocking** and recorded in worklog.md "Audit Findings". If no such skills exist, skip silently — do not warn the user. When multiple audit skills overlap on the same finding (e.g. size + clarity both flag a long function), one main report + cross-reference is enough — do not duplicate.
 - `superpowers:requesting-code-review` — owns Phase 4 (applied to own work adversarially)
 
 When composing these, **follow each composed skill's discipline fully**. Autonomous does not authorize skipping; it just removes the user-review pauses.
