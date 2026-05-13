@@ -58,6 +58,16 @@ Phase 1: Self-Brainstorm
   → write brief.md: task statement, in scope, out of scope, acceptance criteria
   → write context.md: relevant files, constraints, known risks,
     framework references (engine source pointers, related guidelines)
+  → ★ Pattern recognition (if project has it). Check whether the project has
+    `<project>/.claude/skills/pattern-recognition-prep/SKILL.md`. If yes,
+    invoke it on the task statement. Capture findings in context.md under
+    "Related Patterns" section:
+      - Strong Established match → "Reuse Pattern X" (drives Phase 2 plan
+        to NOT re-implement from scratch)
+      - Partial / Watching match → note as candidate; may inform Phase 4 audit
+      - Novel pattern candidate → record draft in brief.md "Novel Pattern
+        Candidates" section; Phase 4 audit will revisit
+    If skill absent, skip silently.
 
 Phase 2: Self-Plan
   → invoke superpowers:writing-plans
@@ -129,6 +139,18 @@ Phase 4: Self-Review and Result
      to create.
      If nothing skill-worthy emerged, explicitly say so in result.md (avoids
      ambiguity between "nothing emerged" and "agent forgot to audit").
+  → ★ Pattern catalog audit (if project has pattern-recognition-prep skill).
+    Invoke it in WRITE direction on the work just done:
+       - Did the implementation touch an existing Established / Watching
+         pattern? → add this task as a new "Uses" entry (user approve)
+       - Did a novel architectural pattern emerge? → draft a Watching entry
+         (three-question check: generic / architectural-level / abstraction-
+         level reasonable), surface for user approval
+       - Did a Watching pattern hit its 3rd use this task? → propose promotion
+         to Established with a full entry draft
+     Record findings in result.md "Pattern Catalog Update" section. DO NOT
+     auto-write to the catalog — propose drafts only, user decides.
+     If skill absent or no updates, say so explicitly.
   → write result.md with conclusion, all changes, commits, test results,
     known limitations, recommended next steps, AND skill candidates
   → DAILY LOG + OPEN-ITEMS SYNC: per `guidelines/workflow/daily-and-open-items.md`:
@@ -416,6 +438,7 @@ This skill is an **orchestrator**:
 - `superpowers:test-driven-development` — invoked inside each Milestone in Phase 3 (red/green/refactor cycle)
 - `tdd-with-fixtures` — invoked inside each Milestone in Phase 3 (milestone discipline + fixture/manual escape hatch). **Non-negotiable** — autonomous workflow cannot suspend its rules.
 - Project-side audit skills (optional, plural) — typical names: `code-size-audit`, `code-clarity-audit`. If the project has any under `<project>/.claude/skills/`, invoke each at Phase 3 step c.5 (after build/tests pass, before commit) for each Milestone. Findings are **non-blocking** and recorded in worklog.md "Audit Findings". If no such skills exist, skip silently — do not warn the user. When multiple audit skills overlap on the same finding (e.g. size + clarity both flag a long function), one main report + cross-reference is enough — do not duplicate.
+- Project-side `pattern-recognition-prep` skill (optional, design-time prep) — if `<project>/.claude/skills/pattern-recognition-prep/SKILL.md` exists, invoke it at Phase 1 (read direction: surface reusable Established / Watching patterns to inform plan) and Phase 4 (write direction: audit if novel pattern emerged for Watching addition / Watching → Established promotion). Findings are **non-blocking** but **architecturally important** (Phase 1 findings drive Milestone breakdown to favor reuse over re-implementation). User approve required before any catalog write.
 - `superpowers:requesting-code-review` — owns Phase 4 (applied to own work adversarially)
 
 When composing these, **follow each composed skill's discipline fully**. Autonomous does not authorize skipping; it just removes the user-review pauses.

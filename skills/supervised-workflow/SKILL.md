@@ -33,6 +33,15 @@ Five phases, three gates. Gates are **hard** — agent must stop and wait for us
 Phase 1: Brainstorm
   → invoke superpowers:brainstorming
   → output: problem framing, scope boundaries, alternatives considered, recommended approach
+  → ★ Pattern recognition (if project has it). Check whether the project has
+    `<project>/.claude/skills/pattern-recognition-prep/SKILL.md`. If yes,
+    invoke it on the task statement before GATE 1. Capture findings in the
+    Phase 1 output:
+      - Strong Established match → "Reuse Pattern X" (drives Phase 2 plan)
+      - Partial / Watching match → note as candidate
+      - Novel pattern candidate → record draft; Phase 4 audit revisits
+    Findings are visible to user at GATE 1 review — user can redirect plan
+    if pattern fit is wrong. If skill absent, skip silently.
 
 [GATE 1] User reviews brainstorm output.
   Wait for explicit user confirmation. Do NOT proceed on silence or vague replies.
@@ -81,6 +90,17 @@ Phase 4: Overall Review
     Surface candidates in the overall review output for user to act on.
     DO NOT auto-create skill files — propose only. User decides.
     If nothing skill-worthy emerged, explicitly say so (avoids ambiguity).
+  → ★ Pattern catalog audit (if project has pattern-recognition-prep skill).
+    Invoke it in WRITE direction on the work just done:
+       - Did the implementation touch an existing Established / Watching
+         pattern? → add this task as a new "Uses" entry (user approve)
+       - Did a novel architectural pattern emerge? → draft a Watching entry
+         (three-question check: generic / architectural-level / abstraction-
+         level reasonable), surface for user approval
+       - Did a Watching pattern hit its 3rd use this task? → propose promotion
+         to Established with a full entry draft
+     Surface findings in overall review output. DO NOT auto-write to catalog —
+     drafts only, user decides. If skill absent or no updates, say so.
   → DAILY LOG + OPEN-ITEMS SYNC: per `guidelines/workflow/daily-and-open-items.md`:
     - Append entry to today's `~/.claude/daily/YYYY-MM-DD.md` under the
       relevant project section, with reference to commits made and key decisions
@@ -126,6 +146,7 @@ This skill is an **orchestrator** — it invokes other skills, does not replace 
 - `superpowers:requesting-code-review` — owns Phase 4
 - `superpowers:test-driven-development` — base red/green/refactor cycle, invoked inside Phase 3
 - `tdd-with-fixtures` — milestone-level test discipline + fixture/manual escape hatch for behaviors auto-tests can't cover; invoked inside Phase 3 alongside superpowers:TDD. Non-negotiable: workflow gates do not suspend its rules.
+- Project-side `pattern-recognition-prep` skill (optional, design-time prep) — if `<project>/.claude/skills/pattern-recognition-prep/SKILL.md` exists, invoke it at Phase 1 (read direction: surface reusable Established / Watching patterns before GATE 1) and Phase 4 (write direction: audit novel pattern → Watching / Watching → Established promotion). Findings drive Milestone breakdown to favor reuse. User approve required before any catalog write.
 
 When invoking each composed skill, **follow that skill's own discipline fully**. Do not skip steps of a composed skill because this orchestrator is also running.
 
