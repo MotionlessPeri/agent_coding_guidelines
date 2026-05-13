@@ -15,7 +15,7 @@ Guidelines are grouped by topic under `guidelines/`:
 | `guidelines/collaboration/` | Multi-agent setup, private docs policy |
 | `guidelines/ci-windows/` | Windows CI (PowerShell / GitLab runner) 跑 native command 时的 pitfall 集——PowerShell ↔ native exe 之间的抽象漏洞 |
 | `guidelines/p4/` | Perforce 特有 hidden contracts——charset transcoding / typemap / 跟 git 不同的字节保留语义 |
-| `guidelines/ue/` | **当前最重的子目录**（~1700 行 / 10 份 guidelines）。Unreal Engine framework hidden contracts + idiom 集中在此。**非 UE 项目可整段 skip**。完整索引 + 按场景导航见 [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md) |
+| `guidelines/ue/` | **当前最重的子目录**（~1300 行 / 8 份 guidelines；另有 2 份 module-architecture 相关内容已 promote 到 `skills/ue-module-architecture/`）。Unreal Engine framework hidden contracts + idiom 集中在此。**非 UE 项目可整段 skip**。完整索引 + 按场景导航见 [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md) |
 | `techniques/` | Procedural patterns and step-by-step operational guides |
 | `skills/` | Claude Code skill files (each skill = `skills/<name>/SKILL.md`). **Lazy-loaded** by Claude Code at invocation time — NOT `@`-imported here. Synced to `~/.claude/skills/` via `scripts/sync-skills.ps1`. Codex 无对应机制，需手动读取 SKILL.md |
 
@@ -48,6 +48,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/code/constraints.md
 
+@guidelines/code/function-clarity.md
+
 @guidelines/code/validation.md
 
 @guidelines/collaboration/multi-agent.md
@@ -61,8 +63,6 @@ Guidelines are grouped by topic under `guidelines/`:
 @guidelines/ue/reference-engine-source.md
 
 @guidelines/ue/graph-editor-constraints.md
-
-@guidelines/ue/editor-runtime-separation.md
 
 @guidelines/ue/graph-data-ownership.md
 
@@ -110,3 +110,4 @@ Guidelines are grouped by topic under `guidelines/`:
 - [`skills/supervised-workflow/SKILL.md`](skills/supervised-workflow/SKILL.md) — high-touch 工作流，三个 hard user-review gate（plan / impl-plan / per-milestone）
 - [`skills/autonomous-workflow/SKILL.md`](skills/autonomous-workflow/SKILL.md) — low-touch 工作流，仅 plan gate（实施阶段无 gate）；handoff 文档（brief / context / worklog / result）+ 强 TDD 作执行期安全网
 - [`skills/tdd-with-fixtures/SKILL.md`](skills/tdd-with-fixtures/SKILL.md) — augment superpowers TDD，加 milestone-level discipline + fixture/manual case escape hatch
+- [`skills/ue-module-architecture/SKILL.md`](skills/ue-module-architecture/SKILL.md) — UE plugin module 切分两层规则：同 module 内 Runtime Ops / Editor Actions / UI 三层模型 + 跨 module Runtime ← Editor 依赖方向硬约束。bundle 了 `editor-runtime-separation.md` + `runtime-module-no-editor-dep.md` 两份原 guideline 内容
