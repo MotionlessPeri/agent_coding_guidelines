@@ -10,6 +10,8 @@
 
 跟 `clarify-before-implementing.md` 对称：那条讲"开工前先澄清需求"，本条讲"开工前先 survey 现有实现"。两条都属于 prep work，**优先级高于直接动手写**。
 
+**抽象层级对应**：本条管 **helper / function 级**复用（grep 现有函数 / helper）。**架构 pattern 级**复用（"流程跟 X 像不像 / 要不要走 X 的 base class"）由项目侧的 `pattern-recognition-prep` skill 维护（如 `<project>/.claude/skills/pattern-recognition-prep/SKILL.md`），跟项目的两个 workflow (autonomous / supervised) 的 Phase 1 设计阶段自动 compose。两者**互补**：design 阶段先扫 architectural pattern catalog（skill），实施前再 grep 具体 helper（本条 guideline）。
+
 ## 跟"premature abstraction"的边界
 
 [`guidelines/code/constraints.md`](../code/constraints.md) "Simplicity" 节：
