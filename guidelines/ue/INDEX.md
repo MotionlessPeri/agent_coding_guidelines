@@ -1,7 +1,9 @@
 # UE Guidelines 索引
 
-UE 是当前 meta-corpus 最重的子目录（约 1400 行 / 8 份 guidelines + 1 份配套
-technique），集中存放 Unreal Engine framework 的 hidden contracts 和 idiom。
+UE 是当前 meta-corpus 最重的子目录（约 950 行 / 6 份 guidelines + 1 份配套
+technique，另有 4 份内容已 promote 到 skill：`skills/ue-module-architecture/` 2 份
++ `skills/ue-reference-engine-source/` + `skills/ue-settings-persistence/`），
+集中存放 Unreal Engine framework 的 hidden contracts 和 idiom。
 
 **非 UE 项目可以整段 skip 本目录** —— 通用编程 / 工程组织规则在
 `guidelines/code/` / `guidelines/workflow/` / `guidelines/collaboration/`。
@@ -10,9 +12,11 @@ technique），集中存放 Unreal Engine framework 的 hidden contracts 和 idi
 
 ### Prep work（开工前必看）
 
-| Guideline | 解决的问题 |
+> 已 promote 到 skill：[`skills/ue-reference-engine-source/SKILL.md`](../../skills/ue-reference-engine-source/SKILL.md)（lazy-load，不再 eager-import）
+
+| Skill 内容 | 解决的问题 |
 |---|---|
-| [`reference-engine-source.md`](reference-engine-source.md) | UE 功能（特别是 UI / Editor）开工前先找最相近的 engine source / official sample / 第三方 plugin reference impl；按 22 个 UE 子系统给 reference 清单 |
+| [`reference-engine-source.md`](../../skills/ue-reference-engine-source/reference-engine-source.md) | UE 功能（特别是 UI / Editor）开工前先找最相近的 engine source / official sample / 第三方 plugin reference impl；按 22 个 UE 子系统给 reference 清单 |
 
 > 配对的项目内 prep work：[`../code/reuse-before-implementing.md`](../code/reuse-before-implementing.md)（survey 项目内已有 similar code）。两条 prep work 都属于"动手前先 survey"的对称概念。
 
@@ -25,9 +29,12 @@ technique），集中存放 Unreal Engine framework 的 hidden contracts 和 idi
 
 ### Editor / Runtime 架构
 
-| Guideline | 解决的问题 |
+> 已 promote 到 skill：[`skills/ue-module-architecture/SKILL.md`](../../skills/ue-module-architecture/SKILL.md)（lazy-load，不再 eager-import）
+
+| Skill 内容 | 解决的问题 |
 |---|---|
-| [`editor-runtime-separation.md`](editor-runtime-separation.md) | 三层模型（Runtime Ops / Editor Actions / UI）/ Undo Support（基础 + 嵌套 transaction）/ Editor Actions 自动化生成（ExecEditorOp 模板 + 可选 Python codegen） |
+| [`editor-runtime-separation.md`](../../skills/ue-module-architecture/editor-runtime-separation.md) | 三层模型（Runtime Ops / Editor Actions / UI）/ Undo Support（基础 + 嵌套 transaction）/ Editor Actions 自动化生成（ExecEditorOp 模板 + 可选 Python codegen） |
+| [`runtime-module-no-editor-dep.md`](../../skills/ue-module-architecture/runtime-module-no-editor-dep.md) | 跨模块依赖方向硬约束：Runtime `*.Build.cs` 永远不能依赖 Editor module（含 conditional `if (Target.bBuildEditor)`）/ `WITH_EDITOR` 不能救你 / 常见诱因 + 正确解法（delegate / 把 test 移到 Editor module）/ build.cs review checklist |
 
 ### Asset Lifecycle
 
@@ -38,25 +45,28 @@ technique），集中存放 Unreal Engine framework 的 hidden contracts 和 idi
 
 ### Localization / Settings 持久化
 
-| Guideline | 解决的问题 |
+> Settings 持久化已 promote 到 skill：[`skills/ue-settings-persistence/SKILL.md`](../../skills/ue-settings-persistence/SKILL.md)（lazy-load，不再 eager-import）
+
+| Guideline / Skill 内容 | 解决的问题 |
 |---|---|
 | [`localization-pitfalls.md`](localization-pitfalls.md) | UE Localization API 6 条 trap：FromStringTable.ToString culture 漂 / Content/Localization 硬编码 exclude / PreBeginPIE 不能 veto / LocalizationTargetSet 非 UPROPERTY(config) / GatherText SCC noise / Culture BCP-47 validate |
-| [`settings-persistence.md`](settings-persistence.md) | UPROPERTY(config) flag + `TryUpdateDefaultConfigFile()` + AssetRegistrySearchable 三件套；SaveConfig 无参陷阱 + 排查 checklist + 嵌套 UObject 集合的 PostEditChangeProperty 双轨同步 pattern |
+| [`settings-persistence.md`](../../skills/ue-settings-persistence/settings-persistence.md) | UPROPERTY(config) flag + `TryUpdateDefaultConfigFile()` + AssetRegistrySearchable 三件套；SaveConfig 无参陷阱 + 排查 checklist + 嵌套 UObject 集合的 PostEditChangeProperty 双轨同步 pattern |
 
 ## 相关 Techniques
 
 [`../../techniques/ue-custom-graph-editor.md`](../../techniques/ue-custom-graph-editor.md) ——
 建一个 custom UE Graph Editor 的 step-by-step procedural guide。Prerequisites
-段强调"读最相近的 UE reference implementation"——是 `reference-engine-source.md`
-guideline 在 Graph Editor 子领域的具体应用。
+段强调"读最相近的 UE reference implementation"——是 skill
+[`ue-reference-engine-source`](../../skills/ue-reference-engine-source/SKILL.md)
+在 Graph Editor 子领域的具体应用。
 
 ## 看哪几篇取决于你在做什么
 
-- **第一次接 UE custom graph editor** → 先 [`reference-engine-source.md`](reference-engine-source.md) + [`../../techniques/ue-custom-graph-editor.md`](../../techniques/ue-custom-graph-editor.md)，按 procedural 步骤推进 + 每步翻 graph-editor-constraints.md / graph-data-ownership.md 对应章节
-- **写新 Asset Editor + UPROPERTY 持久化设置** → [`settings-persistence.md`](settings-persistence.md) + [`asset-definition-can-duplicate-limit.md`](asset-definition-can-duplicate-limit.md)
-- **本地化 / 翻译 pipeline** → [`localization-pitfalls.md`](localization-pitfalls.md) + [`settings-persistence.md`](settings-persistence.md)
-- **Runtime 跟 Editor 模块边界设计** → [`editor-runtime-separation.md`](editor-runtime-separation.md)
-- **接到一个 UE bug / weird behavior** → [`reference-engine-source.md`](reference-engine-source.md) 的"按子系统分类的 reference 清单"找最相近 engine source 看怎么实现的
+- **第一次接 UE custom graph editor** → 先 skill [`ue-reference-engine-source`](../../skills/ue-reference-engine-source/SKILL.md) + [`../../techniques/ue-custom-graph-editor.md`](../../techniques/ue-custom-graph-editor.md)，按 procedural 步骤推进 + 每步翻 graph-editor-constraints.md / graph-data-ownership.md 对应章节
+- **写新 Asset Editor + UPROPERTY 持久化设置** → skill [`ue-settings-persistence`](../../skills/ue-settings-persistence/SKILL.md) + [`asset-definition-can-duplicate-limit.md`](asset-definition-can-duplicate-limit.md)
+- **本地化 / 翻译 pipeline** → [`localization-pitfalls.md`](localization-pitfalls.md) + skill [`ue-settings-persistence`](../../skills/ue-settings-persistence/SKILL.md)
+- **Runtime 跟 Editor 模块边界设计** → skill [`ue-module-architecture`](../../skills/ue-module-architecture/SKILL.md)（含同 module 内三层模型 + 跨 module 依赖方向硬约束）
+- **接到一个 UE bug / weird behavior** → skill [`ue-reference-engine-source`](../../skills/ue-reference-engine-source/SKILL.md) 的"按子系统分类的 reference 清单"找最相近 engine source 看怎么实现的
 
 ## 增长状态
 

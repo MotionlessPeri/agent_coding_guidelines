@@ -297,7 +297,7 @@ UE 5.5 dialogue plugin（DialogueSystemSample）的 GitLab CI ship 期间踩穿�
 
 ## 相关 Guidelines
 
-- `guidelines/ue/reference-engine-source.md` —— 强调"写 UE 功能前先找 reference"。这两个 limitation 都是从 engine source 看出来的，符合"读 source 比读 doc 准"原则
+- skill `ue-reference-engine-source` （`skills/ue-reference-engine-source/reference-engine-source.md`）—— 强调"写 UE 功能前先找 reference"。这两个 limitation 都是从 engine source 看出来的，符合"读 source 比读 doc 准"原则
 - `guidelines/ue/localization-pitfalls.md` —— UE 框架 hidden contracts 集
 - `guidelines/ci-windows/powershell-native-command-pitfalls.md` —— CI 后处理用 PowerShell 时撞的相关 pitfall
 - `techniques/ci-deploy-to-p4.md` —— BuildPlugin 产物提交到 P4 的完整流程示例

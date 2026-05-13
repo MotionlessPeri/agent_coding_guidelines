@@ -194,6 +194,6 @@ DialogueSystemSample 插件 Phase 3 本地化 ship 期间踩出 Trap 1-4 + 6，�
 
 ## 相关 Guidelines
 
-- `guidelines/ue/settings-persistence.md` —— Trap 4 是 settings 持久化的特例；通用 UPROPERTY(config) 持久化 pattern 在那篇
-- `guidelines/ue/editor-runtime-separation.md` —— Trap 1 修法（query API 暴露 culture-aware wrap）也是 Editor / Runtime API 边界设计
+- skill `ue-settings-persistence` （`skills/ue-settings-persistence/settings-persistence.md`）—— Trap 4 是 settings 持久化的特例；通用 UPROPERTY(config) 持久化 pattern 在那篇
+- `skills/ue-module-architecture/editor-runtime-separation.md` —— Trap 1 修法（query API 暴露 culture-aware wrap）也是 Editor / Runtime API 边界设计（已 promote 到 skill `ue-module-architecture`）
 - `guidelines/code/validation.md` —— Trap 6 的 input validation 原则

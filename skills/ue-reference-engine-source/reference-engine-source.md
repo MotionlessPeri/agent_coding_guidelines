@@ -11,7 +11,7 @@
 
 **不要凭猜测实施**。UE framework 有大量 implicit contracts（NodeGuid 初始化 / Pin SetOwner / RF_Transactional / 各种 PostXxx hook 调用顺序 / 模块依赖方向 等），都**只在 reference impl 里能看到**，引擎自己的 docs 几乎不写。
 
-跟 [`guidelines/code/reuse-before-implementing.md`](../code/reuse-before-implementing.md) 关系：那条讲"先 survey 项目内现有代码"；本条讲"先 survey UE engine / 生态现有实现"。两条都属于 prep work。
+跟 `guidelines/code/reuse-before-implementing.md` 关系：那条讲"先 survey 项目内现有代码"；本条讲"先 survey UE engine / 生态现有实现"。两条都属于 prep work。
 
 ## 为什么
 
@@ -166,8 +166,10 @@ DialogueSystemSample 插件 3 个月开发期间，几乎所有 UE 功能都从 
 
 ## 相关 Guidelines
 
-- [`guidelines/code/reuse-before-implementing.md`](../code/reuse-before-implementing.md) —— 对称的另一条 prep work（survey 项目内 vs survey UE 生态）
-- [`guidelines/ue/graph-editor-constraints.md`](graph-editor-constraints.md) —— Graph Editor 子领域的具体 hidden contracts（NodeGuid / Pin Ownership / Reroute / 等）
-- [`guidelines/ue/localization-pitfalls.md`](localization-pitfalls.md) —— Localization 子领域的 hidden contracts
-- [`guidelines/ue/asset-definition-can-duplicate-limit.md`](asset-definition-can-duplicate-limit.md) —— AssetDefinition 子领域的 hidden contracts
-- [`techniques/ue-custom-graph-editor.md`](../../techniques/ue-custom-graph-editor.md) —— Graph Editor 的 step-by-step procedural guide，"Prerequisites" 节是本条 guideline 的具体应用
+> 链接相对路径已在 promote 到 skill 时去除；下列路径是相对 `agent_coding_guidelines` repo root 的引用。
+
+- `guidelines/code/reuse-before-implementing.md` —— 对称的另一条 prep work（survey 项目内 vs survey UE 生态）
+- `guidelines/ue/graph-editor-constraints.md` —— Graph Editor 子领域的具体 hidden contracts（NodeGuid / Pin Ownership / Reroute / 等）
+- `guidelines/ue/localization-pitfalls.md` —— Localization 子领域的 hidden contracts
+- `guidelines/ue/asset-definition-can-duplicate-limit.md` —— AssetDefinition 子领域的 hidden contracts
+- `techniques/ue-custom-graph-editor.md` —— Graph Editor 的 step-by-step procedural guide，"Prerequisites" 节是本条 guideline 的具体应用
