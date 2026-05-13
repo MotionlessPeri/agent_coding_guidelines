@@ -13,7 +13,9 @@ Guidelines are grouped by topic under `guidelines/`:
 | `guidelines/workflow/` | Commit rules, documentation rules, agent lifecycle, handoff workflow |
 | `guidelines/code/` | Code constraints, validation requirements |
 | `guidelines/collaboration/` | Multi-agent setup, private docs policy |
-| `guidelines/ue/` | **当前最重的子目录**（~1400 行 / 8 份 guidelines）。Unreal Engine framework hidden contracts + idiom 集中在此。**非 UE 项目可整段 skip**。完整索引 + 按场景导航见 [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md) |
+| `guidelines/ci-windows/` | Windows CI (PowerShell / GitLab runner) 跑 native command 时的 pitfall 集——PowerShell ↔ native exe 之间的抽象漏洞 |
+| `guidelines/p4/` | Perforce 特有 hidden contracts——charset transcoding / typemap / 跟 git 不同的字节保留语义 |
+| `guidelines/ue/` | **当前最重的子目录**（~1700 行 / 10 份 guidelines）。Unreal Engine framework hidden contracts + idiom 集中在此。**非 UE 项目可整段 skip**。完整索引 + 按场景导航见 [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md) |
 | `techniques/` | Procedural patterns and step-by-step operational guides |
 | `skills/` | Claude Code skill files (each skill = `skills/<name>/SKILL.md`). **Lazy-loaded** by Claude Code at invocation time — NOT `@`-imported here. Synced to `~/.claude/skills/` via `scripts/sync-skills.ps1`. Codex 无对应机制，需手动读取 SKILL.md |
 
@@ -52,6 +54,10 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/collaboration/private-docs-policy.md
 
+@guidelines/ci-windows/powershell-native-command-pitfalls.md
+
+@guidelines/p4/charset-pitfalls.md
+
 @guidelines/ue/reference-engine-source.md
 
 @guidelines/ue/graph-editor-constraints.md
@@ -68,6 +74,10 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/settings-persistence.md
 
+@guidelines/ue/build-plugin-limitations.md
+
+@guidelines/ue/automation-test-from-ci.md
+
 ---
 
 ## Techniques
@@ -81,6 +91,8 @@ Guidelines are grouped by topic under `guidelines/`:
 @techniques/ue-custom-graph-editor.md
 
 @techniques/claude-code-autonomous-permissions.md
+
+@techniques/ci-deploy-to-p4.md
 
 ---
 
