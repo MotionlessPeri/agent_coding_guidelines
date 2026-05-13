@@ -42,6 +42,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/workflow/knowledge-promotion.md
 
+@guidelines/workflow/daily-and-open-items.md
+
 @guidelines/code/clarify-before-implementing.md
 
 @guidelines/code/reuse-before-implementing.md

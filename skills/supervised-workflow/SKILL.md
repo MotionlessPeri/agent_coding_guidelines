@@ -81,6 +81,12 @@ Phase 4: Overall Review
     Surface candidates in the overall review output for user to act on.
     DO NOT auto-create skill files — propose only. User decides.
     If nothing skill-worthy emerged, explicitly say so (avoids ambiguity).
+  → DAILY LOG + OPEN-ITEMS SYNC: per `guidelines/workflow/daily-and-open-items.md`:
+    - Append entry to today's `~/.claude/daily/YYYY-MM-DD.md` under the
+      relevant project section, with reference to commits made and key decisions
+    - Sync task status to `~/.claude/projects/<project>/open-items.md`:
+      task done → close item; task incomplete → ensure in-flight entry exists
+    - Record changes under daily's "Open Items Δ"
 ```
 
 ## Gate Behavior
