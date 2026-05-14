@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -637,6 +638,94 @@ def hook_user_prompt_submit(payload: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
+def detect_catchall_git_add(command: str) -> bool:
+    """Return True if the command contains a catch-all `git add` (./. /-A /--all).
+
+    Handles chains (a && b ; c || d) by splitting on shell operators and
+    inspecting each subcommand. Falls back to whitespace split if shlex
+    fails (e.g. unclosed quotes — we'd rather be conservative there).
+    """
+    if not command or "git" not in command or "add" not in command:
+        return False
+
+    # Tokenize; on failure, fall back to a permissive split so we still
+    # catch obvious cases like `git add .`.
+    try:
+        tokens = shlex.split(command, posix=True)
+    except ValueError:
+        tokens = command.split()
+
+    chain_ops = {"&&", "||", ";", "|"}
+    catchall_args = {".", "-A", "--all", ":/", ":/.", "*"}
+
+    # Only treat `git` as a subcommand head when it appears at the start
+    # of a (sub)command. Avoids false positives like `echo git add .`.
+    at_subcommand_start = True
+    i = 0
+    while i < len(tokens):
+        if at_subcommand_start and tokens[i] == "git" and i + 1 < len(tokens) and tokens[i + 1] == "add":
+            j = i + 2
+            args: list[str] = []
+            while j < len(tokens) and tokens[j] not in chain_ops:
+                args.append(tokens[j])
+                j += 1
+            if any(a in catchall_args for a in args):
+                return True
+            at_subcommand_start = False
+            i = j
+            continue
+        if tokens[i] in chain_ops:
+            at_subcommand_start = True
+        else:
+            at_subcommand_start = False
+        i += 1
+    return False
+
+
+def hook_pre_tool_bash(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """Intercept `git add . / -A / --all` (and chained variants).
+
+    The system relies on per-session touched_files for commit scoping;
+    catch-all add would scoop up other sessions' uncommitted edits, defeating
+    Layer 3. Block + surface touched_files so the agent can use explicit paths.
+    """
+    cwd = payload.get("cwd") or os.getcwd()
+    self_id = payload.get("session_id") or ""
+    ti = payload.get("tool_input") or {}
+    command = ti.get("command") or ""
+
+    if not detect_catchall_git_add(command):
+        return None
+
+    touched_files = []
+    if self_id:
+        s = load_session(cwd, self_id) or {}
+        touched_files = list(s.get("touched_files", []))
+
+    if touched_files:
+        files_text = " ".join(touched_files)
+        suggestion = f"Use `git add {files_text}` instead."
+    else:
+        suggestion = (
+            "Your session has no touched_files recorded yet — if you really want "
+            "to add all changes, list files explicitly (`git add path1 path2 ...`)."
+        )
+
+    reason = (
+        "Catch-all `git add` (`.` / `-A` / `--all`) is blocked by "
+        "multi-session-coordination to prevent committing other sessions' "
+        "uncommitted edits. " + suggestion
+    )
+
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": reason,
+        }
+    }
+
+
 def hook_stop(payload: dict[str, Any]) -> dict[str, Any] | None:
     """Handle Stop event — release all leases, mark session ended.
 
@@ -673,6 +762,7 @@ HOOK_HANDLERS = {
     "session-start": hook_session_start,
     "pre-tool-edit": hook_pre_tool_edit,
     "post-tool-edit": hook_post_tool_edit,
+    "pre-tool-bash": hook_pre_tool_bash,
     "user-prompt-submit": hook_user_prompt_submit,
     "stop": hook_stop,
 }

@@ -733,5 +733,119 @@ class TestHookStop(TempBaseTestCase):
         self.assertIsNone(out)
 
 
+# ---------------------------------------------------------------------------
+# detect_catchall_git_add (M4)
+# ---------------------------------------------------------------------------
+
+class TestDetectCatchallGitAdd(unittest.TestCase):
+    def test_explicit_path_not_catchall(self):
+        self.assertFalse(ms.detect_catchall_git_add("git add foo.txt"))
+
+    def test_multiple_explicit_paths_not_catchall(self):
+        self.assertFalse(ms.detect_catchall_git_add("git add a.txt b.txt c/d.md"))
+
+    def test_dot_is_catchall(self):
+        self.assertTrue(ms.detect_catchall_git_add("git add ."))
+
+    def test_dash_A_is_catchall(self):
+        self.assertTrue(ms.detect_catchall_git_add("git add -A"))
+
+    def test_long_all_is_catchall(self):
+        self.assertTrue(ms.detect_catchall_git_add("git add --all"))
+
+    def test_chained_dot_is_catchall(self):
+        self.assertTrue(ms.detect_catchall_git_add("git add . && git commit -m 'x'"))
+
+    def test_chain_first_safe_second_catchall(self):
+        # Conservative: any catchall in any subcommand of the chain blocks
+        self.assertTrue(ms.detect_catchall_git_add("git status && git add ."))
+
+    def test_directory_is_not_catchall(self):
+        # Explicit directory is fine
+        self.assertFalse(ms.detect_catchall_git_add("git add skills/foo/"))
+
+    def test_star_is_catchall(self):
+        # Shell will expand but git also accepts literal *; treat as catchall
+        self.assertTrue(ms.detect_catchall_git_add("git add *"))
+
+    def test_not_a_git_add_command(self):
+        self.assertFalse(ms.detect_catchall_git_add("git commit -m 'all done'"))
+        self.assertFalse(ms.detect_catchall_git_add("echo git add . is bad"))
+
+    def test_unparseable_command_falls_back(self):
+        # Unclosed quote — our fallback should still detect the catchall
+        self.assertTrue(ms.detect_catchall_git_add("git add . && echo 'oops"))
+
+
+# ---------------------------------------------------------------------------
+# Hook: PreToolUse Bash (M4)
+# ---------------------------------------------------------------------------
+
+class TestHookPreToolBash(TempBaseTestCase):
+    def test_safe_command_passes(self):
+        out = ms.hook_pre_tool_bash({
+            "cwd": CWD_SAMPLE,
+            "session_id": "sess-A",
+            "tool_input": {"command": "ls -la"},
+        })
+        self.assertIsNone(out)
+
+    def test_explicit_git_add_passes(self):
+        out = ms.hook_pre_tool_bash({
+            "cwd": CWD_SAMPLE,
+            "session_id": "sess-A",
+            "tool_input": {"command": "git add AGENTS.md skills/foo.md"},
+        })
+        self.assertIsNone(out)
+
+    def test_catchall_git_add_denied(self):
+        ms.register_session(CWD_SAMPLE, "sess-A")
+        ms.add_touched_file(CWD_SAMPLE, "sess-A", "AGENTS.md")
+        ms.add_touched_file(CWD_SAMPLE, "sess-A", "skills/foo.md")
+
+        out = ms.hook_pre_tool_bash({
+            "cwd": CWD_SAMPLE,
+            "session_id": "sess-A",
+            "tool_input": {"command": "git add ."},
+        })
+        self.assertIsNotNone(out)
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+        reason = out["hookSpecificOutput"]["permissionDecisionReason"]
+        # Reason names the touched files so agent can directly substitute
+        self.assertIn("AGENTS.md", reason)
+        self.assertIn("skills/foo.md", reason)
+
+    def test_denied_when_no_touched_files_yet(self):
+        ms.register_session(CWD_SAMPLE, "sess-A")
+        out = ms.hook_pre_tool_bash({
+            "cwd": CWD_SAMPLE,
+            "session_id": "sess-A",
+            "tool_input": {"command": "git add -A"},
+        })
+        self.assertIsNotNone(out)
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+        # Reason should still be helpful — suggesting explicit paths
+        reason = out["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("explicitly", reason.lower())
+
+    def test_chained_catchall_denied(self):
+        ms.register_session(CWD_SAMPLE, "sess-A")
+        out = ms.hook_pre_tool_bash({
+            "cwd": CWD_SAMPLE,
+            "session_id": "sess-A",
+            "tool_input": {"command": "git status && git add . && git commit -m x"},
+        })
+        self.assertIsNotNone(out)
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+
+    def test_missing_command_no_op(self):
+        out = ms.hook_pre_tool_bash({
+            "cwd": CWD_SAMPLE,
+            "session_id": "sess-A",
+            "tool_input": {},
+        })
+        self.assertIsNone(out)
+
+
 if __name__ == "__main__":
     unittest.main()
