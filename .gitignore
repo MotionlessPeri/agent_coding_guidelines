@@ -1,2 +1,4 @@
 tmp.md
 docs/
+__pycache__/
+*.pyc
