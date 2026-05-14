@@ -80,6 +80,32 @@ def archive_dir(cwd: str, date_str: str | None = None) -> Path:
     return d
 
 
+def normalize_target(cwd: str, target: str) -> str:
+    """Reduce a tool's file_path to a project-relative form (forward slashes).
+
+    - Absolute path under cwd → relative path
+    - Already-relative path → kept (just unified to forward slashes)
+    - Absolute path outside cwd → kept absolute (won't accidentally match a
+      relative lease)
+    """
+    if not target:
+        return target
+    cwd_norm = os.path.normpath(cwd).replace("\\", "/").rstrip("/")
+    target_norm = os.path.normpath(target).replace("\\", "/")
+    # Case-insensitive prefix check on Windows; case-sensitive elsewhere.
+    if os.name == "nt":
+        if target_norm.lower().startswith(cwd_norm.lower() + "/"):
+            return target_norm[len(cwd_norm) + 1:]
+        if target_norm.lower() == cwd_norm.lower():
+            return ""
+    else:
+        if target_norm.startswith(cwd_norm + "/"):
+            return target_norm[len(cwd_norm) + 1:]
+        if target_norm == cwd_norm:
+            return ""
+    return target_norm
+
+
 # ---------------------------------------------------------------------------
 # Atomic JSON I/O
 # ---------------------------------------------------------------------------
@@ -282,6 +308,18 @@ def find_lease_holder(cwd: str, path: str, stale_min: int = STALE_THRESHOLD_MIN)
     return None
 
 
+def add_touched_file(cwd: str, session_id: str, path: str) -> None:
+    """Append a file path to the session's touched_files (dedup)."""
+    if not path:
+        return
+    session = load_session(cwd, session_id)
+    if session is None:
+        return
+    if path not in session.setdefault("touched_files", []):
+        session["touched_files"].append(path)
+    save_session(cwd, session)
+
+
 # ---------------------------------------------------------------------------
 # Cleanup
 # ---------------------------------------------------------------------------
@@ -390,12 +428,83 @@ def hook_session_start(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _extract_tool_path(payload: dict[str, Any]) -> str | None:
+    """Pull file_path out of a PreToolUse/PostToolUse payload.
+
+    Edit / Write / MultiEdit all carry tool_input.file_path. Return None
+    if missing (defensive — hook will then no-op).
+    """
+    ti = payload.get("tool_input") or {}
+    fp = ti.get("file_path")
+    return fp if isinstance(fp, str) and fp else None
+
+
+def hook_pre_tool_edit(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """Handle PreToolUse for Edit / Write / MultiEdit.
+
+    Check whether the target file_path is held by another active session's
+    lease. If yes, deny the tool call with permissionDecision so the agent
+    sees a structured rejection and can decide (let / claim later / pick
+    different work).
+    """
+    cwd = payload.get("cwd") or os.getcwd()
+    self_id = payload.get("session_id") or ""
+    target_raw = _extract_tool_path(payload)
+    if not target_raw:
+        return None  # no path -> nothing to check
+
+    target = normalize_target(cwd, target_raw)
+    holder = find_lease_holder(cwd, target)
+    if holder is None or holder.get("session_id") == self_id:
+        # No conflict (or it's our own lease) — allow.
+        return None
+
+    intent = (load_session(cwd, holder["session_id"]) or {}).get("intent_summary") or "(no intent declared)"
+    reason = (
+        f"File '{target}' is leased by session {holder['session_id'][:8]} "
+        f"(status={holder.get('status', 'unknown')}, intent: {intent}). "
+        "Coordinate via inbox (write a release_request to that session) "
+        "or work on a non-overlapping path."
+    )
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": reason,
+        }
+    }
+
+
+def hook_post_tool_edit(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """Handle PostToolUse for Edit / Write / MultiEdit.
+
+    Append the touched file to self.touched_files; refresh heartbeat. No
+    output (hook does not influence Claude further on PostToolUse).
+    """
+    cwd = payload.get("cwd") or os.getcwd()
+    self_id = payload.get("session_id") or ""
+    target_raw = _extract_tool_path(payload)
+    if not target_raw or not self_id:
+        return None
+
+    target = normalize_target(cwd, target_raw)
+    # Make sure the session exists (defensive — SessionStart should have
+    # registered already; if not, create a stub).
+    if load_session(cwd, self_id) is None:
+        register_session(cwd, self_id, status="discussion")
+    add_touched_file(cwd, self_id, target)
+    update_heartbeat(cwd, self_id)
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
 
 HOOK_HANDLERS = {
     "session-start": hook_session_start,
+    "pre-tool-edit": hook_pre_tool_edit,
+    "post-tool-edit": hook_post_tool_edit,
 }
 
 

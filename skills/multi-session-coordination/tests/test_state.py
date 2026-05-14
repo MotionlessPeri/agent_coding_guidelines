@@ -379,5 +379,222 @@ class TestDispatcher(TempBaseTestCase):
             sys.stdin = orig
 
 
+# ---------------------------------------------------------------------------
+# normalize_target  (M2)
+# ---------------------------------------------------------------------------
+
+class TestNormalizeTarget(unittest.TestCase):
+    def test_absolute_under_cwd_on_windows_paths(self):
+        cwd = r"e:\xd_projects\agent_coding_guidelines"
+        target = r"e:\xd_projects\agent_coding_guidelines\AGENTS.md"
+        # Normalized to forward slashes, relative
+        self.assertEqual(ms.normalize_target(cwd, target), "AGENTS.md")
+
+    def test_absolute_under_cwd_with_subdir(self):
+        cwd = "/home/user/project"
+        target = "/home/user/project/skills/foo/SKILL.md"
+        self.assertEqual(ms.normalize_target(cwd, target), "skills/foo/SKILL.md")
+
+    def test_already_relative_returned_unchanged(self):
+        self.assertEqual(ms.normalize_target("/home/user/project", "AGENTS.md"), "AGENTS.md")
+
+    def test_absolute_outside_cwd_kept(self):
+        cwd = "/home/user/project"
+        target = "/etc/passwd"
+        # Outside cwd -> kept absolute (with normalized slashes)
+        self.assertEqual(ms.normalize_target(cwd, target), "/etc/passwd")
+
+    def test_empty_target_returned_unchanged(self):
+        self.assertEqual(ms.normalize_target("/cwd", ""), "")
+
+
+# ---------------------------------------------------------------------------
+# add_touched_file  (M2)
+# ---------------------------------------------------------------------------
+
+class TestTouchedFiles(TempBaseTestCase):
+    def test_append_then_dedup(self):
+        ms.register_session(CWD_SAMPLE, "sess-A")
+        ms.add_touched_file(CWD_SAMPLE, "sess-A", "AGENTS.md")
+        ms.add_touched_file(CWD_SAMPLE, "sess-A", "AGENTS.md")  # dup
+        ms.add_touched_file(CWD_SAMPLE, "sess-A", "skills/foo.md")
+        s = ms.load_session(CWD_SAMPLE, "sess-A")
+        self.assertEqual(s["touched_files"], ["AGENTS.md", "skills/foo.md"])
+
+    def test_missing_session_no_op(self):
+        # Should not raise / not auto-create
+        ms.add_touched_file(CWD_SAMPLE, "ghost", "AGENTS.md")
+        self.assertIsNone(ms.load_session(CWD_SAMPLE, "ghost"))
+
+    def test_empty_path_no_op(self):
+        ms.register_session(CWD_SAMPLE, "sess-A")
+        ms.add_touched_file(CWD_SAMPLE, "sess-A", "")
+        s = ms.load_session(CWD_SAMPLE, "sess-A")
+        self.assertEqual(s["touched_files"], [])
+
+
+# ---------------------------------------------------------------------------
+# Hook: PreToolUse for Edit/Write/MultiEdit  (M2)
+# ---------------------------------------------------------------------------
+
+class TestHookPreToolEdit(TempBaseTestCase):
+    def test_no_lease_returns_none(self):
+        ms.register_session(CWD_SAMPLE, "sess-A")
+        payload = {
+            "cwd": CWD_SAMPLE,
+            "session_id": "sess-A",
+            "tool_input": {"file_path": "AGENTS.md"},
+        }
+        self.assertIsNone(ms.hook_pre_tool_edit(payload))
+
+    def test_own_lease_does_not_block(self):
+        ms.register_session(CWD_SAMPLE, "sess-A")
+        ms.add_lease(CWD_SAMPLE, "sess-A", "AGENTS.md")
+        payload = {
+            "cwd": CWD_SAMPLE,
+            "session_id": "sess-A",
+            "tool_input": {"file_path": "AGENTS.md"},
+        }
+        self.assertIsNone(ms.hook_pre_tool_edit(payload))
+
+    def test_other_session_lease_returns_deny(self):
+        ms.register_session(CWD_SAMPLE, "sess-A")
+        ms.add_lease(CWD_SAMPLE, "sess-A", "AGENTS.md")
+        ms.register_session(CWD_SAMPLE, "sess-B")
+        payload = {
+            "cwd": CWD_SAMPLE,
+            "session_id": "sess-B",
+            "tool_input": {"file_path": "AGENTS.md"},
+        }
+        out = ms.hook_pre_tool_edit(payload)
+        self.assertIsNotNone(out)
+        self.assertEqual(out["hookSpecificOutput"]["hookEventName"], "PreToolUse")
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertIn("sess-A"[:8], out["hookSpecificOutput"]["permissionDecisionReason"])
+        self.assertIn("AGENTS.md", out["hookSpecificOutput"]["permissionDecisionReason"])
+
+    def test_absolute_path_normalized_against_lease(self):
+        ms.register_session(CWD_SAMPLE, "sess-A")
+        ms.add_lease(CWD_SAMPLE, "sess-A", "AGENTS.md")
+        ms.register_session(CWD_SAMPLE, "sess-B")
+        # Tool reports absolute path under cwd
+        abs_path = CWD_SAMPLE + "\\AGENTS.md"
+        payload = {
+            "cwd": CWD_SAMPLE,
+            "session_id": "sess-B",
+            "tool_input": {"file_path": abs_path},
+        }
+        out = ms.hook_pre_tool_edit(payload)
+        self.assertIsNotNone(out)
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+
+    def test_dir_prefix_lease_blocks_child_path(self):
+        ms.register_session(CWD_SAMPLE, "sess-A")
+        ms.add_lease(CWD_SAMPLE, "sess-A", "skills/daily-tracking/")
+        ms.register_session(CWD_SAMPLE, "sess-B")
+        payload = {
+            "cwd": CWD_SAMPLE,
+            "session_id": "sess-B",
+            "tool_input": {"file_path": "skills/daily-tracking/SKILL.md"},
+        }
+        out = ms.hook_pre_tool_edit(payload)
+        self.assertIsNotNone(out)
+        self.assertEqual(out["hookSpecificOutput"]["permissionDecision"], "deny")
+
+    def test_missing_file_path_no_op(self):
+        # Tool call with no file_path (defensive)
+        payload = {
+            "cwd": CWD_SAMPLE,
+            "session_id": "sess-A",
+            "tool_input": {},
+        }
+        self.assertIsNone(ms.hook_pre_tool_edit(payload))
+
+    def test_stale_lease_does_not_block(self):
+        ms.register_session(CWD_SAMPLE, "sess-stale")
+        ms.add_lease(CWD_SAMPLE, "sess-stale", "AGENTS.md")
+        # Backdate
+        reg = ms.load_registry(CWD_SAMPLE)
+        reg["active_sessions"][0]["last_heartbeat"] = "2020-01-01T00:00:00Z"
+        ms.save_registry(CWD_SAMPLE, reg)
+
+        ms.register_session(CWD_SAMPLE, "sess-B")
+        payload = {
+            "cwd": CWD_SAMPLE,
+            "session_id": "sess-B",
+            "tool_input": {"file_path": "AGENTS.md"},
+        }
+        # Stale lease should be ignored -> allow
+        self.assertIsNone(ms.hook_pre_tool_edit(payload))
+
+
+# ---------------------------------------------------------------------------
+# Hook: PostToolUse for Edit/Write/MultiEdit  (M2)
+# ---------------------------------------------------------------------------
+
+class TestHookPostToolEdit(TempBaseTestCase):
+    def test_records_touched_file_and_refreshes_heartbeat(self):
+        ms.register_session(CWD_SAMPLE, "sess-A")
+        # Back-date heartbeat to detect refresh
+        reg = ms.load_registry(CWD_SAMPLE)
+        reg["active_sessions"][0]["last_heartbeat"] = "2020-01-01T00:00:00Z"
+        ms.save_registry(CWD_SAMPLE, reg)
+        s = ms.load_session(CWD_SAMPLE, "sess-A")
+        s["last_heartbeat"] = "2020-01-01T00:00:00Z"
+        ms.save_session(CWD_SAMPLE, s)
+
+        payload = {
+            "cwd": CWD_SAMPLE,
+            "session_id": "sess-A",
+            "tool_input": {"file_path": "AGENTS.md"},
+        }
+        out = ms.hook_post_tool_edit(payload)
+        self.assertIsNone(out)  # PostToolUse hook does not influence agent
+
+        # touched_files updated
+        s = ms.load_session(CWD_SAMPLE, "sess-A")
+        self.assertIn("AGENTS.md", s["touched_files"])
+        # heartbeat refreshed
+        self.assertNotEqual(s["last_heartbeat"], "2020-01-01T00:00:00Z")
+        reg = ms.load_registry(CWD_SAMPLE)
+        self.assertNotEqual(reg["active_sessions"][0]["last_heartbeat"], "2020-01-01T00:00:00Z")
+
+    def test_normalizes_absolute_path(self):
+        ms.register_session(CWD_SAMPLE, "sess-A")
+        abs_path = CWD_SAMPLE + "\\skills\\foo.md"
+        payload = {
+            "cwd": CWD_SAMPLE,
+            "session_id": "sess-A",
+            "tool_input": {"file_path": abs_path},
+        }
+        ms.hook_post_tool_edit(payload)
+        s = ms.load_session(CWD_SAMPLE, "sess-A")
+        self.assertIn("skills/foo.md", s["touched_files"])
+
+    def test_auto_registers_if_session_missing(self):
+        # PostToolUse arrives for a session SessionStart hasn't registered yet
+        # (edge case — defensive). Should auto-register.
+        payload = {
+            "cwd": CWD_SAMPLE,
+            "session_id": "ghost",
+            "tool_input": {"file_path": "AGENTS.md"},
+        }
+        ms.hook_post_tool_edit(payload)
+        s = ms.load_session(CWD_SAMPLE, "ghost")
+        self.assertIsNotNone(s)
+        self.assertIn("AGENTS.md", s["touched_files"])
+
+    def test_missing_file_path_no_op(self):
+        ms.register_session(CWD_SAMPLE, "sess-A")
+        payload = {
+            "cwd": CWD_SAMPLE,
+            "session_id": "sess-A",
+            "tool_input": {},
+        }
+        self.assertIsNone(ms.hook_post_tool_edit(payload))
+        s = ms.load_session(CWD_SAMPLE, "sess-A")
+        self.assertEqual(s["touched_files"], [])
+
+
 if __name__ == "__main__":
     unittest.main()
