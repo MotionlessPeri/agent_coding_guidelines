@@ -1,0 +1,75 @@
+{
+  "_comment": "Multi-session-coordination hooks. Merge the contents of the `hooks` object below into your ~/.claude/settings.json. Each event's value is an array — append our entries to any existing array for that event; do NOT replace.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"%USERPROFILE%\\.claude\\skills\\multi-session-coordination\\multi_session.py\" session-start",
+            "async": false
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"%USERPROFILE%\\.claude\\skills\\multi-session-coordination\\multi_session.py\" user-prompt-submit",
+            "async": false
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"%USERPROFILE%\\.claude\\skills\\multi-session-coordination\\multi_session.py\" pre-tool-edit",
+            "async": false
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"%USERPROFILE%\\.claude\\skills\\multi-session-coordination\\multi_session.py\" pre-tool-bash",
+            "async": false
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"%USERPROFILE%\\.claude\\skills\\multi-session-coordination\\multi_session.py\" post-tool-edit",
+            "async": false
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"%USERPROFILE%\\.claude\\skills\\multi-session-coordination\\multi_session.py\" stop",
+            "async": false
+          }
+        ]
+      }
+    ]
+  }
+}
