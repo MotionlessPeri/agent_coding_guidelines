@@ -19,6 +19,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 import tempfile
 import uuid
@@ -498,6 +500,172 @@ def hook_post_tool_edit(payload: dict[str, Any]) -> dict[str, Any] | None:
 
 
 # ---------------------------------------------------------------------------
+# Git log integration (Layer 4: post-commit awareness)
+# ---------------------------------------------------------------------------
+
+def git_commits_since(cwd: str, since_iso: str, exclude_shas: set[str] | None = None) -> list[dict[str, Any]]:
+    """Return commits in `cwd`'s repo since `since_iso`, optionally excluding our own.
+
+    Returns empty list if not a git repo / git not installed / no commits.
+    Each entry: {"sha": "abc1234", "subject": "...", "files": ["a", "b"]}
+    """
+    if not since_iso:
+        return []
+    if not shutil.which("git"):
+        return []
+    try:
+        proc = subprocess.run(
+            ["git", "log", f"--since={since_iso}",
+             "--pretty=format:__COMMIT__%n%H%n%s", "--name-only"],
+            cwd=cwd, capture_output=True, text=True, timeout=10,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return []
+    if proc.returncode != 0:
+        return []
+
+    exclude = exclude_shas or set()
+    commits: list[dict[str, Any]] = []
+    current: dict[str, Any] | None = None
+    state = "marker"  # next: marker / sha / subject / files
+    for line in proc.stdout.splitlines():
+        if line == "__COMMIT__":
+            if current is not None:
+                commits.append(current)
+            current = {"sha": "", "subject": "", "files": []}
+            state = "sha"
+            continue
+        if current is None:
+            continue
+        if state == "sha":
+            current["sha"] = line.strip()
+            state = "subject"
+        elif state == "subject":
+            current["subject"] = line
+            state = "files"
+        else:
+            if line.strip():
+                current["files"].append(line.strip())
+    if current is not None:
+        commits.append(current)
+
+    return [c for c in commits if c["sha"] and c["sha"] not in exclude]
+
+
+# ---------------------------------------------------------------------------
+# Hook handlers (continued)
+# ---------------------------------------------------------------------------
+
+def _format_inbox(messages: list[dict[str, Any]]) -> str | None:
+    """Render unresolved inbox messages into a single text block."""
+    unresolved = [m for m in messages if not m.get("resolved")]
+    if not unresolved:
+        return None
+    lines = [f"Pending inbox ({len(unresolved)} message(s); skill should mark resolved after handling):"]
+    for m in unresolved:
+        sender = (m.get("from") or "unknown")[:8]
+        kind = m.get("type", "?")
+        ts = m.get("ts", "")
+        path = m.get("path", "")
+        reason = m.get("reason", "")
+        lines.append(f"  - [{ts}] from {sender}: {kind} on {path} — {reason}")
+    return "\n".join(lines)
+
+
+def _format_commits(commits: list[dict[str, Any]]) -> str | None:
+    if not commits:
+        return None
+    lines = [f"Commits since your last turn ({len(commits)} from other sessions):"]
+    for c in commits:
+        files_str = ", ".join(c["files"][:5])
+        if len(c["files"]) > 5:
+            files_str += f", ... +{len(c['files']) - 5} more"
+        lines.append(f"  - {c['sha'][:7]} {c['subject']}")
+        if files_str:
+            lines.append(f"      files: {files_str}")
+    lines.append("  If your current work depends on any of these files, re-read them before proceeding.")
+    return "\n".join(lines)
+
+
+def hook_user_prompt_submit(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """Handle UserPromptSubmit event.
+
+    1. Update heartbeat (every user message = activity signal)
+    2. Surface unresolved inbox messages
+    3. Surface commits in this repo since our last turn that weren't ours
+    """
+    cwd = payload.get("cwd") or os.getcwd()
+    self_id = payload.get("session_id") or ""
+    if not self_id:
+        return None
+
+    # Ensure session exists (defensive).
+    session = load_session(cwd, self_id)
+    if session is None:
+        register_session(cwd, self_id, status="discussion")
+        session = load_session(cwd, self_id) or empty_session(self_id)
+
+    # Capture previous last_turn_at BEFORE we overwrite it.
+    last_turn_at = session.get("last_turn_at") or session.get("started_at")
+    now = now_iso()
+
+    # Refresh heartbeat + record this turn.
+    session["last_heartbeat"] = now
+    session["last_turn_at"] = now
+    save_session(cwd, session)
+    update_heartbeat(cwd, self_id)
+
+    parts: list[str] = []
+    inbox_block = _format_inbox(session.get("inbox", []))
+    if inbox_block:
+        parts.append(inbox_block)
+
+    own_shas = {c.get("sha", "") for c in session.get("commits", [])}
+    commits = git_commits_since(cwd, last_turn_at or "", exclude_shas=own_shas)
+    commit_block = _format_commits(commits)
+    if commit_block:
+        parts.append(commit_block)
+
+    if not parts:
+        return None
+
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": "UserPromptSubmit",
+            "additionalContext": "\n\n".join(parts),
+        }
+    }
+
+
+def hook_stop(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """Handle Stop event — release all leases, mark session ended.
+
+    Does NOT archive immediately; the next SessionStart's cleanup will move
+    the file to archive/ when it's safe (caller solo).
+    """
+    cwd = payload.get("cwd") or os.getcwd()
+    self_id = payload.get("session_id") or ""
+    if not self_id:
+        return None
+
+    reg = load_registry(cwd)
+    for s in reg["active_sessions"]:
+        if s["session_id"] == self_id:
+            s["lease_paths"] = []
+            s["status"] = "ended"
+            break
+    save_registry(cwd, reg)
+
+    session = load_session(cwd, self_id)
+    if session is not None:
+        session["status"] = "ended"
+        session["last_heartbeat"] = now_iso()
+        save_session(cwd, session)
+
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
 
@@ -505,6 +673,8 @@ HOOK_HANDLERS = {
     "session-start": hook_session_start,
     "pre-tool-edit": hook_pre_tool_edit,
     "post-tool-edit": hook_post_tool_edit,
+    "user-prompt-submit": hook_user_prompt_submit,
+    "stop": hook_stop,
 }
 
 

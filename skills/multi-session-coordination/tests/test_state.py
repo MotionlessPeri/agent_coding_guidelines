@@ -596,5 +596,142 @@ class TestHookPostToolEdit(TempBaseTestCase):
         self.assertEqual(s["touched_files"], [])
 
 
+# ---------------------------------------------------------------------------
+# Hook: UserPromptSubmit (M3) — inbox + post-commit awareness
+# ---------------------------------------------------------------------------
+
+class TestHookUserPromptSubmit(TempBaseTestCase):
+    def test_no_inbox_no_commits_returns_none(self):
+        ms.register_session(CWD_SAMPLE, "sess-A")
+        out = ms.hook_user_prompt_submit({"cwd": CWD_SAMPLE, "session_id": "sess-A"})
+        # Even with no signal, hook refreshes heartbeat but returns nothing
+        self.assertIsNone(out)
+
+    def test_unresolved_inbox_is_surfaced(self):
+        ms.register_session(CWD_SAMPLE, "sess-A")
+        s = ms.load_session(CWD_SAMPLE, "sess-A")
+        s["inbox"] = [
+            {"from": "sess-other", "ts": "2026-05-14T08:00:00Z", "type": "release_request",
+             "path": "AGENTS.md", "reason": "high priority feature work"},
+        ]
+        ms.save_session(CWD_SAMPLE, s)
+
+        out = ms.hook_user_prompt_submit({"cwd": CWD_SAMPLE, "session_id": "sess-A"})
+        ctx = out["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("release_request", ctx)
+        self.assertIn("AGENTS.md", ctx)
+        self.assertIn("high priority", ctx)
+
+    def test_resolved_inbox_messages_not_surfaced(self):
+        ms.register_session(CWD_SAMPLE, "sess-A")
+        s = ms.load_session(CWD_SAMPLE, "sess-A")
+        s["inbox"] = [
+            {"from": "x", "ts": "t", "type": "release_request", "path": "AGENTS.md",
+             "reason": "done", "resolved": True},
+        ]
+        ms.save_session(CWD_SAMPLE, s)
+
+        out = ms.hook_user_prompt_submit({"cwd": CWD_SAMPLE, "session_id": "sess-A"})
+        self.assertIsNone(out)
+
+    def test_refreshes_heartbeat_and_last_turn_at(self):
+        ms.register_session(CWD_SAMPLE, "sess-A")
+        # Back-date last_turn_at
+        s = ms.load_session(CWD_SAMPLE, "sess-A")
+        s["last_turn_at"] = "2020-01-01T00:00:00Z"
+        ms.save_session(CWD_SAMPLE, s)
+
+        ms.hook_user_prompt_submit({"cwd": CWD_SAMPLE, "session_id": "sess-A"})
+        s = ms.load_session(CWD_SAMPLE, "sess-A")
+        self.assertNotEqual(s["last_turn_at"], "2020-01-01T00:00:00Z")
+
+    def test_no_session_id_returns_none(self):
+        out = ms.hook_user_prompt_submit({"cwd": CWD_SAMPLE})
+        self.assertIsNone(out)
+
+
+# ---------------------------------------------------------------------------
+# git_commits_since helper (M3)
+# ---------------------------------------------------------------------------
+
+class TestGitCommitsSince(unittest.TestCase):
+    """These tests run against the actual repo we're inside of.
+
+    We don't assert specific commit contents — just that the function
+    returns something sensible and doesn't crash on bad inputs.
+    """
+    def test_handles_non_repo_gracefully(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(ms.git_commits_since(tmp, "2020-01-01T00:00:00Z"), [])
+
+    def test_empty_since_returns_empty(self):
+        self.assertEqual(ms.git_commits_since(os.getcwd(), ""), [])
+
+    def test_repo_returns_list(self):
+        # Run against the agent_coding_guidelines repo itself.
+        repo_root = Path(__file__).resolve().parent.parent.parent.parent
+        # Use a recent-enough date to get a result.
+        result = ms.git_commits_since(str(repo_root), "2020-01-01T00:00:00Z")
+        self.assertIsInstance(result, list)
+        if result:
+            # Each entry has expected shape
+            c = result[0]
+            self.assertIn("sha", c)
+            self.assertIn("subject", c)
+            self.assertIn("files", c)
+            self.assertIsInstance(c["files"], list)
+
+    def test_exclude_shas_filters(self):
+        repo_root = Path(__file__).resolve().parent.parent.parent.parent
+        all_commits = ms.git_commits_since(str(repo_root), "2020-01-01T00:00:00Z")
+        if not all_commits:
+            self.skipTest("no commits in test repo to verify exclusion")
+        # Exclude the first commit
+        first_sha = all_commits[0]["sha"]
+        filtered = ms.git_commits_since(
+            str(repo_root), "2020-01-01T00:00:00Z", exclude_shas={first_sha}
+        )
+        filtered_shas = {c["sha"] for c in filtered}
+        self.assertNotIn(first_sha, filtered_shas)
+
+
+# ---------------------------------------------------------------------------
+# Hook: Stop (M3)
+# ---------------------------------------------------------------------------
+
+class TestHookStop(TempBaseTestCase):
+    def test_releases_leases_and_marks_ended(self):
+        ms.register_session(CWD_SAMPLE, "sess-A", status="active")
+        ms.add_lease(CWD_SAMPLE, "sess-A", "AGENTS.md")
+        ms.add_lease(CWD_SAMPLE, "sess-A", "skills/foo/")
+
+        out = ms.hook_stop({"cwd": CWD_SAMPLE, "session_id": "sess-A"})
+        self.assertIsNone(out)
+
+        # Lease gone
+        self.assertIsNone(ms.find_lease_holder(CWD_SAMPLE, "AGENTS.md"))
+        self.assertIsNone(ms.find_lease_holder(CWD_SAMPLE, "skills/foo/whatever.md"))
+
+        # Status ended in both registry + session file
+        reg = ms.load_registry(CWD_SAMPLE)
+        entry = next(s for s in reg["active_sessions"] if s["session_id"] == "sess-A")
+        self.assertEqual(entry["status"], "ended")
+        self.assertEqual(entry["lease_paths"], [])
+
+        s = ms.load_session(CWD_SAMPLE, "sess-A")
+        self.assertEqual(s["status"], "ended")
+
+    def test_does_not_archive_immediately(self):
+        ms.register_session(CWD_SAMPLE, "sess-A")
+        ms.hook_stop({"cwd": CWD_SAMPLE, "session_id": "sess-A"})
+        # Session file should still be in sessions/ (archive deferred to next SessionStart)
+        self.assertTrue(ms.session_path(CWD_SAMPLE, "sess-A").exists())
+
+    def test_no_session_id_no_op(self):
+        # Should not raise
+        out = ms.hook_stop({"cwd": CWD_SAMPLE})
+        self.assertIsNone(out)
+
+
 if __name__ == "__main__":
     unittest.main()
