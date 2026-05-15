@@ -33,7 +33,15 @@ $OurMarker      = "skills\multi-session-coordination\multi_session.py"
 if (-not (Test-Path $SnippetPath)) {
     throw "settings-snippet.json not found at $SnippetPath"
 }
-$snippet = Get-Content $SnippetPath -Raw | ConvertFrom-Json
+
+# Claude Code does NOT shell-expand %USERPROFILE% (or $HOME) in hook command
+# strings — it passes them verbatim to the OS process layer. So the snippet's
+# placeholder paths must be baked into actual absolute paths at install time.
+# JSON encodes backslashes as `\\`, so we double them in the replacement.
+$snippetRaw = Get-Content $SnippetPath -Raw
+$userProfileForJson = $env:USERPROFILE.Replace('\', '\\')
+$snippetRaw = $snippetRaw.Replace('%USERPROFILE%', $userProfileForJson)
+$snippet = $snippetRaw | ConvertFrom-Json
 $snippetHooks = $snippet.hooks
 if (-not $snippetHooks) {
     throw "snippet has no 'hooks' key"

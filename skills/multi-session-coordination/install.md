@@ -39,6 +39,8 @@ Verify:
 pwsh ~/.claude/skills/multi-session-coordination/install.ps1
 ```
 
+> ⚠️ **Re-run install.ps1 every time you re-sync the skill** (i.e. after `scripts/sync-skills.ps1`). The snippet contains `%USERPROFILE%` placeholders for human readability, but Claude Code does NOT shell-expand env vars in hook commands — install.ps1 bakes the absolute path in at install time. If you only sync without re-installing, your settings.json keeps pointing at whatever paths were baked from the previous install. (If you renamed your user dir between syncs, re-install picks up the new path.)
+
 What it does:
 - Backs up your current `~/.claude/settings.json` to `~/.claude/settings.json.bak.<timestamp>`
 - Removes any prior multi-session-coordination hook entries (idempotent — safe to re-run)
