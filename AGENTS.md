@@ -14,6 +14,7 @@ Guidelines are grouped by topic under `guidelines/`:
 | `guidelines/code/` | Code constraints, validation requirements |
 | `guidelines/collaboration/` | Multi-agent setup, private docs policy |
 | `guidelines/ci-windows/` | Windows CI (PowerShell / GitLab runner) 跑 native command 时的 pitfall 集——PowerShell ↔ native exe 之间的抽象漏洞 |
+| `guidelines/claude-code/` | Claude Code 自身（harness / hooks / settings.json）的 hidden contract——文档没明说但实测如此的行为 |
 | `guidelines/p4/` | Perforce 特有 hidden contracts——charset transcoding / typemap / 跟 git 不同的字节保留语义 |
 | `guidelines/ue/` | **当前最重的子目录**（~950 行 / 6 份 guidelines；另有 4 份内容已 promote 到 skill：`skills/ue-module-architecture/` 2 份 + `skills/ue-reference-engine-source/` + `skills/ue-settings-persistence/`）。Unreal Engine framework hidden contracts + idiom 集中在此。**非 UE 项目可整段 skip**。完整索引 + 按场景导航见 [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md) |
 | `techniques/` | Procedural patterns and step-by-step operational guides |
@@ -59,6 +60,8 @@ Guidelines are grouped by topic under `guidelines/`:
 @guidelines/collaboration/private-docs-policy.md
 
 @guidelines/ci-windows/powershell-native-command-pitfalls.md
+
+@guidelines/claude-code/hook-conventions.md
 
 @guidelines/p4/charset-pitfalls.md
 
