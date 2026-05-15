@@ -1,13 +1,26 @@
 # sync-skills.ps1
-# One-way sync: repo `skills/` -> `~/.claude/skills/`
+# One-way sync: repo `skills/**` -> `~/.claude/skills/<name>/` (flat target).
 #
 # Repo is the source of truth. This script propagates updates to the
 # Claude Code discovery location (`~/.claude/skills/`).
 #
+# Repo layout:
+#   skills/
+#     ue/<name>/SKILL.md
+#     workflow/<name>/SKILL.md
+#     collaboration/<name>/SKILL.md
+#     ...
+# Target layout (flat, by Claude Code discovery requirement):
+#   ~/.claude/skills/<name>/SKILL.md
+#
 # Behavior:
-#   - For each subdirectory under `skills/`, replace the same-named dir
-#     in `~/.claude/skills/` (delete-then-copy so removed files in the
-#     repo do not leave stale files in the target).
+#   - Recursive scan repo `skills/` for any directory containing a `SKILL.md`.
+#     Each such directory is one skill; its basename (NOT its parent category)
+#     is the discovery name copied to `~/.claude/skills/<name>/`.
+#   - If two skills have the same basename in different categories, abort with
+#     a clear error (target collision; skill names must be globally unique).
+#   - Replace same-named target dir (delete-then-copy so removed files don't
+#     leave stale files behind).
 #   - Skills in `~/.claude/skills/` that do not exist in the repo are
 #     left untouched (do not destroy user's other skills).
 #
@@ -26,11 +39,27 @@ if (-not (Test-Path $TargetDir)) {
     Write-Host "Created target: $TargetDir"
 }
 
-$SkillDirs = Get-ChildItem -Directory $RepoSkills
+# Recursive scan: any directory under skills/ that contains a SKILL.md is a skill.
+$SkillDirs = Get-ChildItem -Recurse -Directory $RepoSkills | Where-Object {
+    Test-Path (Join-Path $_.FullName "SKILL.md")
+}
 
 if ($SkillDirs.Count -eq 0) {
     Write-Host "No skills found under $RepoSkills"
     exit 0
+}
+
+# Name collision check: basename must be unique across all categories.
+$NameGroups = $SkillDirs | Group-Object -Property Name | Where-Object { $_.Count -gt 1 }
+if ($NameGroups) {
+    Write-Host "ERROR: Skill basename collision (target dir would collide):" -ForegroundColor Red
+    foreach ($g in $NameGroups) {
+        Write-Host "  $($g.Name):" -ForegroundColor Red
+        foreach ($d in $g.Group) {
+            Write-Host "    $($d.FullName)" -ForegroundColor Red
+        }
+    }
+    exit 1
 }
 
 $Installed = 0
