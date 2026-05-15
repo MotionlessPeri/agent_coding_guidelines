@@ -31,12 +31,38 @@ bug 存在**（红测），再 **demonstrate fix 生效**（绿测）。两个 d
 2. **绿测**：改 production code 到 test PASS
 3. **回归**：跑全套 regression test 确认没破其他
 4. **单 commit**：test + fix + 必要的注释更新**一个 commit 落地**，不分开
+5. **Manual path 同样需要 demonstrate**：当 auto test 成本明显超过收益时（见 Step 0 评估）走 **manual reproduction case** 路径。原则不变——先 demonstrate bug 存在（修复前 user 按步骤跑看到错），再 demonstrate fix 生效（修复后 user 跑同样步骤看到对）。**demonstrate 从自动化变 user 人眼，不是跳过 demonstrate**。
 
 ## How to Apply
 
 按顺序走，**不要跳步**：
 
-### Step 1: 跟 user 校准红测案
+### Step 0: 评估 auto test 还是 manual reproduction case
+
+红测之前先估三个量：
+
+1. **auto test 写作成本**：fixture 复杂度 / 副作用清理（创建 .uasset / 写文件系统 / 起 subprocess / 起 worker thread）/ mock 需求
+2. **bug 复发风险**：这条 logic 后续会不会被人改回 / 改错？高复发 → 需要 auto test 锁住未来 regression；低复发（如纯 dispatch 一行 hardcode、有 Validator / Schema enforce 兜底）→ manual 可接受
+3. **manual verify 成本**：user 跑一次需要的时间 / 步数
+
+Decision matrix:
+
+| 场景 | 建议 |
+|---|---|
+| auto 成本 ~ manual 成本，bug 在常改 hot path | **auto**（锁住未来 regression） |
+| auto 成本 >> manual 成本，有现成 safety net 兜底 | **manual**（commit message 写复现步骤） |
+| editor UX / UI 视觉交互（双击 / 拖拽 / 菜单 / 弹窗） | **manual**（default） |
+| 数据 / 算法 / pure logic / 解析器 / 格式转换 | **auto**（default） |
+| fix 改动 < 5 行 + 有 Validator / Schema enforce 兜底 | **manual** 可接受 |
+| fix 改动 ≥ 1 函数 / 跨多文件 / 触及核心 logic | **auto** 几乎必须 |
+
+评估完跟 user propose 选择 + 理由。**user 可推翻你的建议**。
+
+evaluation 本身要写进 commit message —— 别人后续 grep 这条 bug 历史能看到当时为什么选 manual / auto，不只看结果。
+
+**警告**：不要为了凑 auto test **硬抽"可测 helper"**。helper 是为测试人造的中间层，**测它 ≠ 测 root cause 表现**。这违反核心规则 "fixture / 断言尽量精准命中 root cause"。如果 production 函数难直接测，先评估 manual 是否更合适，再考虑 helper 抽取。
+
+### Step 1: 跟 user 校准红测案（auto path）
 
 agent 确认 root cause 后，**先 propose 红测案给 user 看**：
 - fixture 输入是什么
@@ -84,16 +110,35 @@ stage 三类内容一并 commit：
 commit message 描述**修了什么 bug** + **怎么发现的**（如果非自明），让未来
 grep commit log 能找到这条 bug 的历史。
 
+### Manual path（Step 0 评估走 manual 时替代 Step 1-6）
+
+走 manual reproduction case 路径时，Step 1-6 的红测部分不适用，改走：
+
+1. **写复现步骤**：fixture（如果有）+ 一字一句的操作（在哪个面板点哪里 / 输入什么 / 看哪里）
+2. **修复前 demonstrate bug**：user 按步骤跑一次，看到错误表现 —— 跟 agent 预期一致才算 root cause 定位对
+3. **改 production code**：最小化，同 Step 3 规则
+4. **修复后 demonstrate fix**：user 跑同样步骤，看到正确表现
+5. **commit message 记录**：fixture 路径（如有）/ 复现步骤 / 修复前后期望表现 / `Verified by <user> on <date>`
+6. **单 commit**：production fix + 必要的 fixture / 注释一起，**user 验证记录写进 commit message**
+
+跟 auto path 的 hard rule 一致：先 demonstrate bug 再 fix；fix + verification 同一 commit；不能拆开。
+
 ## Edge Cases
 
-### Bug 没法写自动化测试
+### Bug auto test 成本超过 manual 收益
 
-UI 视觉问题、editor-only 交互、外部服务依赖等——auto test 不可达。
+不只是 auto-test 不可达的 UI 视觉 bug，还包括：
 
-按 `superpowers:tdd-with-fixtures` 的 escape hatch：写一份 **manual
-reproduction case**（fixture + 操作步骤 + 期望表现 vs 实际表现）当锚点，
-跟 fix 一起进 commit。原则不变："先 demonstrate bug 再 fix"，只是
-demonstrate 从自动化变成人工。
+- **editor UX 交互**：双击 / 拖拽 / 菜单 / 弹窗 / Slate widget 行为
+- **副作用太重的 fix**：创建 .uasset / 写文件系统 / 起 subprocess / 起 worker thread；fixture setup + teardown 比 production 代码本身复杂数倍
+- **已有 safety net 兜底**：如 Validator save-gate / Schema enforce 已存在拦同类错配，bug 复发会被 net 拦下
+- **fixture cost > 代码 cost 数倍**：1 行 hardcode 改成 4 行 if-else 的纯 dispatch fix，写 auto test 要构造真 DA / 真 widget / 真 BP 父类等
+- **外部服务 / 真实环境依赖**：需要真 P4 server / 真 SQLite 锁 / 真 editor 启动
+
+走 `superpowers:tdd-with-fixtures` 的 escape hatch + 本 skill "Manual path"
+子节：写 **manual reproduction case**（fixture + 操作步骤 + 期望表现 vs
+实际表现）当锚点，跟 fix 一起进 commit。原则不变："先 demonstrate bug 再
+fix"，只是 demonstrate 从自动化变成 user 人眼。
 
 ### Bug 在修复过程中暴露新 bug
 
@@ -134,7 +179,8 @@ fall back 到 manual reproduction case + 跑前后对比数据。
 | 顺手修第二个 bug | commit 信息糊；review 难审；以后定位"哪个 commit 引入修复"变难 | 每个 bug 各自一个 commit |
 | `@skip` / 注释掉失败 test "回头修" | "回头"通常不来；regression 失去 coverage | 当场修；test 真错就跟 fix 同 commit 一起改 |
 | 跑绿测只看 exit code 不看输出 | 某些 framework 配错会 silently pass；fix 没生效但显示绿 | 看实际 fail/pass message + 看测试断言确实命中 |
-| "这个 bug 太小不值得写 test" | 小 bug 复发概率更高（没人记得）；红测成本很低 | 任何 bug fix 都写红测，除非红测真写不出（last resort） |
+| 为测试硬抽 helper / 中间层 | 测了人造抽象 ≠ 测了 root cause；regression 不真锁；YAGNI（helper 没第二 caller） | Step 0 后选合适路径：production 函数能直接测就直接测 + 接受副作用清理；否则走 manual。**不要为测试覆盖率人造抽象** |
+| "这个 bug 太小不值得走流程" | 小 bug 复发概率更高（没人记得）；走完流程成本不高（manual 也是流程） | 任何 bug fix 都走红→绿（auto **或** manual），不跳过 demonstrate；评估见 Step 0 |
 
 ## Composition
 
