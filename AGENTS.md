@@ -41,6 +41,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/workflow/code-review.md
 
+@guidelines/workflow/bugfix-tdd.md
+
 @guidelines/workflow/knowledge-promotion.md
 
 @guidelines/workflow/daily-and-open-items.md
