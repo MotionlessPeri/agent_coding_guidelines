@@ -79,6 +79,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/automation-test-from-ci.md
 
+@guidelines/ue/details-customization-prefer-reflection.md
+
 ---
 
 ## Techniques
