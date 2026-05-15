@@ -41,8 +41,6 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/workflow/code-review.md
 
-@guidelines/workflow/bugfix-tdd.md
-
 @guidelines/workflow/knowledge-promotion.md
 
 @guidelines/workflow/daily-and-open-items.md
@@ -113,6 +111,7 @@ Guidelines are grouped by topic under `guidelines/`:
 - [`skills/supervised-workflow/SKILL.md`](skills/supervised-workflow/SKILL.md) — high-touch 工作流，三个 hard user-review gate（plan / impl-plan / per-milestone）
 - [`skills/autonomous-workflow/SKILL.md`](skills/autonomous-workflow/SKILL.md) — low-touch 工作流，仅 plan gate（实施阶段无 gate）；handoff 文档（brief / context / worklog / result）+ 强 TDD 作执行期安全网
 - [`skills/tdd-with-fixtures/SKILL.md`](skills/tdd-with-fixtures/SKILL.md) — augment superpowers TDD，加 milestone-level discipline + fixture/manual case escape hatch
+- [`skills/bugfix-tdd/SKILL.md`](skills/bugfix-tdd/SKILL.md) — bug-fix 场景的 TDD 红→绿 discipline。先写 demonstrate bug 的 failing test → 跑确认 FAIL → 改 production → 跑 PASS → 跑全 regression → test + fix 单 commit。跟 `superpowers:test-driven-development`（feature TDD）/ `superpowers:systematic-debugging`（debug 阶段方法论）/ `tdd-with-fixtures`（escape hatch）互补不重叠。防"看代码自信改一行"无证据修复
 - [`skills/ue-module-architecture/SKILL.md`](skills/ue-module-architecture/SKILL.md) — UE plugin module 切分两层规则：同 module 内 Runtime Ops / Editor Actions / UI 三层模型 + 跨 module Runtime ← Editor 依赖方向硬约束。bundle 了 `editor-runtime-separation.md` + `runtime-module-no-editor-dep.md` 两份原 guideline 内容
 - [`skills/ue-reference-engine-source/SKILL.md`](skills/ue-reference-engine-source/SKILL.md) — meta prep-work：写 UE 功能前先找 reference impl。按 22 个 UE 子系统给 engine source 清单 + 5-tier 优先级 + anti-patterns。bundle 了原 `reference-engine-source.md`
 - [`skills/ue-settings-persistence/SKILL.md`](skills/ue-settings-persistence/SKILL.md) — UE settings 持久化的三件套（`UPROPERTY(config)` + `Config=<Cat>, DefaultConfig` + `TryUpdateDefaultConfigFile()`）/ `SaveConfig()` 无参陷阱 / `AssetRegistrySearchable` per-instance tag / 嵌套 UObject 集合 PostEditChangeProperty 同步 pattern / 症状→trap 排查表。bundle 了原 `settings-persistence.md`
