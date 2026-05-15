@@ -81,6 +81,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/details-customization-prefer-reflection.md
 
+@guidelines/ue/property-handle-strong-capture.md
+
 ---
 
 ## Techniques
