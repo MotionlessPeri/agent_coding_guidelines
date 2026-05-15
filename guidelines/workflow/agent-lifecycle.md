@@ -76,6 +76,47 @@ Agent self-deception patterns to watch for:
 - Third failure: report to the user with a summary of what was tried and why each approach failed.
 - Never let a failing approach loop more than three times.
 
+### What "change approach" actually means
+
+A new approach must be in a **different layer**, not just a different API in the
+same layer. Same-layer API switching is still the same approach — repeating it
+just burns the failure budget without buying new information.
+
+Concrete examples of layers (the boundaries are domain-dependent; the point is
+each line below is "below" the one above it, with different mechanisms / contracts):
+
+| Layer | Examples of being "in this layer" |
+|-------|-----------------------------------|
+| UI / widget customization | `IDetailCustomization`, `SClassPropertyEntryBox`, custom Slate widgets, React component re-renders |
+| Property handle / proxy API | `IPropertyHandle::SetValue` / `SetValueFromFormattedString` / `SetInstanceMetaData` |
+| Data type / schema | `UPROPERTY` declared type, struct fields, type hierarchy, ORM column types |
+| Framework reflection contract | UHT-generated metadata, `FProperty::MetaClass`, decorators, annotations |
+| Domain logic / business rules | Where conditions / constraints / semantics live |
+
+**Anti-pattern (real case)**: First version uses `SClassPropertyEntryBox::OnSetClass`
++ `SetValue(UClass*)` → fails → switches to `SetInstanceMetaData("MetaClass", ...)`
+→ fails → switches to `HideProperty + AddCustomRow + SetValueFromFormattedString`
+→ fails. All three versions are in the UI / property-handle layer. None is a real
+approach change — three failures in a single layer counts as **one** failed approach,
+not three.
+
+**Correct escalation**: After 2 same-layer attempts fail, ask "is the problem
+actually in this layer?" If not, switch to a deeper layer (data model, type system,
+framework contract) before trying a third UI variant.
+
+Counter-signals you may be stuck in same-layer churn:
+
+- Each new variant adds workarounds for the previous variant's failure mode, not
+  for the original root cause
+- You can't articulate why the previous variant didn't work — just that it "didn't"
+- Each variant feels like "I just need one more tweak"
+- The fundamental mechanism / contract you're fighting hasn't been examined
+  (re-read the framework source for the layer below)
+
+When stuck, re-read the **framework source** for the layer below. The root cause
+is often a compile-time fixity (UHT metadata, codegen output, reflected schema)
+that no runtime layer manipulation can defeat.
+
 ## Related Techniques
 
 - See `techniques/coordination-patterns.md` for multi-agent coordination and worker failure handling.
