@@ -6,6 +6,11 @@ Bypasses Claude Code MCP integration — sends JSON commands directly to UE Edit
 Usage:
     python ue_cmd.py <command> [json_params]
 
+Env overrides (use when running multiple editor instances or non-default config):
+    UE_MCP_HOST     default 127.0.0.1
+    UE_MCP_PORT     default 55557
+    UE_MCP_TIMEOUT  default 30 (seconds; some server-side ops block several seconds)
+
 Examples:
     python ue_cmd.py ping
     python ue_cmd.py get_editor_state
@@ -14,13 +19,16 @@ Examples:
     python ue_cmd.py set_actor_property '{"actor_name":"MyActor","property_name":"Foo","property_value":"Bar"}'
 """
 
+from __future__ import annotations
+
 import socket
 import json
+import os
 import sys
 
-HOST = "127.0.0.1"
-PORT = 55557
-TIMEOUT = 10
+HOST = os.environ.get("UE_MCP_HOST", "127.0.0.1")
+PORT = int(os.environ.get("UE_MCP_PORT", "55557"))
+TIMEOUT = float(os.environ.get("UE_MCP_TIMEOUT", "30"))
 RECV_BUF = 1 << 20  # 1MB
 
 

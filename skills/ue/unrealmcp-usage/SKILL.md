@@ -31,6 +31,8 @@ test -f sync_unreal_mcp.sh && echo "Sync script OK"
 
 四个 artifact 都在 = 项目已经走完 onboarding，直接用。缺一个或多个 → 走 §Onboarding。
 
+> **`.claude/mcp.json` 仅是项目集成的边缘指标，不影响实际 invoke 路径**——本 skill 默认走 §Invocation 的 TCP 直连（`ue_cmd.py`），不读 mcp.json。mcp.json 只在 user 选择走 Claude Code 原生 MCP 集成时才生效（不推荐，见 §Invocation 开头）。
+
 ## Invocation — 优先 `ue_cmd.py` TCP 直连
 
 **默认走 TCP 直连，不依赖 Claude Code 的 MCP 集成**（Claude Code VSCode 扩展加载 mcp.json 不稳定，`/mcp` 经常显示 "No MCP servers configured" 即使配置正确——已踩过；详 fork `Docs/known-issues.md` #5）。
@@ -46,10 +48,20 @@ test -f sync_unreal_mcp.sh && echo "Sync script OK"
 ### 协议
 
 ```
-TCP host:port = 127.0.0.1:55557
+TCP host:port = 127.0.0.1:55557   (UE_MCP_HOST / UE_MCP_PORT 可覆盖)
 request  = {"type": "<command>", "params": {...}}
 response = {"status": "success", "result": {...}}    or    {"status": "error", "error": "..."}
 ```
+
+### Env var override
+
+同机跑多个 editor 实例 / 改默认端口 / 需要更长超时时：
+
+| Env var | 默认 | 何时用 |
+|---|---|---|
+| `UE_MCP_HOST` | `127.0.0.1` | 远程 editor / 容器内 |
+| `UE_MCP_PORT` | `55557` | 跑两个 editor 实例避免冲突 |
+| `UE_MCP_TIMEOUT` | `30` (秒) | server-side 长操作（Perforce sync / 大 level 加载 etc.）|
 
 ### 上手 4 步
 
@@ -186,6 +198,8 @@ UnrealMCP_Docs/
 
 理由：sync 产物的 SoT 在 fork，不在消费项目里。同步一次 patch 一次时不要让消费项目的 git 跟着 churn。
 
+**`.claude/mcp.json` 决策**：跟上面三个 sync 产物不同，**应该入项目 git**——它是 per-project 客户端配置（server name / 启动参数 / 路径都可能因项目而异），sync 时仅作 template 复制一次，之后由项目自己维护。新建 / 改这文件后 commit 进项目 repo。
+
 ## Extending UnrealMCP（要给 fork 加新命令时）
 
 新命令必须**两侧同步**：
@@ -201,6 +215,18 @@ UnrealMCP_Docs/
 - 冷重建验证，不依赖 Live Coding
 - **fork 每个功能单独 commit**，不要积累；开新功能前先 commit 当前未提交内容
 - 消费侧 `Plugins/UnrealMCP/` 是 sync 产物，**不要直接改**——改 fork 然后 sync
+
+### Drift policy: `ue_cmd.py` 跟 fork TCP protocol
+
+本 skill 自带的 [`ue_cmd.py`](ue_cmd.py) 是 fork `UnrealMCPBridge.cpp` TCP wire protocol 的 client 实现。当 fork **改 wire protocol**（端口默认值、payload schema、framing、error 形态等），本 skill 的 `ue_cmd.py` **必须同步更新**——否则 client 静默不兼容，调命令拿空响应或解析失败。
+
+实施约定：
+
+- fork 改 wire protocol 的 commit message 显式标注 `wire-protocol-change:` 前缀，方便检索
+- 本 skill 跟着 commit 一次 `ue_cmd.py` 更新，commit message 引用 fork 那条 commit hash
+- 不破坏向后兼容性时（如新加 optional 字段），跟进时机可放宽到下次 skill 修订一并改
+
+跟 `multi-session-coordination` skill 内 `multi_session.py` 跟 Claude Code hook schema 的漂移管理是同形态 precedent。
 
 **典型 sync & validate 流程**：
 
