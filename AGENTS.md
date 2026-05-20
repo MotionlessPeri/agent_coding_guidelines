@@ -124,6 +124,7 @@ Guidelines are grouped by topic under `guidelines/`:
 - [`skills/ue/ue-module-architecture/SKILL.md`](skills/ue/ue-module-architecture/SKILL.md) — UE plugin module 切分两层规则：同 module 内 Runtime Ops / Editor Actions / UI 三层模型 + 跨 module Runtime ← Editor 依赖方向硬约束。bundle 了 `editor-runtime-separation.md` + `runtime-module-no-editor-dep.md` 两份原 guideline 内容
 - [`skills/ue/ue-reference-engine-source/SKILL.md`](skills/ue/ue-reference-engine-source/SKILL.md) — meta prep-work：写 UE 功能前先找 reference impl。按 22 个 UE 子系统给 engine source 清单 + 5-tier 优先级 + anti-patterns。bundle 了原 `reference-engine-source.md`
 - [`skills/ue/ue-settings-persistence/SKILL.md`](skills/ue/ue-settings-persistence/SKILL.md) — UE settings 持久化的三件套（`UPROPERTY(config)` + `Config=<Cat>, DefaultConfig` + `TryUpdateDefaultConfigFile()`）/ `SaveConfig()` 无参陷阱 / `AssetRegistrySearchable` per-instance tag / 嵌套 UObject 集合 PostEditChangeProperty 同步 pattern / 症状→trap 排查表。bundle 了原 `settings-persistence.md`
+- [`skills/ue/unrealmcp-usage/SKILL.md`](skills/ue/unrealmcp-usage/SKILL.md) — 消费侧 agent 用 UnrealMCP 插件（TCP 命令到 UE editor）做编辑器自动化（spawn / 改 property / call subsystem / save-exit 等）。bundle 了 canonical TCP 客户端 `ue_cmd.py`，消费项目不再需要自己拷贝。覆盖 detection / TCP invoke pattern / capability gap policy（MCP 不够用先问 user 要不要扩 fork） / top 5 inline gotchas / onboarding 新项目接入步骤 / extending fork 时两侧同步规则。Fork 是 `E:\xd_projects\unreal-mcp`，完整命令参考 + known-issues 在项目里 sync 后的 `UnrealMCP_Docs/`
 
 **collaboration/** —— 多 agent / 多对话协作机制：
 
