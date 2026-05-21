@@ -216,6 +216,59 @@ UnrealMCP_Docs/
 - **fork 每个功能单独 commit**，不要积累；开新功能前先 commit 当前未提交内容
 - 消费侧 `Plugins/UnrealMCP/` 是 sync 产物，**不要直接改**——改 fork 然后 sync
 
+### ★ 写命令必走 Editor write-through path（PostEditChangeProperty）
+
+新 MCP 命令改 UE 资产 property 时，**默认不能只调底层 setter**——必须模拟 Editor UI 改 property 时走的"写入即同步"路径。底层 setter 只改最表面的 UPROPERTY 字段，跳过 framework（LogicDriver / BP / AnimBP / Material / Niagara / DataTable 等）维护的 template / property graph / construction script 输出 / cache。结果：schema 编译能过，运行时炸。
+
+**完整规则 + 三个判断问题 + 已知有 PostEditChange 重型 hook 的 framework 清单**：见 [`guidelines/ue/external-automation-write-path.md`](../../../guidelines/ue/external-automation-write-path.md)。
+
+**MCP-side 模板**——写 `HandleXxx` 改 reflected property 时：
+
+```cpp
+TSharedPtr<FJsonObject> FUnrealMCPxxxCommands::HandleSetSomething(const TSharedPtr<FJsonObject>& Params)
+{
+    // ... 解析参数 / 拿到目标 Object 跟 NewValue ...
+
+    Object->Modify();                              // ① undo 支持
+
+    // ② 改 property（任何形式都行——直接 setter / SetVal / 直接写字段都可以）
+    Object->SomeProperty = NewValue;
+
+    // ③ ★ 关键：触发 framework 同步路径
+    FProperty* PropRef = Object->GetClass()->FindPropertyByName(
+        GET_MEMBER_NAME_CHECKED(UYourClass, SomeProperty));
+    FPropertyChangedEvent Evt(PropRef, EPropertyChangeType::ValueSet);
+    Object->PostEditChangeProperty(Evt);
+
+    // ④ batch 场景才需要显式 compile + dirty；单条改动 PostEditChange 内部已经 conditionally compile
+    // if (bExplicitCompileNeeded) { FKismetEditorUtilities::CompileBlueprint(Blueprint); }
+    // Object->MarkPackageDirty();
+
+    // ... 返回 success response ...
+}
+```
+
+**反例**（fork repo 内已有的 `HandleSetLogicDriverStateNodeClass` 旧实现）：
+
+```cpp
+// ❌ 跳过 PostEditChange，BattleDemo R2 踩坑案例
+StateNode->Modify();
+StateNode->SetNodeClass(NewClass);
+FKismetEditorUtilities::CompileBlueprint(Blueprint);   // 半新半旧状态被编进 bytecode
+```
+
+后果：18 个 LogicDriver state 切完 class，编译 success 无 warning，PIE 装备 + 按键死循环。**file-level p4 revert** 才能恢复。
+
+**已知特别需要走 PostEditChange 的 MCP 写命令场景**：
+- 改 LogicDriver state / transition 的 Node Class（如本案例）
+- 改 Blueprint 的 Parent Class
+- 改 Material 的 parameter / expression 连接
+- 改 Animation Blueprint 的变量绑定
+- 改 Niagara emitter / system 的 module 序列
+- 改 DataTable 的 RowStructure
+
+写 MCP 命令前对照上面清单 + grep `PostEditChangeProperty` 验。
+
 ### Drift policy: `ue_cmd.py` 跟 fork TCP protocol
 
 本 skill 自带的 [`ue_cmd.py`](ue_cmd.py) 是 fork `UnrealMCPBridge.cpp` TCP wire protocol 的 client 实现。当 fork **改 wire protocol**（端口默认值、payload schema、framing、error 形态等），本 skill 的 `ue_cmd.py` **必须同步更新**——否则 client 静默不兼容，调命令拿空响应或解析失败。

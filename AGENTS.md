@@ -83,6 +83,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/property-handle-strong-capture.md
 
+@guidelines/ue/external-automation-write-path.md
+
 ---
 
 ## Techniques
