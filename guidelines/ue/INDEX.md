@@ -52,6 +52,14 @@ technique，另有 4 份内容已 promote 到 skill：`skills/ue-module-architec
 | [`localization-pitfalls.md`](localization-pitfalls.md) | UE Localization API 6 条 trap：FromStringTable.ToString culture 漂 / Content/Localization 硬编码 exclude / PreBeginPIE 不能 veto / LocalizationTargetSet 非 UPROPERTY(config) / GatherText SCC noise / Culture BCP-47 validate |
 | [`settings-persistence.md`](../../skills/ue-settings-persistence/settings-persistence.md) | UPROPERTY(config) flag + `TryUpdateDefaultConfigFile()` + AssetRegistrySearchable 三件套；SaveConfig 无参陷阱 + 排查 checklist + 嵌套 UObject 集合的 PostEditChangeProperty 双轨同步 pattern |
 
+### Tooling / Agent Integration（MCP 平台选择）
+
+| Guideline | 解决的问题 |
+|---|---|
+| [`mcp-platform-choice.md`](mcp-platform-choice.md) | UE 5.8 官方 ModelContextProtocol plugin vs 社区 fork UnrealMCP 的选型决策表；不要 backport / 不要抄重构的两个 anti-pattern；官方 `UToolsetDefinition` 扩展机制（Python Path A + C++ Path B + AICallable UFUNCTION 约束）；演进路径（短中长期） |
+
+> 配对的 fork 使用指南（"fork 怎么用"，跟"用哪个"互补不重叠）：[`skills/ue/unrealmcp-usage/SKILL.md`](../../skills/ue/unrealmcp-usage/SKILL.md)
+
 ## 相关 Techniques
 
 [`../../techniques/ue-custom-graph-editor.md`](../../techniques/ue-custom-graph-editor.md) ——
