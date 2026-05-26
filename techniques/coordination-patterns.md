@@ -55,6 +55,84 @@ Multiple implementation workers edit different modules. A single verification pa
 | Verifying someone else's implementation | New worker | Fresh perspective, no anchoring |
 | First approach was completely wrong | New worker | Avoid anchoring to failed strategy |
 
+## Iterative Retrieval (when worker context cannot be predicted)
+
+The default rule in `techniques/worker-instructions.md` is "make the prompt
+self-contained" — list file paths, line numbers, completion criteria. This
+works when the **coordinator already knows** which files / symbols the worker
+needs.
+
+For genuinely exploratory tasks — "find all places that handle X" / "review
+every caller of Y for memory safety" / "is there an existing helper for Z?" —
+the coordinator does not yet know the file set. Three naive options all fail:
+
+- **Send everything**: exceeds worker context
+- **Send nothing**: worker lacks critical context, makes wrong calls
+- **Guess what's needed**: usually wrong; wastes a dispatch
+
+### The 4-phase loop
+
+```
+  Dispatch ──▶ Evaluate ──▶ Refine ──▶ Loop (max 3 cycles)
+  (broad      (what was    (worker     (then return findings
+   initial     found vs     fetches     even if partial — do
+   query)      what's       follow-up   not extend the budget)
+               missing)     itself)
+```
+
+The defining move is **Phase 3 (Refine)**: the worker fetches its own follow-up
+context (Grep / Read more files) instead of returning to the coordinator and
+asking for permission. Each round-trip to the coordinator costs latency and
+context — the worker should be empowered to dig deeper within its own session.
+
+### When to use this pattern
+
+- Worker task is **exploratory** (research, audit, "find all X")
+- Coordinator can articulate the **goal** but not the **file set**
+- Worker has Glob / Grep / Read tools available
+- Sending whole repo would exceed worker context
+
+### When NOT to use
+
+- Coordinator already knows the file set → use standard self-contained prompt
+- Task is **implementation** with clear target file (file paths are in the plan)
+- Worker has only narrow read tools without search capability
+
+### Worker prompt template
+
+```
+Task: [investigation goal in one sentence].
+
+Phase 1 — Dispatch: start with [initial search query / glob pattern].
+
+Phase 2 — Evaluate: after the initial sweep, report (to yourself):
+  - what you found
+  - what is still unclear / missing
+  - what additional context you need
+
+Phase 3 — Refine: based on Phase 2, fetch the additional context yourself
+  (Grep / Read more files). DO NOT come back to ask permission for
+  follow-up reads.
+
+Phase 4 — Loop: max 2 more cycles, then return findings even if incomplete.
+
+Report:
+  - files investigated
+  - what was found vs what was missed
+  - confidence level
+```
+
+### Cap the loop
+
+**Max 3 cycles total.** After that:
+
+- Either the worker has enough → report findings
+- Or the task is too broad → return partial findings + flag "needs scope reduction"
+
+Do **not** extend the loop budget. If 3 cycles isn't enough, the coordinator
+should reformulate the task — splitting it, narrowing the scope, or providing
+a better initial dispatch query — rather than letting the worker spin.
+
 ## Failure Escalation
 
 This applies the general failure escalation from `guidelines/workflow/agent-lifecycle.md` to the coordinator-worker context:

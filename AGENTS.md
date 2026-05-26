@@ -85,6 +85,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/external-automation-write-path.md
 
+@guidelines/ue/mcp-platform-choice.md
+
 ---
 
 ## Techniques
@@ -94,6 +96,10 @@ Guidelines are grouped by topic under `guidelines/`:
 @techniques/coordination-patterns.md
 
 @techniques/worker-instructions.md
+
+@techniques/fact-forcing-gate.md
+
+@techniques/context-budget-audit.md
 
 @techniques/ue-custom-graph-editor.md
 
