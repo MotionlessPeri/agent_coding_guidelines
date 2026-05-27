@@ -7,9 +7,10 @@ Usage:
     python ue_cmd.py <command> [json_params]
 
 Env overrides (use when running multiple editor instances or non-default config):
-    UE_MCP_HOST     default 127.0.0.1
-    UE_MCP_PORT     default 55557
-    UE_MCP_TIMEOUT  default 30 (seconds; some server-side ops block several seconds)
+    UNREAL_MCP_HOST     default 127.0.0.1
+    UNREAL_MCP_PORT     default 30557 (must match C++ plugin's resolved port — see
+                        UnrealMCPBridge.cpp::ResolveMCPPort)
+    UNREAL_MCP_TIMEOUT  default 30 (seconds; some server-side ops block several seconds)
 
 Examples:
     python ue_cmd.py ping
@@ -26,9 +27,9 @@ import json
 import os
 import sys
 
-HOST = os.environ.get("UE_MCP_HOST", "127.0.0.1")
-PORT = int(os.environ.get("UE_MCP_PORT", "55557"))
-TIMEOUT = float(os.environ.get("UE_MCP_TIMEOUT", "30"))
+HOST = os.environ.get("UNREAL_MCP_HOST", "127.0.0.1")
+PORT = int(os.environ.get("UNREAL_MCP_PORT", "30557"))
+TIMEOUT = float(os.environ.get("UNREAL_MCP_TIMEOUT", "30"))
 RECV_BUF = 1 << 20  # 1MB
 
 

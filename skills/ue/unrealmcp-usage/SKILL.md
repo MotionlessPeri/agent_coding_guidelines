@@ -48,7 +48,7 @@ test -f sync_unreal_mcp.sh && echo "Sync script OK"
 ### 协议
 
 ```
-TCP host:port = 127.0.0.1:55557   (UE_MCP_HOST / UE_MCP_PORT 可覆盖)
+TCP host:port = 127.0.0.1:30557   (UNREAL_MCP_HOST / UNREAL_MCP_PORT 可覆盖)
 request  = {"type": "<command>", "params": {...}}
 response = {"status": "success", "result": {...}}    or    {"status": "error", "error": "..."}
 ```
@@ -59,9 +59,22 @@ response = {"status": "success", "result": {...}}    or    {"status": "error", "
 
 | Env var | 默认 | 何时用 |
 |---|---|---|
-| `UE_MCP_HOST` | `127.0.0.1` | 远程 editor / 容器内 |
-| `UE_MCP_PORT` | `55557` | 跑两个 editor 实例避免冲突 |
-| `UE_MCP_TIMEOUT` | `30` (秒) | server-side 长操作（Perforce sync / 大 level 加载 etc.）|
+| `UNREAL_MCP_HOST` | `127.0.0.1` | 远程 editor / 容器内 |
+| `UNREAL_MCP_PORT` | `30557` | 跑两个 editor 实例避免冲突 / 默认端口被占（如 Windows 企业监控进程占住 55557 这种）|
+| `UNREAL_MCP_TIMEOUT` | `30` (秒) | server-side 长操作（Perforce sync / 大 level 加载 etc.）|
+
+**关键**：`UNREAL_MCP_PORT` env var **同时被 C++ plugin / Python MCP server / `ue_cmd.py` 三层读取**——改端口必须在 editor 进程的环境里设了 env var **再启动 editor**，并且**同一个 env var 也要对 ue_cmd.py 客户端进程可见**（同一个 shell session 设一次即可）。UE 也支持 `-MCPPort=N` 命令行覆盖（仅 editor 侧）。
+
+Editor 启动前在 shell 里设 env var：
+
+```powershell
+# PowerShell（持久化到用户环境）
+[Environment]::SetEnvironmentVariable("UNREAL_MCP_PORT", "30557", "User")
+
+# 或一次性（只对当前 shell 启动的进程有效）
+$env:UNREAL_MCP_PORT = "30557"
+start "" "C:/Program Files/Epic Games/UE_5.X/Engine/Binaries/Win64/UnrealEditor.exe" "MyProject.uproject"
+```
 
 ### 上手 4 步
 
