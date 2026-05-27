@@ -87,6 +87,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/mcp-platform-choice.md
 
+@guidelines/ue/logicdriver-state-class-rewires-boundgraph.md
+
 ---
 
 ## Techniques
