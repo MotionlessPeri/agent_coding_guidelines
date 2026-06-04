@@ -12,13 +12,15 @@ Guidelines are grouped by topic under `guidelines/`:
 |-----------|----------|
 | `guidelines/workflow/` | Commit rules, documentation rules, agent lifecycle, handoff workflow |
 | `guidelines/code/` | Code constraints, validation requirements |
+| `guidelines/cpp/` | C++ / Windows DLL / cmake / MSVC 工程底座的 hidden contract——跨 DLL 单例内联陷阱 / 符号导出 / 增量编译 ABI 不一致 / stale `.vcxproj` / 热路径 move 与 dynamic_cast。框架无关，多 DLL 插件（含 Maya `.mll`）高频命中。**非 C++ 项目可 skip** |
 | `guidelines/collaboration/` | Multi-agent setup, private docs policy |
 | `guidelines/ci-windows/` | Windows CI (PowerShell / GitLab runner) 跑 native command 时的 pitfall 集——PowerShell ↔ native exe 之间的抽象漏洞 |
 | `guidelines/claude-code/` | Claude Code 自身（harness / hooks / settings.json）的 hidden contract——文档没明说但实测如此的行为 |
 | `guidelines/p4/` | Perforce 特有 hidden contracts——charset transcoding / typemap / 跟 git 不同的字节保留语义 |
 | `guidelines/ue/` | **当前最重的子目录**（~950 行 / 6 份 guidelines；另有 4 份内容已 promote 到 skill：`skills/ue/ue-module-architecture/` 2 份 + `skills/ue/ue-reference-engine-source/` + `skills/ue/ue-settings-persistence/`）。Unreal Engine framework hidden contracts + idiom 集中在此。**非 UE 项目可整段 skip**。完整索引 + 按场景导航见 [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md) |
+| `guidelines/maya/` | Maya C++ 插件（`MPx*` plugin / manip / context / 多 `.mll` 共享 base 层）的 framework hidden contracts——靠踩坑得到、Maya 文档没明说的约束。**非 Maya 项目可整段 skip**。索引 + 配套 skill 见 [`guidelines/maya/INDEX.md`](guidelines/maya/INDEX.md) |
 | `techniques/` | Procedural patterns and step-by-step operational guides |
-| `skills/` | Claude Code skill files, organized by category under `skills/<category>/<name>/SKILL.md` (categories: `ue/` / `workflow/` / `collaboration/`). **Lazy-loaded** by Claude Code at invocation time — NOT `@`-imported here. Synced **flat** to `~/.claude/skills/<name>/` (Claude Code discovery requires flat) via `scripts/sync-skills.ps1` (recursive scan + flat copy)。Codex 无对应机制，需手动读取 SKILL.md |
+| `skills/` | Claude Code skill files, organized by category under `skills/<category>/<name>/SKILL.md` (categories: `ue/` / `maya/` / `architecture/` / `workflow/` / `collaboration/`). **Lazy-loaded** by Claude Code at invocation time — NOT `@`-imported here. Synced **flat** to `~/.claude/skills/<name>/` (Claude Code discovery requires flat) via `scripts/sync-skills.ps1` (recursive scan + flat copy)。Codex 无对应机制，需手动读取 SKILL.md |
 
 **Adding new files:**
 - Place new files in the appropriate subdirectory.
@@ -55,6 +57,12 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/code/validation.md
 
+@guidelines/cpp/multi-dll-plugin.md
+
+@guidelines/cpp/build-incremental-and-cmake.md
+
+@guidelines/cpp/hot-path-cpp.md
+
 @guidelines/collaboration/multi-agent.md
 
 @guidelines/collaboration/private-docs-policy.md
@@ -88,6 +96,10 @@ Guidelines are grouped by topic under `guidelines/`:
 @guidelines/ue/mcp-platform-choice.md
 
 @guidelines/ue/logicdriver-state-class-rewires-boundgraph.md
+
+@guidelines/maya/manip-container-constraints.md
+
+@guidelines/maya/selection-context-and-undo.md
 
 ---
 
@@ -135,6 +147,14 @@ Guidelines are grouped by topic under `guidelines/`:
 - [`skills/ue/ue-reference-engine-source/SKILL.md`](skills/ue/ue-reference-engine-source/SKILL.md) — meta prep-work：写 UE 功能前先找 reference impl。按 22 个 UE 子系统给 engine source 清单 + 5-tier 优先级 + anti-patterns。bundle 了原 `reference-engine-source.md`
 - [`skills/ue/ue-settings-persistence/SKILL.md`](skills/ue/ue-settings-persistence/SKILL.md) — UE settings 持久化的三件套（`UPROPERTY(config)` + `Config=<Cat>, DefaultConfig` + `TryUpdateDefaultConfigFile()`）/ `SaveConfig()` 无参陷阱 / `AssetRegistrySearchable` per-instance tag / 嵌套 UObject 集合 PostEditChangeProperty 同步 pattern / 症状→trap 排查表。bundle 了原 `settings-persistence.md`
 - [`skills/ue/unrealmcp-usage/SKILL.md`](skills/ue/unrealmcp-usage/SKILL.md) — 消费侧 agent 用 UnrealMCP 插件（TCP 命令到 UE editor）做编辑器自动化（spawn / 改 property / call subsystem / save-exit 等）。bundle 了 canonical TCP 客户端 `ue_cmd.py`，消费项目不再需要自己拷贝。覆盖 detection / TCP invoke pattern / capability gap policy（MCP 不够用先问 user 要不要扩 fork） / top 5 inline gotchas / onboarding 新项目接入步骤 / extending fork 时两侧同步规则。Fork 是 `E:\xd_projects\unreal-mcp`，完整命令参考 + known-issues 在项目里 sync 后的 `UnrealMCP_Docs/`
+
+**maya/** —— Maya 插件专用：
+
+- [`skills/maya/maya-tool-interaction/SKILL.md`](skills/maya/maya-tool-interaction/SKILL.md) — DCC 拖拽编辑工具（Maya manip/context，泛化到其他 3D 工具）的五个交互模式：press-time 完整重算（不累加 delta）/ press-time caching 防反馈闭环漂移 / 位移阈值防抖 / snapshot-diff undo（非 plug-level）/ undo 数据存业务对象而非 UI manip。配套 framework 契约见 `guidelines/maya/`。单项目验证、apply-and-refine
+
+**architecture/** —— 框架无关架构 pattern：
+
+- [`skills/architecture/multi-plugin-shared-core/SKILL.md`](skills/architecture/multi-plugin-shared-core/SKILL.md) — 多插件共享一个 core 实体的五个可组合模式：type-keyed ExtensionContainer（替代继承爆炸）/ feature-parser 注册制（base 零依赖）/ Preset→Template→Instance 数据驱动三段式 / Snapshot+Ops 数据操作分离 / 非拥有 Registry 单一查询入口解耦命令。框架无关（Maya 多 `.mll` 提炼，UE module / 通用 plugin 系统同样适用）。跟 `skills/ue/ue-module-architecture` 同形态不同框架。单项目验证、apply-and-refine
 
 **collaboration/** —— 多 agent / 多对话协作机制：
 
