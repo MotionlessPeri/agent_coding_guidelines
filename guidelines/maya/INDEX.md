@@ -15,6 +15,12 @@ hidden contracts。靠踩坑得到、Maya 官方文档没明说的客观约束�
 | [`manip-container-constraints.md`](manip-container-constraints.md) | 自定义 MPxManipContainer：setPoint 定位 / setManipScale vs setGlobalSize / connectToPointPlug 自引用崩溃 / 无 plug 不调基类 connectToDependNode / 动态 rebuild 序列 / setVisible 显隐 / VP1.0 vs VP2.0 绘制 |
 | [`selection-context-and-undo.md`](selection-context-and-undo.md) | MPxSelectionContext：3-param vs 1-param doPress 双重载 / doPress 不立即更新选择集 → 自己 hit-test / selectFromScreen 重入 / plug-based undo 覆盖不了多关节 IK → MPxToolCommand + 快照 |
 
+### Build / 迭代 / 输出 / 脚本（工程化，非运行时）
+
+| Guideline | 解决的问题 |
+|---|---|
+| [`plugin-build-and-scripting-contracts.md`](plugin-build-and-scripting-contracts.md) | DevKit cmake 把 C++ 标准压回 14（`MAYA_WANT_CPP_17` / target 级 override）/ 加载中的 `.mll` 不能覆盖（重建前 unloadPlugin）/ `MGlobal::displayInfo` 非 ASCII 在本地化 Windows 乱码 / `cmds.setAttr type=pointArray` 格式不可靠 → OpenMaya `MFn*Data`+`setMObject` |
+
 ### 配套 skill（设计阶段触发，不 eager-import）
 
 | Skill | 内容 |

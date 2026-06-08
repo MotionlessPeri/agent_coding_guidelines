@@ -55,6 +55,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/code/function-clarity.md
 
+@guidelines/code/diagnose-before-fixing.md
+
 @guidelines/code/validation.md
 
 @guidelines/cpp/multi-dll-plugin.md
@@ -100,6 +102,8 @@ Guidelines are grouped by topic under `guidelines/`:
 @guidelines/maya/manip-container-constraints.md
 
 @guidelines/maya/selection-context-and-undo.md
+
+@guidelines/maya/plugin-build-and-scripting-contracts.md
 
 ---
 
