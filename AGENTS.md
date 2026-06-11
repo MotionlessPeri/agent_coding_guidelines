@@ -105,6 +105,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/maya/plugin-build-and-scripting-contracts.md
 
+@guidelines/maya/draw-override-and-command-invocation.md
+
 ---
 
 ## Techniques
@@ -158,7 +160,7 @@ Guidelines are grouped by topic under `guidelines/`:
 
 **architecture/** —— 框架无关架构 pattern：
 
-- [`skills/architecture/multi-plugin-shared-core/SKILL.md`](skills/architecture/multi-plugin-shared-core/SKILL.md) — 多插件共享一个 core 实体的五个可组合模式：type-keyed ExtensionContainer（替代继承爆炸）/ feature-parser 注册制（base 零依赖）/ Preset→Template→Instance 数据驱动三段式 / Snapshot+Ops 数据操作分离 / 非拥有 Registry 单一查询入口解耦命令。框架无关（Maya 多 `.mll` 提炼，UE module / 通用 plugin 系统同样适用）。跟 `skills/ue/ue-module-architecture` 同形态不同框架。单项目验证、apply-and-refine
+- [`skills/architecture/multi-plugin-shared-core/SKILL.md`](skills/architecture/multi-plugin-shared-core/SKILL.md) — 多插件共享一个 core 实体的六个可组合模式：type-keyed ExtensionContainer（替代继承爆炸）/ feature-parser 注册制（base 零依赖）/ Preset→Template→Instance 数据驱动三段式 / Snapshot+Ops 数据操作分离 / 非拥有 Registry 单一查询入口解耦命令 / 权威类型不可扩展（vendored·子模块·他队拥有）时编辑层 state 复用既有值标记（不 fork 类型也不加并行字段）。框架无关（Maya 多 `.mll` 提炼，UE module / 通用 plugin 系统同样适用）。跟 `skills/ue/ue-module-architecture` 同形态不同框架。单项目验证、apply-and-refine
 
 **collaboration/** —— 多 agent / 多对话协作机制：
 

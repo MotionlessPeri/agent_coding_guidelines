@@ -1,6 +1,6 @@
 ---
 name: multi-plugin-shared-core
-description: Framework-agnostic architecture for systems where multiple plugins / features share one core entity (e.g. multiple DLLs over a common base layer). Five composable patterns — (1) type-keyed ExtensionContainer instead of subclass explosion, (2) feature-parser registry so the base layer has zero dependency on plugins, (3) Preset→Template→Instance data-driven three-stage init with a factory between layers, (4) Snapshot-as-data-hub + Ops-namespace separation instead of a god base class, (5) non-owning runtime Registry as the single lookup entry to decouple commands from any specific tool/context. Use when designing or extracting a multi-feature plugin system, deciding how features attach data to a shared object, or reviewing a "base layer + N plugins" architecture. Validated in one Maya multi-.mll project; treat as patterns to apply-and-refine, not hard rules.
+description: Framework-agnostic architecture for systems where multiple plugins / features share one core entity (e.g. multiple DLLs over a common base layer). Six composable patterns — (1) type-keyed ExtensionContainer instead of subclass explosion, (2) feature-parser registry so the base layer has zero dependency on plugins, (3) Preset→Template→Instance data-driven three-stage init with a factory between layers, (4) Snapshot-as-data-hub + Ops-namespace separation instead of a god base class, (5) non-owning runtime Registry as the single lookup entry to decouple commands from any specific tool/context, (6) when the authoritative type is non-extensible (vendored / submodule / owned by another team), encode editing-/UI-only state by repurposing an existing value rather than forking the type or adding a parallel field that ripples through serialization/undo. Use when designing or extracting a multi-feature plugin system, deciding how features attach data to a shared object, or reviewing a "base layer + N plugins" architecture. Validated in one Maya multi-.mll project; treat as patterns to apply-and-refine, not hard rules.
 when_to_use: Fires when (1) designing a system with a shared core/base layer and multiple feature plugins or modules attaching their own data, (2) deciding whether a new feature should subclass the core or attach via extension, (3) building config/preset loading where different presets carry different optional features, (4) designing undo/data-transfer around a value-like snapshot, (5) deciding where runtime entity lookup should live (central registry vs a tool's context), or (6) reviewing/refactoring a "god base class" that accumulates every feature's methods. Skip for single-plugin or single-module systems with no shared-core extensibility need.
 ---
 
@@ -19,6 +19,7 @@ when_to_use: Fires when (1) designing a system with a shared core/base layer and
 | 3. Preset→Template→Instance | 数据驱动三段式初始化，层间各一 factory |
 | 4. Snapshot + Ops | 数据（value-like）与操作（namespace 自由函数）分离 |
 | 5. 非拥有 Registry | 命令走中央 Registry 查询，不耦合某个工具 context |
+| 6. 编辑层 state 复用既有值 | 权威类型不可扩展（vendored/子模块/他队拥有）时，编辑/UI-only state 复用既有枚举值标记，别 fork 类型也别加并行字段 |
 
 ---
 
@@ -117,6 +118,38 @@ public:
 **约束**：存非拥有指针；生命周期钩子明确（创建时注册 / 删除时反注册 / 场景重置时全清）。
 **通信范式**：发布方 → Registry 注册，消费方 → Registry 查询，**而非**消费方 → 发布方 context。
 跨 DLL 单例纪律见 [`../../../guidelines/cpp/multi-dll-plugin.md`](../../../guidelines/cpp/multi-dll-plugin.md)。
+
+---
+
+## 6. 编辑层 state 复用既有值：权威类型不可扩展时
+
+**问题**：core 实体的权威类型（如某 enum / struct）由**别处拥有、你不能改**——vendored 第三方库、
+git 子模块、算法同事维护的"几何真值"类型。但你的**编辑层/UI 层**需要给实体附一个状态（如"已删除/
+dead"、"临时隐藏"、"待重算"），而这个状态不属于权威几何语义、塞进权威类型不合适也改不动。
+
+**两条看似可行、实则更糟的路**：
+- **fork / 扩权威类型**（给子模块 enum 加值）：跨 repo / 跨团队改动，升级即冲突，且把编辑层概念污染进几何真值类型。
+- **加并行字段/属性**（与权威数组平行的一份 dead-mask）：制造**第二份权威**要同步，且**波及序列化 /
+  undo 快照 / 每个 marshalling 出入口**——一处漏同步就 desync。
+
+**模式**：**复用权威类型里某个既有值**当编辑层标记，让该状态落进已有的处理桶，零新增字段、零类型改动。
+判据：找一个"语义上无害、且已有正确处理路径"的既有值——把待标记对象**降级**成它即可。
+
+```text
+例：控制点池里"已删除的端点"不能从池移除（索引不可 reindex，下游按索引对齐），
+   权威 KnotRole{Endpoint, TangentHandle} 在子模块、不能加 Dead 值。
+   → 把已删端点降级为"未引用的 TangentHandle"：绘制层本就"未引用手柄一律剔除"，
+     于是它自动隐藏、不可选、不复用，且 undo 经既有 role 快照天然还原。零新字段、零子模块改动。
+```
+
+**前提 / 边界**：
+- 复用的既有值必须有**已存在的、正好符合预期的处理路径**（上例：未引用手柄→剔除）。没有就别硬塞。
+- 该 state 是**编辑/显示层**的，不进几何真值语义；权威类型的纯几何消费方（solver 等）应天然忽略它
+  （上例：未被任何拓扑引用 → solver 本就忽略孤儿）。
+- 在代码注释 + 数据格式文档里**写明这是复用语义的编辑层标记**，避免未来读者误判。
+
+⚠️ 单项目单次验证（比其余 5 个模式更 tentative）；第二次遇到"不可扩展权威类型 + 需附编辑层 state"
+再确认/精炼。
 
 ---
 

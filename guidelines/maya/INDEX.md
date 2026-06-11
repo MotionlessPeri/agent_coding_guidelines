@@ -15,6 +15,12 @@ hidden contracts。靠踩坑得到、Maya 官方文档没明说的客观约束�
 | [`manip-container-constraints.md`](manip-container-constraints.md) | 自定义 MPxManipContainer：setPoint 定位 / setManipScale vs setGlobalSize / connectToPointPlug 自引用崩溃 / 无 plug 不调基类 connectToDependNode / 动态 rebuild 序列 / setVisible 显隐 / VP1.0 vs VP2.0 绘制 |
 | [`selection-context-and-undo.md`](selection-context-and-undo.md) | MPxSelectionContext：3-param vs 1-param doPress 双重载 / doPress 不立即更新选择集 → 自己 hit-test / selectFromScreen 重入 / plug-based undo 覆盖不了多关节 IK → MPxToolCommand + 快照 |
 
+### 运行时 draw / 命令调用（GUI/C++ 契约，headless + cmds-Python 测不到）
+
+| Guideline | 解决的问题 |
+|---|---|
+| [`draw-override-and-command-invocation.md`](draw-override-and-command-invocation.md) | 从 C++ `executeCommand` 发带 object 的命令：MEL 字符串 flag 必须在 object 前（cmds-Python 自动排序、MEL 不会）/ `MPxDrawOverride::prepareForDraw` 复用 `oldData` → `buildDrawData` 每帧必须重置 transient flag（否则"状态清了但高亮不消失"）/ 屏幕空间恒定 UI 用 `points()`+`setPointSize`（像素），别用 `rect()/circle()` 世界尺寸×相机距离近似 |
+
 ### Build / 迭代 / 输出 / 脚本（工程化，非运行时）
 
 | Guideline | 解决的问题 |
@@ -26,7 +32,7 @@ hidden contracts。靠踩坑得到、Maya 官方文档没明说的客观约束�
 | Skill | 内容 |
 |---|---|
 | [`skills/maya/maya-tool-interaction`](../../skills/maya/maya-tool-interaction/SKILL.md) | DCC 拖拽编辑交互模式：press-time 完整重算 / press-time caching 防反馈漂移 / 位移阈值防抖 / snapshot-diff undo / undo 数据存业务对象而非 UI |
-| [`skills/architecture/multi-plugin-shared-core`](../../skills/architecture/multi-plugin-shared-core/SKILL.md) | 框架无关：多插件共享一个 core 实体的架构（ExtensionContainer / feature-parser 注册 / Preset→Template→Instance / Snapshot+Ops / 非拥有 Registry）。Maya 多 `.mll` 场景的实际归宿 |
+| [`skills/architecture/multi-plugin-shared-core`](../../skills/architecture/multi-plugin-shared-core/SKILL.md) | 框架无关：多插件共享一个 core 实体的架构（ExtensionContainer / feature-parser 注册 / Preset→Template→Instance / Snapshot+Ops / 非拥有 Registry / 权威类型不可扩展时编辑层 state 复用既有值）。Maya 多 `.mll` 场景的实际归宿 |
 
 ### C++/构建底座（非 Maya，但 Maya 插件常踩）
 
