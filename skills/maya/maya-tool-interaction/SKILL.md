@@ -1,7 +1,7 @@
 ---
 name: maya-tool-interaction
-description: Interaction patterns for DCC drag-edit tools (Maya manip / context, generalizes to other 3D tools) where dragging a handle triggers an expensive recompute (IK / solver / model inference). Five composable patterns — (1) stateless full-recompute from a press-time snapshot instead of accumulating deltas, (2) press-time caching of other constraints to stop feedback-loop drift, (3) displacement-threshold debounce so tiny drags don't trigger expensive work, (4) snapshot-diff undo (capture before/after full snapshots) instead of plug-level undo, (5) store undo data on the business object (instance), not the UI object (manip). Use when building any interactive drag-edit tool whose drag triggers a multi-element recompute. Validated in one Maya pose/curve tool; apply-and-refine.
-when_to_use: Fires when (1) building a Maya MPxManipContainer / MPxSelectionContext (or any DCC viewport tool) where dragging recomputes multiple elements via a solver/IK/model, (2) deciding how to capture undo for a multi-element edit, (3) drag feedback drifts because dragging one handle moves others, (4) tiny accidental drags trigger expensive recompute, or (5) deciding where to store tool undo data so it survives context switch / scene reload. Pairs with guidelines/maya/manip-container-constraints.md + selection-context-and-undo.md (the framework hidden contracts). Skip for simple direct-manipulation tools with no expensive recompute.
+description: Interaction patterns for DCC drag-edit tools (Maya manip / context, generalizes to other 3D tools) where dragging a handle triggers an expensive recompute (IK / solver / model inference). Six composable patterns — (1) stateless full-recompute from a press-time snapshot instead of accumulating deltas, (2) press-time caching of other constraints to stop feedback-loop drift, (3) displacement-threshold debounce so tiny drags don't trigger expensive work, (4) snapshot-diff undo (capture before/after full snapshots) instead of plug-level undo, (5) store undo data on the business object (instance), not the UI object (manip), (6) when the edit controller overlays a rig/follow-driven object, live-attach it to its driver via a two-layer split (outer follows the driver, inner is the keyable edit offset) — static placement + a connectAttr-fed override input pins the whole output display. Use when building any interactive drag-edit tool whose drag triggers a multi-element recompute, or when an edit controller sits on a driven object. Validated in one Maya pose/curve tool; apply-and-refine.
+when_to_use: Fires when (1) building a Maya MPxManipContainer / MPxSelectionContext (or any DCC viewport tool) where dragging recomputes multiple elements via a solver/IK/model, (2) deciding how to capture undo for a multi-element edit, (3) drag feedback drifts because dragging one handle moves others, (4) tiny accidental drags trigger expensive recompute, (5) deciding where to store tool undo data so it survives context switch / scene reload, or (6) placing an edit controller (locator/manip) on top of an object that is itself driven by rig skinning / follow / an upstream deformer — and the controller must keep following that driver while staying editable + keyable. Pairs with guidelines/maya/manip-container-constraints.md + selection-context-and-undo.md (the framework hidden contracts). Skip for simple direct-manipulation tools with no expensive recompute.
 ---
 
 # DCC 拖拽编辑工具的交互模式
@@ -20,6 +20,7 @@ hidden contract 见 [`../../../guidelines/maya/manip-container-constraints.md`](
 | 3. 位移阈值防抖 | 松开时位移超阈值才触发昂贵重算 |
 | 4. snapshot-diff undo | 前后整快照对比做 undo，不用 plug-level |
 | 5. undo 数据存业务对象 | 存 instance 不存 manip |
+| 6. 控制器叠在被驱动对象上 → live attach + 两层 | 外层跟驱动源 / 内层是可 K 的编辑 offset；静态放置会钉死输出显示 |
 
 ---
 
@@ -69,6 +70,33 @@ undo 需要的数据存在**业务对象（instance / asset）**上，**不要**
 **模式**：command 的 `undoIt` 只改 instance 上的数据；UI（manip 位置）通过 SelectionChanged /
 timeChanged 等回调从 instance 数据驱动刷新，而不是 command 直接戳 manip 裸指针。
 
+## 6. 控制器叠在被驱动对象上 → live attach + 两层分离
+
+编辑控制器（manip/locator）若叠加在一个被**外部驱动**（rig skinning / follow / 上游 deformer）的
+对象上，控制器**必须 live 跟随驱动源**（attach），**不能静态放置**（一次性 setTranslation/xform）。
+
+**为什么**：DCC 节点的"显示位置"常是 compute 实时算的（`显示 = 驱动源输出 base + 编辑量`）。若
+控制器静态放置、再 `connectAttr` 把它的值喂进节点的编辑输入 attr，而 compute 让这个编辑输入**以
+最高优先级覆盖**显示输出 → 驱动源一变（rig 摆 pose），输出 base 变了但静态控制器不变 → **钉死整个
+输出显示**（不只控制器脱节，连没编辑的部分也被静态值覆盖）。这是个隐蔽 bug：编辑前一切正常，一旦
+建了控制器再动 rig 就钉死。
+
+**修法——两层分离**：
+- **外层**（base 层）：被驱动源 live 驱动（attach 到驱动源——constrain / `pointOnCurveInfo` /
+  绑同一套 skin 等）→ 跟随，**不打关键帧**
+- **内层**（编辑层）：用户拖 / K 它相对外层的 **local offset** → 编辑量，**可打 animation curve**
+- 控制器世界位 = 外层(驱动 base) + 内层(编辑 offset)，喂节点编辑输入
+- offset = 0 → 控制器 == 驱动 base → 编辑量 0 → 恒等（不碰原驱动动画）
+
+**收益**：① 驱动源变时控制器 + 显示一起跟随（不钉死）；② base 动画（外层跟驱动）与编辑动画
+（内层 K offset）**天然叠加**；③ K 的是标准 transform.translate（animator 日常的 animation
+curve 载体），不是节点的 array attr（后者在 Graph Editor 里编辑体验差）。
+
+**附带的 DG 契约**：外部控制器驱动节点**必经一个节点输入 attr**（DG 通信靶子，删不掉——节点间
+通信必须有 attr）。真正能减的冗余是"同语义的多个输入 attr"（如同时有中性绝对位 + posed 绝对位两个
+输入），收敛成一个；不是去掉输入 attr 本身。"在 C++ 建控制器还是外部脚本建"不改变这条——控制器
+的值总要经一个输入 attr 进节点。
+
 ---
 
 ## 组合关系
@@ -86,14 +114,23 @@ drag → visual feedback；release → 判位移阈值（模式 3）→ 超阈�
 | 每次微小拖拽都重算 | 无意义昂贵调用 | 位移阈值防抖 |
 | 多元素结果靠 plug undo | undo/redo 约束丢失 | snapshot-diff undo |
 | undo 数据存 manip 裸指针 | context 切换/重载后失效 | 存 instance，UI 回调驱动刷新 |
+| 编辑控制器静态放在被驱动对象上 | 驱动源变（摆 pose）时钉死整个输出显示 | 两层分离：外层 live attach 跟驱动 + 内层可 K 编辑 offset |
 
 ## 项目实例参考
 
-某 Maya 角色动画插帧插件的锚点拖拽 / 摆姿工具：拖拽锚点时从按下时的会话快照出发调 Bezier 模型
-完整重算（非累加 delta）；摆姿拖一个 effector 时其余 5 个关键点旋转用按下时缓存值防漂移；松开时
-位移 < 阈值（0.25）视作没动撤销；undo 用 `MPxToolCommand` + 单帧骨骼快照对比，且 effector
-位置缓存存在 instance extension 上、context 切回时从 data 恢复到 manip，不在 command 里直接操作
-manip 裸指针。
+某 Maya 角色动画插帧插件的锚点拖拽 / 摆姿工具（模式 1-5）：拖拽锚点时从按下时的会话快照出发调
+Bezier 模型完整重算（非累加 delta）；摆姿拖一个 effector 时其余 5 个关键点旋转用按下时缓存值
+防漂移；松开时位移 < 阈值（0.25）视作没动撤销；undo 用 `MPxToolCommand` + 单帧骨骼快照对比，
+且 effector 位置缓存存在 instance extension 上、context 切回时从 data 恢复到 manip，不在 command
+里直接操作 manip 裸指针。
+
+另一 Maya 插件（curvenet 角色形变，模式 6）：动画师在被 rig skin 驱动的 **posed** 角色上编辑曲线
+控制点。初版 locator **静态** `xform` 到 posed 位 + `connectAttr` 喂节点 `editInputPosed` 输入，
+节点 compute 用它**覆盖**显示输出 → 旋转 skeleton 时 follow 变但静态 locator 不变 → **整条曲线
+显示钉死**。改**两层**：外层 group 被 `pointOnCurveInfo(carrier CV)` 驱动跟 follow（rig 动画，不 K）
+/ 内层菱形 locator 拖 + K 它的 local translate = offset（curvenet 微调 animation curve）；外层 rig
+动画 + 内层 K 微调天然叠加。同时删掉同语义的冗余输入 attr（中性绝对位 `editInput`），收敛到
+`editInputPosed` 一个。
 
 ## 相关 Guidelines / Skills
 
