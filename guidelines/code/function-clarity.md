@@ -115,6 +115,24 @@ static bool ApplyEntryToDA(...)
 - **多数情况**：只留 stable why。改造历史靠 `git blame` / `git log -L :functionname:file`
 - **极少情况**：反查特别频繁（架构核心 + 历史复杂），可以用结构化 pointer：`// Reason: <stable why>. History: see git blame for <commit-prefix>` —— **commit prefix 比 M11 / I-034 这种本地命名更稳定**
 
+### 注释自包含：不引用 ephemeral 文档
+
+transient when 不止「milestone 标签」一种形态——**引用实现期临时文档**是同源的另一种。注释解释设计意图
+（stable why）必须 **inline、不依赖任何外部文档即可读懂**。判据是**引用目标 durable 还是 ephemeral**，
+不是「内部 vs 外部」：
+
+| 目标 | 例子 | 处理 |
+|---|---|---|
+| Ephemeral（会消失 / 失意义） | 实现期 plan / impl-plan 文档（写完即抛 / cleanup commit 删）、milestone/Task/Phase 标签、`见 design §2.1`、`旧 X 已废 / 改自 Y` | ❌ 剥——指向消失的文档 = 悬空引用，比没注释更糟 |
+| Durable（长期在） | 论文 / 规范章节、**committed** 架构文档、框架源码 | 🟡 可留作**可选深入指针**，不作理解前提 |
+
+清理旧引用时**先把它承载的 why 浓缩成一句 inline，再删引用**——最常见的错是把噪音和理由一起删了。
+
+```cpp
+// ❌ 依赖 ephemeral 文档：// 设计见 docs/plans/2026-06-05-foo-design.md §2.1
+// ✅ why 内联自包含：    // 持久权威 = 节点标准 attr（透明/可序列化/可连接，不用自定义 data 类型）
+```
+
 ### 例外（可容忍 transient when）
 
 下列情况 stable why 难写，留 transient when 可接受：

@@ -146,6 +146,7 @@ Guidelines are grouped by topic under `guidelines/`:
 - [`skills/workflow/autonomous-workflow/SKILL.md`](skills/workflow/autonomous-workflow/SKILL.md) — low-touch 工作流，仅 plan gate（实施阶段无 gate）；handoff 文档（brief / context / worklog / result）+ 强 TDD 作执行期安全网
 - [`skills/workflow/tdd-with-fixtures/SKILL.md`](skills/workflow/tdd-with-fixtures/SKILL.md) — augment superpowers TDD，加 milestone-level discipline + fixture/manual case escape hatch
 - [`skills/workflow/bugfix-tdd/SKILL.md`](skills/workflow/bugfix-tdd/SKILL.md) — bug-fix 场景的 TDD 红→绿 discipline。先写 demonstrate bug 的 failing test → 跑确认 FAIL → 改 production → 跑 PASS → 跑全 regression → test + fix 单 commit。跟 `superpowers:test-driven-development`（feature TDD）/ `superpowers:systematic-debugging`（debug 阶段方法论）/ `tdd-with-fixtures`（escape hatch）互补不重叠。防"看代码自信改一行"无证据修复
+- [`skills/workflow/conversation-walkthrough/SKILL.md`](skills/workflow/conversation-walkthrough/SKILL.md) — 编码对话收尾的标准 review 环节（默认开，除非用户说后面是迭代不用 review）。三 phase：结构 map / self-review 三档（🔴 重构套 function-clarity 行数阈值 + ≥2 次重复抽 helper / 🟡 优化 / 🟢 对抗式正确性）/ 注释体检（注释自包含原则——剥 milestone·Task·Phase 标签 + ephemeral 文档引用，why 浓缩 inline，只引 durable 目标）。配套：ephemeral tracking 文档锚讨论主线、重构与注释清理分主题各自 commit、cold rebuild + 冒烟验证语义不变。扩展 `guidelines/code/function-clarity.md`（行数阈值 Rule 1 + 注释 stability/自包含 Rule 2）的「系统化执行」面
 
 **ue/** —— UE 专用：
 
