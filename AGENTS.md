@@ -99,6 +99,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/logicdriver-state-class-rewires-boundgraph.md
 
+@guidelines/ue/rigvm-bulk-data-as-metadata-not-pins.md
+
 @guidelines/maya/manip-container-constraints.md
 
 @guidelines/maya/selection-context-and-undo.md
