@@ -14,6 +14,7 @@ hidden contracts。靠踩坑得到、Maya 官方文档没明说的客观约束�
 |---|---|
 | [`manip-container-constraints.md`](manip-container-constraints.md) | 自定义 MPxManipContainer：setPoint 定位 / setManipScale vs setGlobalSize / connectToPointPlug 自引用崩溃 / 无 plug 不调基类 connectToDependNode / 动态 rebuild 序列 / setVisible 显隐 / VP1.0 vs VP2.0 绘制 |
 | [`selection-context-and-undo.md`](selection-context-and-undo.md) | MPxSelectionContext：3-param vs 1-param doPress 双重载 / doPress 不立即更新选择集 → 自己 hit-test / selectFromScreen 重入 / plug-based undo 覆盖不了多关节 IK → MPxToolCommand + 快照 |
+| [`move-rotate-manip-axis-orientation.md`](move-rotate-manip-axis-orientation.md) | 原生 Move/Rotate 工具「Object」轴向取自旋转管线不同段：Move 反映 rotateAxis、Rotate **不**反映（只看 父级∘rotate）。要 Rotate gizmo 对齐自定义帧须放**父级 transform 的 rotate**（放 rotateAxis 只改驱动、gizmo 不跟 →"驱动对朝向错"）。含逐 attr 实测诊断 |
 
 ### 运行时 draw / 命令调用（GUI/C++ 契约，headless + cmds-Python 测不到）
 

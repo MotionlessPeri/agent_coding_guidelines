@@ -109,6 +109,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/maya/draw-override-and-command-invocation.md
 
+@guidelines/maya/move-rotate-manip-axis-orientation.md
+
 ---
 
 ## Techniques
