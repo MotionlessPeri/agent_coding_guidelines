@@ -33,6 +33,12 @@ technique，另有 4 份内容已 promote 到 skill：`skills/ue-module-architec
 |---|---|
 | [`rigvm-bulk-data-as-metadata-not-pins.md`](rigvm-bulk-data-as-metadata-not-pins.md) | 程序化建 RigVM/CR 图时逐元素大批量数据(几百+ 项)走 `URigHierarchy` element metadata,别烤成节点 pin 默认值(每 sub-pin 一个 Slate widget → 打开图卡死 + 资产膨胀);metadata 序列化且经 `CopyHierarchy→CopyAllMetadataFromElement` 复制到运行时实例,RigUnit Execute 读得到 |
 
+### 数学类型 / API marshalling
+
+| Guideline | 解决的问题 |
+|---|---|
+| [`fvector4-vector-equals-silent-fail.md`](fvector4-vector-equals-silent-fail.md) | `FMatrix::TransformVector`/`TransformPosition` 返 `FVector4`(W=0),直接跟 `FVector` 比 `.Equals` 因 W(0 vs 隐式 1)**静默失败**(XYZ 对、断言恒 false);用 `FVector(...)` 包裹丢 W 再比;生产侧赋给 `FVector` 变量自动安全,坑主要咬单测断言 |
+
 ### Editor / Runtime 架构
 
 > 已 promote 到 skill：[`skills/ue-module-architecture/SKILL.md`](../../skills/ue-module-architecture/SKILL.md)（lazy-load，不再 eager-import）
