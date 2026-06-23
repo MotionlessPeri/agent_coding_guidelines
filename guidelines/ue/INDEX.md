@@ -39,6 +39,12 @@ technique，另有 4 份内容已 promote 到 skill：`skills/ue-module-architec
 |---|---|
 | [`fvector4-vector-equals-silent-fail.md`](fvector4-vector-equals-silent-fail.md) | `FMatrix::TransformVector`/`TransformPosition` 返 `FVector4`(W=0),直接跟 `FVector` 比 `.Equals` 因 W(0 vs 隐式 1)**静默失败**(XYZ 对、断言恒 false);用 `FVector(...)` 包裹丢 W 再比;生产侧赋给 `FVector` 变量自动安全,坑主要咬单测断言 |
 
+### Editor 全局单例 / 模块 wiring 生命周期
+
+| Guideline | 解决的问题 |
+|---|---|
+| [`leveleditor-modetools-lifetime.md`](leveleditor-modetools-lifetime.md) | `GLevelEditorModeTools()` 单例无效时不返回空、而是 ensure 失败 + **错误重建**;所有访问(尤其模块 startup 早期 / shutdown 期)必须 `GLevelEditorModeToolsIsValid()` 守卫;startup 端 registration gate 到 `FLevelEditorModule::OnLevelEditorCreated`;commandlet 不碰。订阅 edit mode 选择/控件状态的消费方参考 `AnimDetailsProxyManager` |
+
 ### Editor / Runtime 架构
 
 > 已 promote 到 skill：[`skills/ue-module-architecture/SKILL.md`](../../skills/ue-module-architecture/SKILL.md)（lazy-load，不再 eager-import）

@@ -103,6 +103,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/fvector4-vector-equals-silent-fail.md
 
+@guidelines/ue/leveleditor-modetools-lifetime.md
+
 @guidelines/maya/manip-container-constraints.md
 
 @guidelines/maya/selection-context-and-undo.md
