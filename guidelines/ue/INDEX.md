@@ -32,6 +32,7 @@ technique，另有 4 份内容已 promote 到 skill：`skills/ue-module-architec
 | Guideline | 解决的问题 |
 |---|---|
 | [`rigvm-bulk-data-as-metadata-not-pins.md`](rigvm-bulk-data-as-metadata-not-pins.md) | 程序化建 RigVM/CR 图时逐元素大批量数据(几百+ 项)走 `URigHierarchy` element metadata,别烤成节点 pin 默认值(每 sub-pin 一个 Slate widget → 打开图卡死 + 资产膨胀);metadata 序列化且经 `CopyHierarchy→CopyAllMetadataFromElement` 复制到运行时实例,RigUnit Execute 读得到 |
+| [`controlrig-sequencer-bulk-key-bake.md`](controlrig-sequencer-bulk-key-bake.md) | 批量烤 key 到 Sequencer 里的 Control Rig 别用逐 key 的 `SetLocalControlRig*`/`SetControlValue(bNotify=true,SetKey=Always)`(每 key 一次 Sequencer 通知+重求值,~35ms/key,几百控件→分钟级);直接批量写 `UMovieSceneControlRigParameterSection` 浮点通道(`Reset`+`AddCubicKey`+`AutoSetTangents`)+ 一次 `RefreshCurrentLevelSequence` + 一个 `FScopedTransaction`(含通道顺序表) |
 
 ### 数学类型 / API marshalling
 
@@ -93,6 +94,7 @@ technique，另有 4 份内容已 promote 到 skill：`skills/ue-module-architec
 - **本地化 / 翻译 pipeline** → [`localization-pitfalls.md`](localization-pitfalls.md) + skill [`ue-settings-persistence`](../../skills/ue-settings-persistence/SKILL.md)
 - **Runtime 跟 Editor 模块边界设计** → skill [`ue-module-architecture`](../../skills/ue-module-architecture/SKILL.md)（含同 module 内三层模型 + 跨 module 依赖方向硬约束）
 - **程序化建 RigVM / Control Rig 图(生成 CR / 加 RigUnit)** → [`rigvm-bulk-data-as-metadata-not-pins.md`](rigvm-bulk-data-as-metadata-not-pins.md)(逐元素大批量数据走 metadata 不走 pin 默认值)
+- **批量烤动画 key 到 Sequencer 里的 Control Rig(import anim / bake clip)** → [`controlrig-sequencer-bulk-key-bake.md`](controlrig-sequencer-bulk-key-bake.md)(别逐 key `SetLocalControlRig*`,直接写 section 浮点通道 + 一次刷新)
 - **接到一个 UE bug / weird behavior** → skill [`ue-reference-engine-source`](../../skills/ue-reference-engine-source/SKILL.md) 的"按子系统分类的 reference 清单"找最相近 engine source 看怎么实现的
 
 ## 增长状态

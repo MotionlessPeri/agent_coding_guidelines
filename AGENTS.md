@@ -101,6 +101,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/rigvm-bulk-data-as-metadata-not-pins.md
 
+@guidelines/ue/controlrig-sequencer-bulk-key-bake.md
+
 @guidelines/ue/fvector4-vector-equals-silent-fail.md
 
 @guidelines/ue/leveleditor-modetools-lifetime.md
