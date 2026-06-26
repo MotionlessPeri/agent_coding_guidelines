@@ -1,4 +1,4 @@
-# `RunUAT BuildPlugin` 的两个非显然 limitation
+# `RunUAT BuildPlugin` 的三个非显然 limitation
 
 UE 5.x（验证版本 5.5）通过 `RunUAT BuildPlugin -Rocket` 打 plugin binary artifact
 分发给 marketplace / 内部用户时，**默认产物不包含 plugin 自带的 `Config/` 和
@@ -275,14 +275,51 @@ bPipStrictHashCheck=False
 
 ---
 
+## Limitation 3: 交付包默认含非交付物 + `RuntimeDependencies` 的 dll 不进包 `Binaries`
+
+`BuildPlugin -Rocket` 打出的"可交付二进制插件包"默认塞了大量**运行时不需要**的东西,且有一个反直觉的 dll staging 行为。直接拿原始产物交付 → 包体积虚高数倍 + 关键 runtime dll 位置跟 dev build 不一致。
+
+### 现象（三个坑）
+
+1. **`Intermediate/` 进包** —— 编译中间产物(`.obj`/`.rsp`/构建记录),可达数百 MB。
+2. **`Binaries/Win64/*.pdb` 进包** —— 调试符号。重 ThirdParty(数值库等)的模块 pdb 单个数十 MB,**占包过半很常见**。
+3. **`RuntimeDependencies.Add("$(BinaryOutputDir)/x.dll", <src>)` 的 dll 在包里不进 `Binaries`**:
+   - **dev build**(项目内编辑器):RuntimeDependency 把 dll 拷到 plugin `Binaries/Win64`(符合直觉)。
+   - **BuildPlugin -Rocket 包**:同一条 RuntimeDependency 的 dll **不**出现在包的 `Binaries/Win64`,只留在它的**源位置**(如 vendored `Source/ThirdParty/<lib>/bin/`)。
+   - 后果:模块 `StartupModule` 若写死从 `Binaries/Win64` 加载该 dll(dev 能命中),**交付包加载失败**;若写死从源位置加载,源位置就**不能被瘦身删掉**。dev 和 package 加载路径不一致是这条最坑的地方。
+
+### Root cause
+
+BuildPlugin 的文件过滤(`FilterPluginFiles`,见 Limitation 1)默认 include `/Source/`(含 vendored dll 源位置)+ pdb + Intermediate;它走自己的 HostProject 构建/打包路径,**不**像普通 build 那样把 `$(BinaryOutputDir)` 的 RuntimeDependencies stage 进包的 `Binaries`。
+
+### 修法:CI package 阶段后处理瘦身 + 统一 dll 到 `Binaries`
+
+BuildPlugin 之后,在 package 脚本里(PowerShell 例):
+1. **把 runtime dll move 到包 `Binaries/Win64`**(标准位置),让 `StartupModule` 统一从 `Binaries/Win64` 加载 —— dev 靠 RuntimeDependency 落该处、package 靠这个 move,两边一致:
+   ```powershell
+   Move-Item -Force "$out\Source\ThirdParty\<lib>\bin\x.dll" "$out\Binaries\Win64\x.dll"
+   ```
+2. **删非交付物**:`Intermediate/`、`Binaries\Win64\*.pdb`、move 后空的源 `bin/`。
+3. **自检断言**:包内有 `.uplugin`/Content/runtime dll(在 Binaries)、无 `Intermediate`/`*.pdb` → 不符即 fail,不让坏包流到 deploy/test。
+4. **runtime 加载**:模块 `StartupModule` 用 `IPluginManager::FindPlugin(...)->GetBaseDir()` + `Binaries/Win64/x.dll` + `FPlatformProcess::GetDllHandle` **显式加载**(delay-load dll 不在默认 DLL 搜索路径,必须显式;dev+package 都从 Binaries 命中)。
+
+> PDB strip 的代价:消费方插件崩溃栈无法符号化。作者侧构建时本有 PDB,如需符号化,**按发布 tag 自行存档** PDB(交付不带、留存备查)。
+
+### 配套坑:BuildPlugin 输出路径 260-char 限制
+
+`BuildPlugin -Package=<深路径>` 在 `<深路径>/HostProject/Plugins/<plugin>/Intermediate/Build/.../<module>/<file>.obj` 这样的深层级下生成文件,基路径稍深就撞 Windows 260-char(`BuildException: action paths are longer than 260 characters`)。**用短输出路径**(如 `C:\pkg`)。CI runner 的 `C:\Gitlab-Runner\builds\...` 通常够短;本机临时验证别用很深的 scratch 目录。
+
+---
+
 ## 项目实例参考
 
-UE 5.5 dialogue plugin（DialogueSystemSample）的 GitLab CI ship 期间踩穿两个 limitation：
+UE 5.5 dialogue plugin（DialogueSystemSample）的 GitLab CI ship 期间踩穿 Limitation 1/2；UE 5.8 curvenet 形变插件(含 CHOLMOD/OpenBLAS 预编译 dll)踩穿 Limitation 3：
 
 - **Limitation 1**: BuildPlugin 输出的 plugin artifact 完全没 `Config/` 和 `Scripts/` 目录。`CoreRedirects` 失效导致 `LegacyNodeClassRedirects` automation test 失败 + plugin 走 subprocess 调 Python 脚本的功能链全断
 - **Limitation 2**: `.uplugin` 里 `PythonRequirements: ["openpyxl>=3.1.2"]` 被 BuildPlugin 剥掉，接收方 UE 不触发 PipInstall
+- **Limitation 3**: curvenet 插件交付包 819M → 104M —— `Intermediate` ~540M + `*.pdb` ~175M(占 63%)+ `libopenblas.dll` 在包里只在 `Source/ThirdParty/.../bin`(RuntimeDependency 没进包 Binaries);修法 = package 脚本移 dll→Binaries + 删 Intermediate/pdb/空 bin + 自检。初次本机验证还撞了深 scratch 路径的 260-char limit
 
-修法用上面的方案——加 `Config/FilterPlugin.ini` + CI package stage PowerShell 后处理写回 PythonRequirements。
+Limitation 1/2 的修法——加 `Config/FilterPlugin.ini` + CI package stage PowerShell 后处理写回 PythonRequirements。
 
 ## 搜索回顾
 
@@ -297,7 +334,9 @@ UE 5.5 dialogue plugin（DialogueSystemSample）的 GitLab CI ship 期间踩穿�
 
 ## 相关 Guidelines
 
-- skill `ue-reference-engine-source` （`skills/ue-reference-engine-source/reference-engine-source.md`）—— 强调"写 UE 功能前先找 reference"。这两个 limitation 都是从 engine source 看出来的，符合"读 source 比读 doc 准"原则
+- skill `ue-reference-engine-source` （`skills/ue-reference-engine-source/reference-engine-source.md`）—— 强调"写 UE 功能前先找 reference"。这三个 limitation 都是从 engine source / 产物实测看出来的，符合"读 source 比读 doc 准"原则
+- `guidelines/ue/ue58-upgrade-gotchas.md` —— 同属 UE 构建/打包 hidden contract 族(5.8 升级期的 Target/RapidJSON/redist 契约)
 - `guidelines/ue/localization-pitfalls.md` —— UE 框架 hidden contracts 集
 - `guidelines/ci-windows/powershell-native-command-pitfalls.md` —— CI 后处理用 PowerShell 时撞的相关 pitfall
+- `guidelines/ci-windows/gitlab-runner-service-and-powershell-pitfalls.md` —— CI package/deploy 脚本跑在 runner 服务环境里的坑(网络盘 UNC / exit-code)
 - `techniques/ci-deploy-to-p4.md` —— BuildPlugin 产物提交到 P4 的完整流程示例

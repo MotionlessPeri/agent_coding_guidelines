@@ -46,6 +46,12 @@ technique，另有 4 份内容已 promote 到 skill：`skills/ue-module-architec
 |---|---|
 | [`leveleditor-modetools-lifetime.md`](leveleditor-modetools-lifetime.md) | `GLevelEditorModeTools()` 单例无效时不返回空、而是 ensure 失败 + **错误重建**;所有访问(尤其模块 startup 早期 / shutdown 期)必须 `GLevelEditorModeToolsIsValid()` 守卫;startup 端 registration gate 到 `FLevelEditorModule::OnLevelEditorCreated`;commandlet 不碰。订阅 edit mode 选择/控件状态的消费方参考 `AnimDetailsProxyManager` |
 
+### 版本升级 / 构建契约
+
+| Guideline | 解决的问题 |
+|---|---|
+| [`ue58-upgrade-gotchas.md`](ue58-upgrade-gotchas.md) | 升 UE 5.8 三个"5.8 才暴露"的硬契约:Target 必须 `BuildSettingsVersion.V7` + `IncludeOrderVersion.Unreal5_8`(否则 modifies-properties 编不过);`.uproject` 用 RapidJSON 读,JSON 字符串含裸控制字符 → 误导性的 `Invalid encoding in string`(dump 整文件 hex 找);运行 editor 需 VC++ redist `14.50.35719+`(编译过≠能运行)。配套 `leveleditor-modetools-lifetime.md`(5.8 删 API) |
+
 ### Editor / Runtime 架构
 
 > 已 promote 到 skill：[`skills/ue-module-architecture/SKILL.md`](../../skills/ue-module-architecture/SKILL.md)（lazy-load，不再 eager-import）

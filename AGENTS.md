@@ -110,6 +110,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/leveleditor-modetools-lifetime.md
 
+@guidelines/ue/ue58-upgrade-gotchas.md
+
 @guidelines/maya/manip-container-constraints.md
 
 @guidelines/maya/selection-context-and-undo.md
