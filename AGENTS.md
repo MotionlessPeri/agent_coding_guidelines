@@ -72,6 +72,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ci-windows/powershell-native-command-pitfalls.md
 
+@guidelines/ci-windows/gitlab-runner-service-and-powershell-pitfalls.md
+
 @guidelines/claude-code/hook-conventions.md
 
 @guidelines/p4/charset-pitfalls.md
