@@ -21,6 +21,7 @@ Guidelines are grouped by topic under `guidelines/`:
 | `guidelines/maya/` | Maya C++ 插件（`MPx*` plugin / manip / context / 多 `.mll` 共享 base 层）的 framework hidden contracts——靠踩坑得到、Maya 文档没明说的约束。**非 Maya 项目可整段 skip**。索引 + 配套 skill 见 [`guidelines/maya/INDEX.md`](guidelines/maya/INDEX.md) |
 | `techniques/` | Procedural patterns and step-by-step operational guides |
 | `skills/` | Claude Code skill files, organized by category under `skills/<category>/<name>/SKILL.md` (categories: `ue/` / `maya/` / `architecture/` / `workflow/` / `collaboration/`). **Lazy-loaded** by Claude Code at invocation time — NOT `@`-imported here. Synced **flat** to `~/.claude/skills/<name>/` (Claude Code discovery requires flat) via `scripts/sync-skills.ps1` (recursive scan + flat copy)。Codex 无对应机制，需手动读取 SKILL.md |
+| `_radar/` | **外部知识雷达暂存区**——`/research-radar` skill(`.claude/skills/research-radar/SKILL.md`,project-local + `disable-model-invocation` 纯手动)跑 deep research 产出的待审 digest 落点。是 inbox **不是** corpus：**绝不** `@`-import(会污染 always-loaded context)、**绝不**自动写进 `guidelines/`。从雷达到 corpus 是用户事后人工走 `knowledge-promotion.md` 的一步。政策见 [`_radar/README.md`](_radar/README.md) |
 
 **Adding new files:**
 - Place new files in the appropriate subdirectory.
