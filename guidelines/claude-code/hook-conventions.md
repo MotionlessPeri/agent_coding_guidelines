@@ -2,6 +2,8 @@
 
 写自定义 hook（settings.json `hooks` 块 + 外挂脚本）时遇到的几条**官方文档没明说但实际行为如此**的约定。属于"看着该 work 的 idiom 实际不 work"hidden contract 集——跟 `guidelines/ci-windows/powershell-native-command-pitfalls.md` 同形态，但作用层不同（hook 是 Claude Code harness ↔ 用户脚本，pitfalls 是 PS ↔ native exe）。
 
+> **Handler 类型**：hook 不止「跑 shell 脚本」一种。Claude Code 现支持 5 种 handler `type`——`command`（shell，**本文 §1–§8 多数针对它**）/ `http`（把事件 JSON POST 到 URL）/ `mcp_tool`（调已连的 MCP server tool）/ `prompt`（发给 Claude 单轮评估、返回 yes/no JSON）/ `agent`（spawn 一个能 Read/Grep/Glob 的 subagent 查条件，**实验性**）。完整能力以 [官方 hooks 文档](https://code.claude.com/docs/en/hooks) 为准——事件集与 handler 类型持续演进。
+
 ## 1. Hook 命令字符串里**只有 Claude Code 自己的占位符变量**会展开
 
 写在 `command` 字段里的字符串被 Claude Code 在执行时做受限替换——**不是 shell 完整变量展开**。
@@ -119,9 +121,11 @@ SessionStart / UserPromptSubmit 最常用这个字段。
 }
 ```
 
-**不要从 env var 拿 session_id**——只有 3 个 Claude Code 官方 env var（见下），`CLAUDE_SESSION_ID` 不存在。
+**不要从 env var 拿 session_id**——env var 里没有 `CLAUDE_SESSION_ID` / `CLAUDE_CWD` / `CLAUDE_TOOL_NAME`（见 §6 的清单），这些只在 stdin 的 JSON 字段里。
 
-## 6. 可用 env vars 只有 3 个
+## 6. 可用 env vars（path 占位符那 3 个 + 几个进程级）
+
+**path 占位符**（可替换进 `command` / `args` 字符串，见 §1）：
 
 | Env Var | 含义 |
 |---|---|
@@ -129,7 +133,9 @@ SessionStart / UserPromptSubmit 最常用这个字段。
 | `CLAUDE_PLUGIN_ROOT` | plugin 安装根（仅 plugin 场景） |
 | `CLAUDE_PLUGIN_DATA` | plugin 持久数据目录（仅 plugin 场景） |
 
-**没有** `CLAUDE_SESSION_ID` / `CLAUDE_CWD` / `CLAUDE_TOOL_NAME` 之类。这些从 stdin 的 JSON 字段拿。
+**导出到 hook 进程环境**的还有几个（以 [docs](https://code.claude.com/docs/en/hooks) 为准，持续增加）：`CLAUDE_CODE_REMOTE`（web/远程环境为 `"true"`，本地 CLI 不设）/ `CLAUDE_EFFORT`（当前 effort 档 low…max）/ `CLAUDE_ENV_FILE`（一个文件路径，hook 可往里写 env 供后续 hook 用；SessionStart / Setup / CwdChanged / FileChanged 可用）/ plugin hook 的 `${user_config.*}`。
+
+**关键不变**：`session_id` / `cwd` / `tool_name` 这些**仍不是 env var**——从 stdin 的 JSON 拿（见 §5）；`CLAUDE_SESSION_ID` 不存在，别去 env 找。
 
 ## 7. `~/.claude/projects/<encoded>/` 路径编码规则**未官方文档**
 
@@ -146,6 +152,8 @@ SessionStart / UserPromptSubmit 最常用这个字段。
 | `PreToolUse` / `PostToolUse` / `PermissionRequest` | 匹配 tool name；支持纯字符串 `Bash` / pipe-OR `Edit\|Write\|MultiEdit` / 含特殊字符时按 JS regex 处理 |
 | `SessionStart` | 匹配 session source: `startup\|resume\|clear\|compact` |
 | `UserPromptSubmit` / `Stop` | 无 matcher 支持，留空 string |
+
+> **事件集已远超上表这几个**：Claude Code 现有 ~33 个 hook 事件，新增一批 agentic / 多-agent 生命周期事件（`SubagentStart` / `SubagentStop` / `TaskCreated` / `TaskCompleted` / `TeammateIdle` / `PermissionDenied` / `FileChanged` / `WorktreeCreate` 等）。上表只列**最常用**几个的 matcher 语义；完整事件清单与各自 matcher 以 [官方 hooks 文档](https://code.claude.com/docs/en/hooks) 为准（事件持续增加）。
 
 ## 项目实例参考
 
