@@ -70,6 +70,22 @@ Each verification item should include:
 
 **Anti-pattern**: "I read the code and the logic correctly validates..." -- this is not evidence. Evidence requires running a command.
 
+## LLM-as-judge 评测（评 agent / 研究类输出）
+
+当要评的是 **agent 生成的输出 / 研究报告 / 难以写确定性断言**的产物（不像代码可跑测试）时，Anthropic 实测**最稳、最贴合人工判断**的方式是：**单次 LLM 调用 + 单个 prompt**，按 rubric 输出 **0.0–1.0 分 + pass/fail**。比多次调用 / 多 judge 投票更一致。
+
+rubric 五维（可裁剪）：
+
+- **事实准确**（claim 与来源一致）
+- **引用准确**（引用的源确实支持该 claim）
+- **完整性**（要求的方面都覆盖）
+- **源质量**（优先一手源 over 二手）
+- **工具效率**（用了对的工具、次数合理）
+
+适用：评 research / digest 输出、评一段 agent 自动改动是否达标、给「难以单测」的产物一个可复现评分。**不适用**：能写确定性断言的代码——那走前面的「运行命令 + 对抗探针」。
+
+> 来源：Anthropic [How we built our multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system)。
+
 ## Diagnostic Log Discipline
 
 When debugging a bug that requires adding diagnostic logs:

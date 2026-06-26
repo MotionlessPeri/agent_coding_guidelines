@@ -22,6 +22,20 @@ The coordinator's most important job is **synthesis**. After workers report rese
 
 **Rule: If your instruction contains "based on your findings" or "based on the research" — rewrite it. You have not synthesized.**
 
+## 成本 & 何时值得用 multi-agent
+
+multi-agent 不是默认更好——它**贵**：Anthropic 实测，单 agent 约耗普通 chat 的 **4×** token，multi-agent 系统约 **15×**；且 **token 用量单独解释了任务质量约 80% 的方差**（模型选择、工具调用次数是次要因素）。所以动手前先判断**值不值**：
+
+| 值得上 multi-agent | 不值得（退回单 agent / 顺序执行） |
+|---|---|
+| 任务可重并行（独立子任务多） | 各 agent 必须共享同一 context |
+| 信息量超单 context 窗 | agent 之间依赖多、需频繁往返 |
+| 要接很多复杂工具 | 任务线性、上下文小 |
+
+**项目实例**：本 repo 的 `/research-radar` 跑 deep-research workflow（5 路搜索 + 3 票对抗核验 fan-out），一轮烧 **~8M subagent token / 106 agents**，直接撞爆账号月额度、核验阶段全废。教训：重 fan-out + 多票核验对「常规巡检」过重——全套 multi-agent 留给真正高价值、可并行、超单 context 的任务；轻量场景用「只搜 + 抓、跳过多票核验」的省钱变体。
+
+> 来源：Anthropic [How we built our multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system)。
+
 ## Concurrency Rules
 
 ### Read-Write Separation
