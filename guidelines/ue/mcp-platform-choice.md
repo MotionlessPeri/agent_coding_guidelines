@@ -227,6 +227,10 @@ public:
 - [`skills/ue/unrealmcp-usage/SKILL.md`](../../skills/ue/unrealmcp-usage/SKILL.md) — fork
   的使用指南（什么时候 detect 项目装了 fork、用 TCP `ue_cmd.py` 怎么调、扩 fork 时
   两侧同步规则）。本文档管"用哪个"，那条 skill 管"fork 怎么用"
+- [`skills/ue/official-mcp-usage/SKILL.md`](../../skills/ue/official-mcp-usage/SKILL.md) —
+  **官方** MCP 的使用指南（setup 真相：`ModelContextProtocol` 只是 server 外壳，真正提供
+  工具的是 `AllToolsets` 聚合器；9 条 usage hidden contract；报错停下问 user Reconnect 不静默
+  fallback）。跟 `unrealmcp-usage` 对称——本文档管"用哪个"，那条 skill 管"官方怎么用"
 - [`guidelines/ue/external-automation-write-path.md`](external-automation-write-path.md) —
   任何外部脚本（MCP / Python commandlet / Editor Utility Widget）写入 UE 资产必走
   `PostEditChangeProperty` 同步路径。fork 和官方 MCP 都必须遵守这条

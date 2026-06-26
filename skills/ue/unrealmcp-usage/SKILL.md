@@ -1,7 +1,7 @@
 ---
 name: unrealmcp-usage
 description: How to use UnrealMCP plugin from a Claude Code session to programmatically read / mutate UE editor state (spawn actor / set property / query actor list / call subsystem function / save-exit editor / etc.). Bundles the canonical TCP client `ue_cmd.py` (preferred over Claude Code's native MCP integration which is unreliable). Covers — (1) detection: how to tell whether UnrealMCP is available in the current project, (2) invocation: TCP-direct `ue_cmd.py` pattern + Windows path quoting, (3) capability gap policy (ask user before working around MCP), (4) top 5 inline gotchas with one-line summaries + link to fork's `Docs/known-issues.md` for code examples, (5) where to find command reference (project's `UnrealMCP_Docs/commands.md` synced from fork), (6) onboarding: how to add UnrealMCP to a new UE project (sync script + mcp.json + AGENTS.md sections), (7) extending UnrealMCP: dual-side registration (C++ dispatcher + Python tool layer) + Progress.md discipline + cold-rebuild rule. The skill ships `ue_cmd.py` itself so consumer projects do not need their own copy.
-when_to_use: Fires when (1) the current project has any of `Plugins/UnrealMCP/` / `UnrealMCP_Docs/` / `.claude/mcp.json` / `sync_unreal_mcp.sh` — indicating UnrealMCP is integrated; (2) agent task involves programmatically reading or mutating UE editor state (spawn / list / modify actor properties, call subsystem functions, save and exit editor, automate level setup, fix asset state, etc.) and the editor is running; (3) agent must decide between using MCP vs writing C++ / direct file edits for a UE editor operation; (4) user mentions "UnrealMCP" / "MCP server" / "ue_cmd" / "mcp.json"; (5) onboarding a new UE project to use UnrealMCP. Skip if the project has no UnrealMCP integration and the task does not involve UE editor automation.
+when_to_use: Fires when (1) the current project has any of `Plugins/UnrealMCP/` / `UnrealMCP_Docs/` / `.claude/mcp.json` / `sync_unreal_mcp.sh` — indicating UnrealMCP is integrated; (2) agent task involves programmatically reading or mutating UE editor state (spawn / list / modify actor properties, call subsystem functions, save and exit editor, automate level setup, fix asset state, etc.) and the editor is running; (3) agent must decide between using MCP vs writing C++ / direct file edits for a UE editor operation; (4) user mentions "UnrealMCP" / "MCP server" / "ue_cmd" / "mcp.json"; (5) onboarding a new UE project to use UnrealMCP. On UE 5.8+ the official `ModelContextProtocol` MCP is the default — check `official-mcp-usage` first and treat this fork as legacy/fallback (niche only); the fork is NOT deprecated on UE 5.7 and earlier, where it is the only option. Skip if the project has no UnrealMCP integration and the task does not involve UE editor automation.
 ---
 
 # UnrealMCP Usage
@@ -10,11 +10,22 @@ UnrealMCP 是一个 UE 编辑器侧 C++ 插件 + Python tool layer，让 agent /
 
 本 skill 教**消费侧** agent 怎么用，不教扩展 fork（扩展见文末 §Extending）。
 
+> ## ⚠️ UE 5.8+ → 优先官方 MCP，本 fork 在 5.8+ 上是 legacy / fallback
+>
+> UE 5.8 引擎自带官方 `ModelContextProtocol`（覆盖面碾压 fork：46 toolset × 完整 CRUD）。
+> **5.8+ 项目默认用官方 MCP**（见 `skills/ue/official-mcp-usage`）；fork 在 5.8+ 上只在官方
+> 覆盖不到的 niche（如 material 整图 single-shot dump 的 token 效率）才用。
+>
+> **但 fork 不是全局 deprecated** —— UE **5.7 及之前官方 MCP 根本不存在，fork 仍是唯一选择**，
+> 本 skill 在那些项目里照常完整适用。判断顺序：先看项目 UE 版本 → 5.8+ 先查官方、fork 兜底；
+> ≤5.7 直接用 fork。完整分版本决策表见 [`guidelines/ue/mcp-platform-choice.md`](../../../guidelines/ue/mcp-platform-choice.md)。
+
 ## When This Fires
 
 | 触发信号 | 行动 |
 |---|---|
-| 项目里看到 `Plugins/UnrealMCP/` / `UnrealMCP_Docs/` / `.claude/mcp.json` / `sync_unreal_mcp.sh` | 本项目已集成 UnrealMCP，UE 编辑器自动化任务优先考虑用 MCP |
+| **项目是 UE 5.8+** | **先查官方 MCP**（`official-mcp-usage` skill）；fork 仅作 niche fallback（见上方 banner） |
+| 项目里看到 `Plugins/UnrealMCP/` / `UnrealMCP_Docs/` / `.claude/mcp.json` / `sync_unreal_mcp.sh` | 本项目已集成 UnrealMCP，UE 编辑器自动化任务优先考虑用 MCP（**5.8+ 先确认官方不够用**） |
 | 任务需要 spawn actor / 改 property / 查 actor list / call subsystem function / 控制编辑器生命周期 | 先 ping 看 MCP 可用否，可用就走 MCP 不要写 C++ / 手 edit asset 文件 |
 | 任务要操作 UE editor 但项目**没**集成 UnrealMCP | 跟 user 确认要不要先装（详 §Onboarding） |
 | 撞到 MCP 工具不够用 | **先问 user 要不要扩 fork**，不要静默绕过（详 §Capability Gap Policy） |
