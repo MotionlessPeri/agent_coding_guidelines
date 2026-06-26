@@ -1,6 +1,6 @@
 ---
 name: conversation-walkthrough
-description: 编码对话收尾时的标准 review 环节——对本对话改过的代码做一次结构化走查：(1) 结构 map（改了哪些文件、各自角色、怎么拼起来），(2) self-review 三档（🔴 重构/可读性：套 function-clarity 行数阈值，>~50 行函数加 leading 概览、单步骤 >~80 行拆 sub-function、≥2 次重复抽 helper；🟡 优化；🟢 对抗式正确性读查），(3) 注释体检（按「注释自包含」原则剥 transient、保留 stable why；关键函数用 Doxygen `/** @param @return */` 契约头，但每个 tag 必带真内容、禁空 tag/复述参数名）。配套：用一份 ephemeral tracking 文档锚定讨论主线防偏移；重构与注释清理分成不同主题各自 commit；改完 cold rebuild + 冒烟验证语义没变；跑通后可据此 promote 项目级 lesson。默认在编码对话收尾触发，除非用户明说「后面是迭代不用 review」。
+description: 编码对话收尾时的标准 review 环节——对本对话改过的代码做一次结构化走查：(1) 结构 map（文件级 + 函数级清单：每个非平凡函数列职责+行数，显式标 🔑key function 与 📏超长函数；既是 Phase 2 的覆盖率清单、也是像 MR description 一样主动呈给用户的 review 摘要主体——先呈给用户、获批再改，不自审完直接 move on；多单元走查每单元各呈一份），(2) self-review 三档（🔴 重构/可读性：套 function-clarity 行数阈值，>~50 行函数加 leading 概览、单步骤 >~80 行拆 sub-function、≥2 次重复抽 helper；🟡 优化；🟢 对抗式正确性读查），(3) 注释体检（按「注释自包含」原则剥 transient、保留 stable why；关键函数用 Doxygen `/** @param @return */` 契约头，但每个 tag 必带真内容、禁空 tag/复述参数名）。配套：用一份 ephemeral tracking 文档锚定讨论主线防偏移；重构与注释清理分成不同主题各自 commit；改完 cold rebuild + 冒烟验证语义没变；跑通后可据此 promote 项目级 lesson。默认在编码对话收尾触发，除非用户明说「后面是迭代不用 review」。
 when_to_use: Fires at the wrap-up of any coding conversation that produced non-trivial code changes (default-on standard closing step), UNLESS the user says upcoming work is iteration that doesn't need review. Also fires when the user asks to "review 一下这个对话改的代码 / walkthrough / 看看有没有重构点 / 整理注释". Covers: mapping what changed, self-reviewing for refactor/optimization/correctness, and humanizing comments (stripping iteration/agent-oriented noise). Pairs with guidelines/code/function-clarity.md (line thresholds + comment stability), guidelines/code/reuse-before-implementing.md (extract-on-2nd-occurrence), guidelines/workflow/commits.md (one commit = one theme). Skip for trivial/mechanical changes or when the user explicitly defers review to a later milestone.
 ---
 
@@ -22,9 +22,22 @@ when_to_use: Fires at the wrap-up of any coding conversation that produced non-t
   - ⚠️ 这份文档**本身 ephemeral**(review 完 cleanup),按「注释自包含」原则**不被任何代码注释引用**。
 - **重构与注释清理分成不同主题、各自 commit**(`guidelines/workflow/commits.md` 一 commit 一主题):结构重构 = `refactor:`,注释清理 = `docs:`。**先提已验证的重构,再单独提注释**——结构改动和文字改动混一个 diff,review 时分不清「这行是搬过来的还是改了语义」。
 
-## Phase 1 — 结构 map
+## Phase 1 — 结构 map（呈给用户的 MR 式 review 摘要）
 
-一张表:**改了哪些文件 / 各自角色 / 本对话新增了什么**;再一两句「这些拼起来是一条什么数据流/调用链」。目标:让人(和半年后的自己)30 秒看懂这次改动的骨架。
+两张表,目标:让人(和半年后的自己)30 秒看懂骨架。
+
+> **这两张表 + Phase 2 的发现 = 像 MR/PR description 一样【主动呈给用户】的 review 摘要**:
+> 「改了哪些范围 / 架构·数据流 / 🔑key·📏超长函数清单(+ 各自 review 结论)」。**铁律:先呈给用户、获批再动手改**——
+> 不要把结构 map 只当自己脑内的覆盖率清单、自审完直接重构 + move on。多单元 review(逐子系统 / 逐文件走查)时
+> **每个单元各自呈一份** Phase 1 map + Phase 2 发现,再进 Phase 4 执行;改完按 Phase 4 末补一句「改了什么」recap。
+
+1. **文件级**:改了哪些文件 / 各自角色 / 本对话新增了什么;再一两句「这些拼起来是一条什么数据流/调用链」。
+2. **函数级(必给,别省)**:范围内每个非平凡函数列一行 —— 函数名 + 一句话职责 + **行数**,并显式标两类:
+   - **🔑 key function**:public API / 跨边界入口 / 非平凡契约(带参数 + 返回语义 + 前置条件)。这些是 Phase 2 🟢 对抗式正确性 + Phase 3 Doxygen 契约头的重点对象。
+   - **📏 超长函数**:>~50 行(标「缺 leading 概览?」)/ 单步骤 >~80 行(标「该拆 sub-function?」)。直接喂给 Phase 2 🔴。
+   - trivial getter / 签名自明的一行函数可合并成一句「其余 N 个 trivial,从略」,不逐行列。
+
+> 为什么 Phase 1 就要把 key + 超长函数摊出来:不先建函数级清单,Phase 2 的 🔴(超长)/ 🟢(key 函数正确性)就退化成「过的时候顺带发现」,容易漏覆盖 —— 用户拿到零散发现,而不是「这些函数我都过了、行数都标了,这几个超长 / 这几个是 key」。函数级清单是 Phase 2 的覆盖率清单。
 
 ## Phase 2 — self-review 三档
 
@@ -86,12 +99,15 @@ int splitSpline(int splineIdx, double t);
 2. **验证语义没变**:cold rebuild(插件/native 必 cold,不 hot reload)+ 冒烟/headless 跑一遍既有 verify 脚本(`guidelines/code/validation.md` 对抗式)。重构尤其要「行为不变」实证,不能只「看代码对」。
 3. 重构 commit(`refactor:`)→ 注释清理 commit(`docs:`),各自单一主题。
 4. 更新 tracking 文档进度 log。
-5. **promote 评估**:本轮发现的可复用 lesson 按 `guidelines/workflow/knowledge-promotion.md` 评估是否回灌 meta-corpus(两-strike / 框架 hidden contract)。
+5. **呈 MR 式收尾 recap**:给用户一段总结——本单元 commit 清单(hash + 一句话各做了什么)/ 改动范围 / 验证结果(测试 PASS / 行为不变实证 / 残留 finding)。让用户像看 MR 一样确认,不是改完静默过。
+6. **promote 评估**:本轮发现的可复用 lesson 按 `guidelines/workflow/knowledge-promotion.md` 评估是否回灌 meta-corpus(两-strike / 框架 hidden contract)。
 
 ## Anti-Patterns
 
 | 反 pattern | 后果 | 修法 |
 |---|---|---|
+| Phase 1 只给文件级 map,不列函数 | Phase 2 🔴/🟢 退化成顺带发现,漏覆盖;用户拿到零散发现而非覆盖率清单 | Phase 1 必给函数级清单,显式标 🔑key / 📏超长 + 行数 |
+| 自审完直接改 + move on,不给用户 MR 式摘要 | 用户看不到改了哪些范围 / 架构影响 / 哪些 🔑key·📏超长函数被动了,等于黑箱重构 | 每单元先呈 Phase 1 map(scope+架构+函数清单)+ Phase 2 发现,像 MR description 一样获批再动手;Phase 4 末补「改了什么」recap |
 | 不建 tracking 文档,边聊边深入 | 讨论偏移、丢主线、决策无记录 | 先建 ephemeral tracking 文档锚主线 |
 | 重构 + 注释清理混一个 commit | review 分不清结构改动 vs 语义改动 | 分主题各自 commit,先重构后注释 |
 | 注释清理时连 why 一起删 | 丢失设计理由 | 先浓缩 inline 再删 ephemeral 引用 |
