@@ -62,6 +62,7 @@
 - 用 INDEX.md 做 navigation hub，**不 eager load 整个集群**——agent 看 hub 决定是否进具体 file
 - 项目侧 AGENTS.md 自己 `@`-import 它需要的子集
 - 或者 promote 到 skill，让 Claude Code 按 trigger description 按需 load
+- 或用 **path-scoped `.claude/rules/`**（碰到该类文件才自动加载）——见下「加载时机三档模型」，注意那里两个 caveat（Claude-Code 专属 + `paths` 是文件 glob 非项目类型）
 
 #### 信号 2: 内容显著重叠
 
@@ -85,6 +86,27 @@ AGENTS.md 自己介绍每个 imported guideline + 然后 `@`-import 把 guidelin
 4. **Trim**——只保留前部"决策表 / 核心规则"，details 移到 separate ref，主文件 always-load，ref 文件按需 load
 
 按 `token saving × confidence` 排 top-N，落实施 commit。
+
+## 加载时机三档模型（决定每条内容该放哪档）
+
+context 膨胀的根因是「该按需加载的内容被 always-load 了」。Claude Code 的 steering 机制按**加载时机**分三档，给「这条内容放哪档」一张决策依据：
+
+| 档 | 机制 | 何时进 context | 适合放 |
+|---|---|---|---|
+| **永远在** | 根 `CLAUDE.md` / `@`-import / 不带 `paths` 的 `.claude/rules/` | session 一开就在，压缩后重注入 | 真·跨所有 project 通用（commits / agent-lifecycle / validation） |
+| **碰文件自动进** | **path-scoped `.claude/rules/`**（frontmatter `paths: ["**/*.uasset"]`）/ 子目录 `CLAUDE.md` | 摸到匹配文件时自动加载，docs-only session 不进 | 跟某类文件强相关、但非全项目需要的规则 |
+| **被调才进** | **Skills**（`/手动` 或 description 自动匹配）/ subagent | 调用时才加载正文，平时只 name + description | 按场景 / 流程触发的程序化内容（本 repo 大量 UE / Maya 内容已走此档） |
+
+**path-scoped rule 是「永远在」和「被调才进」之间缺的中间档**——补上「我没主动调、但碰到这类文件就该自动生效」的场景。
+
+⚠️ 两个 caveat（决定它**不是** always-import 的银弹）：
+
+- **Claude-Code 专属**：`.claude/rules/` 只有 Claude Code 认；本 repo 的 `@`-import 走 `AGENTS.md` 是为了 **Codex 也能读**（见 `collaboration/multi-agent.md` single-source 政策）。全面改 rules/ = 放弃跨工具单源。只用 Claude 的项目无此顾虑。
+- **`paths` 是文件 glob，不是「项目类型」**：触发依据是「这次 session 摸了哪些文件」，不等于「这是不是 UE 项目」。本 repo 是**全局加载**（`~/.claude/CLAUDE.md`），「UE 集群在非 UE 项目浪费」这个痛点，file-glob 只能**部分**对上（UE 项目开头还没碰 `.uasset` 时也不加载）。
+
+所以三档是**工具箱**，不是「把 always-import 全改 rules/」。Step 3 信号 1 的「conditional / lazy」修法，落地时按本表选档：domain 集群走 path-scoped rule（碰文件自动进）还是 skill（被调才进），取决于它是「碰某类文件触发」还是「按场景触发」。
+
+> 一手 framing：把「决定每个推理周期 context 里放什么」当成独立于 prompt engineering 的学科，见 Anthropic [Effective context engineering for AI agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)——其 just-in-time 检索 + agentic 笔记落盘，正是本 technique 与 `coordination-patterns.md` iterative-retrieval 在做的事。
 
 ## Anti-Patterns
 
