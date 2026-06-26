@@ -8,6 +8,27 @@
 - **Shutdown 端**:`ShutdownModule`(经 `UnloadModulesAtShutdown`)里**单例已销毁**,清理 delegate 前必须 `GLevelEditorModeToolsIsValid()` 守卫;无效则直接跳过——mode tools 连同你绑进去的回调已一起销毁,无需也无法显式移除。
 - **Commandlet / headless**:`GLevelEditorModeTools()` 顶部有 `checkf(!IsRunningCommandlet(), ...)`——commandlet 环境直接 check 失败。这类全局编辑器单例**不要**在 commandlet 里碰。
 
+## ⚠️ 版本兼容:UE 5.8 起 `GLevelEditorModeToolsIsValid()` 不可用
+
+`GLevelEditorModeToolsIsValid()` **UE 5.5 起标 `UE_DEPRECATED`、5.8 删除了定义**——`Editor.h` 里只剩声明(带 `UE_DEPRECATED(5.5, ...)`),全引擎源码**无任何定义** → 调用它链接期 `LNK2019: unresolved external symbol`。Epic 在 deprecation 消息里给的指引:
+
+> "Checking the validity of the global mode manager is unnecessary. Instead use `FLevelEditorModule::OnLevelEditorCreated` to gate the access on the global mode manager."
+
+所以**跨 5.5–5.8+ 的代码不要用 `GLevelEditorModeToolsIsValid()` 守卫**,改用「level editor 是否存在」做代理(5.7 / 5.8 通用,本文后续所有 `GLevelEditorModeToolsIsValid()` 用法在 5.8+ 一律换成它):
+
+```cpp
+static bool AreLevelEditorModeToolsValid()
+{
+    if (!GIsEditor || IsRunningCommandlet()) { return false; }
+    FLevelEditorModule* LE = FModuleManager::GetModulePtr<FLevelEditorModule>("LevelEditor");
+    return LE != nullptr && LE->GetFirstLevelEditor().IsValid();
+}
+```
+
+全局 mode-tools 单例的生命周期跟 LevelEditor 模块的 live level editor 一致:level editor 在 ⇒ 单例有效;引擎退出时两者同时消失 ⇒ 代理返回 false → 跳过访问,正好避免 shutdown 期 `GLevelEditorModeTools()` ensure-fail + 错误重建导致的退出崩溃(下节)。需依赖 `FModuleManager`(`Modules/ModuleManager.h`)+ `FLevelEditorModule`(`LevelEditor.h`,Build.cs 加 `LevelEditor` 依赖)。
+
+> 下文「Hidden Contract」记的 `GLevelEditorModeToolsIsValid()` 是 ≤5.7 的守卫形态;其**机制**(单例无效时 `GLevelEditorModeTools()` ensure-fail + 重建)在 5.8 仍成立,只是**那个具名守卫函数没了** → 用上面的代理顶替。
+
 ## Hidden Contract(带 engine source 锚点)
 
 `Engine/Source/Editor/UnrealEd/Public/Editor.h`:
