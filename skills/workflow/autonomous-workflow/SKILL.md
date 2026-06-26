@@ -117,6 +117,16 @@ Phase 3: Per-Milestone Implementation (TDD-strict, no gates)
     - User explicitly interrupts asking for status → respond with current worklog state
 
 Phase 4: Self-Review and Result
+  → CONSISTENCY GATE (do this FIRST — autonomous has no per-Milestone gate, so this is
+    the coverage backstop; it is a DIFFERENT lens than code-review: "做的 ↔ 当初说的对得上吗",
+    not "代码质量好不好"):
+      - Coverage, both directions: does every Acceptance Criterion + Milestone in brief.md
+        have corresponding implementation? AND was anything built that brief.md did NOT
+        ask for (silent scope creep)?
+      - Spec-quality leftovers: any vague/unmeasurable acceptance criteria, or unresolved
+        TODO / ??? / placeholder shipped?
+      - Record gaps in result.md with severity (CRITICAL / HIGH / MEDIUM / LOW). A CRITICAL
+        coverage gap means the task is NOT done — fix or escalate, do not write result.md as complete.
   → invoke superpowers:requesting-code-review adversarially against your own work
     (focus: cross-Milestone consistency, integration risks not visible per Milestone)
   → IF Option B was chosen at plan gate (agent lifted commit gate at Phase 0):

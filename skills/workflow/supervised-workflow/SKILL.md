@@ -75,6 +75,14 @@ Phase 3: Per-Milestone Implementation
       Wait for user confirmation before starting next Milestone.
 
 Phase 4: Overall Review
+  → CONSISTENCY GATE (run FIRST — a DIFFERENT lens than code-review: "做的 ↔ 当初说的对得上吗",
+    not "代码质量好不好"). Even with per-Milestone GATE 3, do a final cross-Milestone coverage pass:
+      - Coverage, both directions: does every Acceptance Criterion + Milestone in the plan have
+        corresponding implementation? AND was anything built that the plan did NOT ask for?
+      - Spec-quality leftovers: any vague/unmeasurable acceptance criteria, or unresolved
+        TODO / ??? / placeholder shipped?
+      - Surface gaps with severity (CRITICAL / HIGH / MEDIUM / LOW) in the review output; a
+        CRITICAL coverage gap blocks completion.
   → invoke superpowers:requesting-code-review
   → cover all Milestones together, focus on cross-Milestone consistency,
     architecture coherence, and integration risks not visible at Milestone scope.
