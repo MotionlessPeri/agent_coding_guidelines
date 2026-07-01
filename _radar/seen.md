@@ -41,6 +41,14 @@
 ### 已并入「不必再推」的(本轮确认已成熟/已覆盖)
 - Skills 懒加载 / 三级 progressive disclosure —— 已重度使用 + AGENTS.md 已述。
 
+### 2026-07-01 首见(详见 `2026-07-01.md`;⚠️ 该轮 verify 撞 session limit 腰斩——9 条 claim 核验 errored、synthesize 失败;标注见 digest)
+- ✅ 已促成(2026-07-01)Claude Code auto-mode / sandbox 三连硬化(6 月)`[3-0 已核验 + WebFetch 复核引文]` —— `2.1.183` auto mode 拦未经要求的破坏性命令(`git reset --hard`/`checkout -- .`/`clean -fd`/`stash drop`/非本-session `commit --amend`/未点名 stack 的 tf/pulumi/cdk destroy);`2.1.187` 新 `sandbox.credentials` 阻 sandbox 读凭据 + secret env;`2.1.193` 新 `autoMode.classifyAllShell` 全 shell 走 classifier。**促成去向**:`techniques/claude-code-autonomous-permissions.md` 新增「Auto Mode: Engine-Side Destructive-Command Guardrails」节(auto-mode 层 vs 三 list 层正交 / 放开 commit 权限仍被兜 destructive / 两个 settings 表 / 默认值 changelog 未给已标注 caveat)。源:code.claude.com/docs/en/changelog(引文经 WebFetch 逐条核实)
+- 📥 雷达中 Maya 2027 devkit:Qt5→Qt6.8.3 + MSVC 钉死 VS2022 v17.14.13 `[未核验-仅 search]` —— C++/Qt `.mll` 硬 ABI 断裂 + MFnMesh boolean ops / M3dView 选择回调变更。对到 `guidelines/maya/plugin-build-and-scripting-contracts.md`(跨版本 devkit 工具链契约新数据点)。**促成前必须手动核源** blog.autodesk.io/maya-2027-api-update-guide + 确认项目是否升 2027。
+- 📥 雷达中 Claude Code 压缩按 LRU 驱逐已调用 skill `[3-0 已核验]` —— compaction 时超预算先丢最早调的 skill 正文;长 session 静默丢早期 skill。正交补 `techniques/context-budget-audit.md`「被调才进」档的隐藏行为。门槛偏高(版本相关易过时)。源:claude.com steering blog
+- 👁 观察 pre-call gate 授权拦截学术框架 `[2-1 核验但⚠️源存疑]` —— 工具调用前确定性授权拦截(proactive)。对到 `techniques/fact-forcing-gate.md` 思路,可作学术出处指针。⚠️ arxiv `2603.20953` 存在性未独立确认,促成前必须核实论文真实可引,否则不加。
+- 👁 观察 UE 5.8 = 最后一个 UE5 大版本(UE6 约 2027 末 early access)—— 利好深耕 5.8 hidden contracts(版本天花板 = 5.8 契约不会被 5.9/5.10 快速淘汰),但非可操作规则。源:unrealengine.com State of Unreal 2026
+- 👁 观察 `$PSNativeCommandUseErrorActionPreference`(PS 7.4+)—— 非终止错误,`try/catch` 抓不到;是 PS 5.1 NativeCommandError-on-stderr 坑的 PS7 对应面(触发是 exit code 非 stderr,opt-in 默认关)。你在 PS 5.1 暂不适用;升 PS7 再看。源:learn.microsoft.com about_preference_variables
+
 ### 本轮 promote 落地(2026-06-26)
 - #2 → `3272c70` docs: refresh hook-conventions（33 事件 / 5 handler / env var）
 - #1+#5 → `e0b64e6` docs: context-budget-audit 加三档加载模型 + 决策表 + Anthropic 出处
