@@ -1,6 +1,6 @@
 ---
 name: research-radar
-description: 跑 deep research 扫最近热门的 coding / agent-workflow guideline + 工具,狠过滤后落一份 dated digest 到 _radar/。纯手动触发(disable-model-invocation),不自动促成进 guidelines/。
+description: 跑轻量搜索(radar-lite:只搜+抓、跳过对抗核验)扫最近热门的 coding / agent-workflow guideline + 工具,狠过滤后落一份 dated digest 到 _radar/。纯手动触发(disable-model-invocation),不自动促成进 guidelines/。
 disable-model-invocation: true
 argument-hint: [可选焦点,如 "UE5 自动化测试" / "Claude Code skills"]
 ---
@@ -20,22 +20,42 @@ argument-hint: [可选焦点,如 "UE5 自动化测试" / "Claude Code skills"]
 - repo 现有覆盖面(`guidelines/` `skills/` `techniques/` 的主题)已在你的 context 里
   (AGENTS.md 索引)。把这些都当**已覆盖**,搜索时主动排除。
 
-### 2. 跑 deep research(收窄到 niche,别搜泛文)
-调用 `deep-research` skill。query 收窄到**这个用户的真实 niche**,有 `$ARGUMENTS` 就以它为焦点,否则覆盖:
+### 2. 跑 radar-lite 轻量搜索(收窄到 niche,别搜泛文)
+
+**为什么不用全套 `deep-research`**:那个 workflow 的 Verify 阶段是 25 claim × 3 票 ≈ 75 个
+subagent(占总 token 3/4),一轮烧过 ~8M token、两次撞爆额度。而雷达是 **inbox 不是 corpus**——
+`_radar/README.md` 的政策本来就是「促成某条进 `guidelines/` 时才人工核源」,在**巡检阶段**做对抗
+核验是纯浪费。所以雷达默认走 **radar-lite**(只 Scope→Search→Fetch,跳过 Verify+Synthesize,
+agent 数 ~97 → ~21)。
+
+用 `Workflow` 工具跑**本 skill 目录下的 `radar-lite.js`**(skill 加载时系统会给出 base
+directory,拼成绝对路径传 `scriptPath`;它是 project-local 脚本,不 sync 到 `~/.claude`):
+
+```
+Workflow({ scriptPath: "<本 skill 目录>/radar-lite.js", args: "<收窄后的 niche query>" })
+```
+
+query 收窄到**这个用户的真实 niche**,有 `$ARGUMENTS` 就以它为焦点,否则覆盖:
 - **Agent / LLM 辅助编码 workflow**:Claude Code skills/hooks/subagents 新实践、AGENTS.md /
   context engineering / prompt 工程的成型方法论、multi-agent 编排、agent 评测/验证 discipline
 - **用户的技术栈工具链新动向**:UE5(editor 自动化 / 测试 / 插件分发)、Maya C++ 插件、
   Perforce、Windows CI(PowerShell)、C++ 多-DLL/构建
 - **值得评估的新兴 coding-guideline meme**(但要能落到「可操作规则」,不是鸡汤)
 
-明确告诉 deep-research:**只要近 6-12 个月有动静的、有具体可操作内容的**;排除 seen.md 里
+query 里明确写:**只要近 6-12 个月有动静的、有具体可操作内容的**;排除 seen.md 里
 的老生常谈;泛泛 listicle 直接弃。
 
-### 2.5 ⚠️ deep-research 返回后先验「核验是否真的跑了」
-看返回的 `<failures>` / logs:若大量 `failed`(额度/网络)或「claim 全部 refuted / inconclusive」,
-**很可能是 verify 阶段没跑起来的假阴性,不是真驳回**(实测踩过:撞 spend limit → 全 refuted 假象)。
-这种情况下:回退到「看 search/fetch 抓到的 claim + 源质量」自行判断,**并在 digest 顶部显著标注
-「本轮核验未完成,候选未经 harness 核验,促成前须逐条核源」**。不要照抄 workflow 的「本轮无 signal」。
+> **逃生通道**:若某次焦点特别关键、需要当场对抗核验(不打算走事后人工促成),可显式改调全套
+> `deep-research` skill——但要预期它贵得多、可能撞额度。默认永远走 radar-lite。
+
+### 2.5 candidates 本就未核验 —— digest 必须标注 + 检查搜索是否跑全
+radar-lite 返回的 `candidates` **按设计就没经过对抗核验**(`mode` 字段会写明)。这不是缺陷,是雷达
+定位——所以 digest 顶部**必须显著标注**「候选未经对抗核验(radar-lite 设计如此),促成前须逐条
+手动核源」。
+
+但仍要**检查 search/fetch 本身有没有跑全**:看返回的 `stats`(sources / claims 数)和 workflow
+的 `<failures>`。若大量 fetch `failed`(额度/网络)导致 `sources` 或 `claims` 异常少,说明这轮
+**搜索都没跑完**,digest 要额外注明「本轮搜索不完整」,别把「没搜到」当「无 signal」。
 
 ### 3. 狠过滤 → 3-5 个候选
 对每个候选问三件事,**任一为否就砍**:
@@ -52,7 +72,10 @@ argument-hint: [可选焦点,如 "UE5 自动化测试" / "Claude Code skills"]
 # Radar YYYY-MM-DD
 
 焦点:<$ARGUMENTS 或 "全域扫描">
-来源轮次:deep-research(N 个 source 核对)
+来源轮次:radar-lite(N 个 source / M claim,**未经对抗核验**)
+
+> ⚠️ 候选未经对抗核验(radar-lite 设计如此——verify 移到人工促成阶段)。促成任何一条进
+> `guidelines/` 前须逐条手动核源。
 
 ## 候选
 
