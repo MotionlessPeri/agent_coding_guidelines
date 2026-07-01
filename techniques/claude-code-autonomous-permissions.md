@@ -33,6 +33,62 @@ Patterns use either prefix match (`Bash(git commit*)`) or colon-delimited
 command match (`Bash(git commit:*)`). Both forms are valid; prefer the colon
 form when matching a command with arguments.
 
+## Auto Mode: Engine-Side Destructive-Command Guardrails
+
+Since ~2.1.183 (June 2026), Claude Code's **auto mode** adds a second, *independent*
+enforcement layer on top of the `allow` / `ask` / `deny` lists. The two layers answer
+different questions:
+
+- **Permission lists** (above) decide — by pattern match — whether a tool call is
+  auto-approved, prompted, or blocked.
+- **Auto mode classifier** inspects the *content / intent* of a shell command and can
+  block destructive actions the user never asked for — **even if the permission lists
+  would have allowed them**.
+
+This is the engine-side enforcement of the "do not use destructive actions as shortcuts"
+rule that `guidelines/workflow/agent-lifecycle.md` previously left to agent
+self-discipline. It matters directly here: lifting `git commit` into `allow` for an
+autonomous session does **not** also open the door to `git reset --hard` or history
+rewrites — auto mode still guards those separately.
+
+### What auto mode blocks (2.1.183+)
+
+> Destructive git commands (`git reset --hard`, `git checkout -- .`, `git clean -fd`,
+> `git stash drop`) are blocked when you didn't ask to discard local work;
+> `git commit --amend` is blocked when the commit wasn't made by the agent this session;
+> `terraform destroy` / `pulumi destroy` / `cdk destroy` are blocked unless you asked for
+> the specific stack.
+
+Two related settings extend the surface:
+
+| Setting (`settings.json`) | Since | Effect |
+|---|---|---|
+| `autoMode.classifyAllShell` | 2.1.193 | Routes **all** Bash/PowerShell commands through the auto-mode classifier, not just arbitrary-code-execution patterns. |
+| `sandbox.credentials` | 2.1.187 | Blocks sandboxed commands from reading credential files and secret environment variables — a CI / agent credential-isolation knob. |
+
+### Implications for this technique
+
+- Lifting `git commit` / `git push` into `allow` for an autonomous session is **still
+  safe against accidental history loss** — auto mode's destructive-command guard is a
+  separate net that a permission lift does not disable.
+- If you *intend* an autonomous session to run a specific destructive command (e.g. a
+  scripted `git reset --hard` in a throwaway worktree), you must **ask for it explicitly**
+  — auto mode blocks *unrequested* destructive actions regardless of the allow list.
+- Consider `sandbox.credentials` for CI / agent flows that run sandboxed and should never
+  read secrets directly (secrets belong in the CI secret store — see
+  `techniques/ci-deploy-to-p4.md`).
+
+### Caveats before relying on this
+
+- The changelog does **not** state default on/off values for `autoMode.classifyAllShell`
+  or `sandbox.credentials`, nor does it formally define "auto mode." Confirm current
+  behavior against the official changelog / docs before treating any of these as
+  always-on.
+- Requires Claude Code ≥ 2.1.193 (June 2026); older versions have narrower auto-mode
+  behavior or none.
+- Source: Claude Code changelog (https://code.claude.com/docs/en/changelog), entries
+  2.1.183 / 2.1.187 / 2.1.193.
+
 ## Default Posture — Safety Net
 
 Recommended baseline in `~/.claude/settings.json`:
