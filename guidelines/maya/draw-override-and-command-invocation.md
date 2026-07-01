@@ -2,7 +2,8 @@
 
 写自定义 `MPxDrawOverride`（VP2.0 + `MUIDrawManager`）或从 C++ 用 `MGlobal::executeCommand`
 发自己注册的 `MPxCommand` 时，一组**靠踩坑得到、官方文档没明说**的约定。共同点：**headless /
-`cmds`-Python 测试都测不到，只在 C++ 实现 + GUI 实跑时才咬人**——所以单测全绿也可能 GUI 错。
+`cmds`-Python 测试都测不到，只在 C++ 实现 + GUI 实跑时才咬人**——所以单测全绿也可能 GUI 错（第 4 条更甚：
+GUI **单 panel 也对**，只有多 panel 才暴露）。
 跟 `manip-container-constraints.md` / `selection-context-and-undo.md` 是同目录兄弟篇（那两篇
 管 manip / context 交互；本篇管 draw override + 命令调用）。非 Maya 项目可 skip。
 
@@ -11,6 +12,7 @@
 1. **从 C++ `executeCommand` 发带 object 的 MPxCommand：MEL 字符串里 flag 必须在 object 之前**
 2. **`MPxDrawOverride::prepareForDraw` 复用 `oldData`：`buildDrawData` 每帧必须重置所有 transient flag**
 3. **要"屏幕空间恒定大小"的 UI 用 `points()`+`setPointSize`（像素），别用 `circle()/rect()` 的世界尺寸×相机距离近似**
+4. **`addUIDrawables` 里做 2D 投屏（`circle2d`/`text2d` 等）必须用回调传入的 `frameContext` 矩阵投影，不能用 `M3dView::active3dView()`——否则多 panel 下投错**
 
 ---
 
@@ -105,6 +107,41 @@ if (d->hasSelection) {
 
 `circle()`/`rect()` 这类世界尺寸原语留给"确实是世界空间几何"的东西（切线臂、真实尺寸标注）。
 
+## 4. `addUIDrawables` 里 2D 投屏用 `frameContext` 矩阵，不用 `active3dView()`
+
+想在 `MPxDrawOverride::addUIDrawables` 里画 **2D 屏幕空间 UI**（`circle2d` / `text2d` / `line2d` / `rect2d`）
+时，若需要把世界坐标投成 viewport 像素（`circle2d` 等吃的是像素坐标），**必须用回调第三参 `frameContext`
+的矩阵**做投影，**不能**用 `M3dView::active3dView().worldToView(...)`：
+
+```cpp
+void MyDrawOverride::addUIDrawables(const MDagPath&, MHWRender::MUIDrawManager& dm,
+                                    const MHWRender::MFrameContext& frameContext, const MUserData* d) {
+    // ✅ 用【正在绘制的这个 panel】的 view-proj 矩阵 + viewport 尺寸
+    const MMatrix viewProj = frameContext.getMatrix(MHWRender::MFrameContext::kViewProjMtx);
+    int ox, oy, w, h; frameContext.getViewportDimensions(ox, oy, w, h);
+    for (const MPoint& wp : worldPts) {
+        const MPoint clip = wp * viewProj;             // 行向量：world → clip
+        if (clip.w <= 0.0) continue;                   // 相机背后 → 跳过（防 w<0 投影翻转）
+        const double nx = clip.x / clip.w, ny = clip.y / clip.w;
+        if (nx < -1 || nx > 1 || ny < -1 || ny > 1) continue;  // 视锥外
+        dm.circle2d(MPoint((nx*0.5+0.5)*w, (ny*0.5+0.5)*h, 0.0), rPx, subdiv, true);  // 左下原点 y 上
+    }
+
+    // ❌ M3dView view = M3dView::active3dView(); view.worldToView(wp, sx, sy);
+    //    active3dView() 返回【有焦点】的 panel；多 panel 下每个 panel 的 addUIDrawables 都拿焦点 panel
+    //    的相机投影 → 非焦点 panel 的 2D UI 落到错位置（拖一个视口，其它视口的点跟着跑到它的位置）。
+}
+```
+
+**为什么单 panel 测不出**：单 panel 时 `active3dView()` == 正在绘制的那个 panel，`worldToView` 恰好用对相机
+→ 位置正确。**只有多 panel（split/四视图）才暴露**——比 headless-测不到更隐蔽：**GUI 单 panel 也是对的**，
+必须开多 panel 实测才咬人。
+
+**注意**：纯 **3D** 原语（`dm.points`/`dm.line`/`dm.circle` 世界坐标）**没有**这个问题——MUIDrawManager 会按
+每个 panel 自己的相机投影。坑只在**需要手动 world→viewport 的 2D 投屏**路径。`kViewProjMtx` 语义 = world→clip
+（`kViewMtx` 已含 world→view）；`circle2d` 的 2D 空间 = viewport 本地像素、左下原点 y 上，与 `worldToView`
+的 port 坐标同约定（所以单 panel 下两者等价）。
+
 ---
 
 ## Anti-Patterns
@@ -116,6 +153,7 @@ if (d->hasSelection) {
 | `buildDrawData` 只 clear 容器、漏重置 bool flag | 状态清了但高亮/描边不消失 | 每个 transient flag 每帧显式置 false |
 | 把 GUI 显示问题当"数据没清" | 查错方向（数据其实清了，是 draw data 残留） | 先查 prepareForDraw oldData 复用 + flag 重置 |
 | `rect()/circle()` + `系数×相机距离` 求屏幕恒定 | 透视/正交下大小漂 | `points()`+`setPointSize`（像素） |
+| `addUIDrawables` 里 2D 投屏用 `active3dView().worldToView` | 多 panel 下非焦点视口投错（单 panel 正常，更隐蔽） | 用 `frameContext` 的 `kViewProjMtx` + `getViewportDimensions` 自投 |
 
 ## 项目实例参考
 
@@ -128,6 +166,11 @@ if (d->hasSelection) {
   `prepareForDraw` 复用 `oldData` → 上帧 `hasSel=true` 残留。补 `d.hasSel=false; d.hasHover=false`。
 - 选中框用 `rect()` + `系数×相机距离`，相机拉远拉近大小在变。改成 `points()`+`setPointSize`
   （大底方点 + 正常点盖上 = 屏幕空间恒定描边框）。
+
+后续（同项目，第 4 条）：编辑态控制点改画 2D 圆（`circle2d`），投屏初版用 `M3dView::active3dView().worldToView`。
+单 panel 一切正常、51/51 headless 全绿；开四视图后发现**拖一个视口，其它视口的圆点跟着跳到该视口的点位**——
+`active3dView` 取的是焦点 panel 的相机。改用 `addUIDrawables` 传入的 `frameContext`（`kViewProjMtx` +
+`getViewportDimensions`）自投 world→viewport 后修复（配套：Ctrl→Shift 态变化时 `refresh(all=true)` 让所有 panel 同步重绘）。
 
 ## 相关 Guidelines
 
