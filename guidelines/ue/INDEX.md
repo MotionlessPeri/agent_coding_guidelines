@@ -34,6 +34,13 @@ technique，另有 4 份内容已 promote 到 skill：`skills/ue-module-architec
 | [`rigvm-bulk-data-as-metadata-not-pins.md`](rigvm-bulk-data-as-metadata-not-pins.md) | 程序化建 RigVM/CR 图时逐元素大批量数据(几百+ 项)走 `URigHierarchy` element metadata,别烤成节点 pin 默认值(每 sub-pin 一个 Slate widget → 打开图卡死 + 资产膨胀);metadata 序列化且经 `CopyHierarchy→CopyAllMetadataFromElement` 复制到运行时实例,RigUnit Execute 读得到 |
 | [`controlrig-sequencer-bulk-key-bake.md`](controlrig-sequencer-bulk-key-bake.md) | 批量烤 key 到 Sequencer 里的 Control Rig 别用逐 key 的 `SetLocalControlRig*`/`SetControlValue(bNotify=true,SetKey=Always)`(每 key 一次 Sequencer 通知+重求值,~35ms/key,几百控件→分钟级);直接批量写 `UMovieSceneControlRigParameterSection` 浮点通道(`Reset`+`AddCubicKey`+`AutoSetTangents`)+ 一次 `RefreshCurrentLevelSequence` + 一个 `FScopedTransaction`(含通道顺序表) |
 
+### 程序化动画注入 / 神经网络推理
+
+| Guideline | 解决的问题 |
+|---|---|
+| [`animinstance-proxy-and-offline-eval.md`](animinstance-proxy-and-offline-eval.md) | 纯 C++ `UAnimInstance` 子类 + 自定义 proxy `Evaluate` 零 AnimBP 资产直出 pose；proxy `Update(float)` 被 `GFrameCounter` 门控成每帧一次（累计放 `PreUpdate`）；`PreUpdate` 先于 `NativeUpdateAnimation`（instance 状态晚一拍）；离线评估配方 `TickAnimation → RefreshBoneTransforms → FinalizeBoneTransform`（漏最后一步永远读旧双缓冲） |
+| [`nne-onnx-inference-contracts.md`](nne-onnx-inference-contracts.md) | NNE 只吃 ONNX；`NNERuntimeORT` 默认关闭需消费插件 `.uplugin` 显式引用；坏模型报错点在 `CreateModelInstanceCPU`（CanCreate 不解析）；动态输出 shape 第一次 `RunSync` 后才可查且 buffer 不足时静默不拷数据（两跑协议）；内存态 `UNNEModelData::Init` 与资产导入等价（测试不依赖 Content） |
+
 ### 数学类型 / API marshalling
 
 | Guideline | 解决的问题 |
@@ -101,12 +108,15 @@ technique，另有 4 份内容已 promote 到 skill：`skills/ue-module-architec
 - **Runtime 跟 Editor 模块边界设计** → skill [`ue-module-architecture`](../../skills/ue-module-architecture/SKILL.md)（含同 module 内三层模型 + 跨 module 依赖方向硬约束）
 - **程序化建 RigVM / Control Rig 图(生成 CR / 加 RigUnit)** → [`rigvm-bulk-data-as-metadata-not-pins.md`](rigvm-bulk-data-as-metadata-not-pins.md)(逐元素大批量数据走 metadata 不走 pin 默认值)
 - **批量烤动画 key 到 Sequencer 里的 Control Rig(import anim / bake clip)** → [`controlrig-sequencer-bulk-key-bake.md`](controlrig-sequencer-bulk-key-bake.md)(别逐 key `SetLocalControlRig*`,直接写 section 浮点通道 + 一次刷新)
+- **程序化 / 神经网络驱动骨骼动画（不走 AnimBP 状态机）** → [`animinstance-proxy-and-offline-eval.md`](animinstance-proxy-and-offline-eval.md)（pose 注入 + 离线评估）+ [`nne-onnx-inference-contracts.md`](nne-onnx-inference-contracts.md)（模型推理接入）
 - **接到一个 UE bug / weird behavior** → skill [`ue-reference-engine-source`](../../skills/ue-reference-engine-source/SKILL.md) 的"按子系统分类的 reference 清单"找最相近 engine source 看怎么实现的
 
 ## 增长状态
 
 UE 子目录从 5 份扩到 8 份发生在 2026-04 → 2026-05 期间，主要来自
 DialogueSystemSample 插件 Phase 1-3 ship（Line ID + 本地化）的 retrospective
+promotion。2026-07 新增 2 份（AnimInstance proxy 契约 + NNE 消费契约），来自
+PathAnimGen 预研（路径→狗动画生成插件）M1–M3 的 framework hidden contract
 promotion。后续候选（two-strike rule 等第二次复发）：
 
 - UE Factory 共存不替换（`UDataAssetFactory` 跟自定义 Factory 同 SupportedClass 共存）
