@@ -50,6 +50,47 @@ Before starting verification, review the common failure modes in `guidelines/wor
 2. Diff the public API surface -- no unintended changes
 3. Spot-check behavioral consistency on key paths
 
+## 选可信 check：四要素 + oracle 判据（MFIC）
+
+前面按改动类型给了验证策略，但还缺一个横切判断：**一个 check 本身可不可信？** 尤其当写代码和写 check 的是同一个 agent 时，用同一个错误假设写出来的 test 会跟着错代码一起变绿——静默通过。
+
+**试金石（一句话判断）**：*如果同一个 agent 既写了 check 又写了被检对象，它能带着错误工作通过吗？* 能 → 这个 check 可被糊弄，不可信。
+
+一个可信的 check 要同时满足四要素，缺一个就退化成常见近似失败：
+
+| 要素 | 含义 | 缺了它 |
+|---|---|---|
+| **Mechanically** | 用例机器穷举 / 变异 / 生成，不手挑 | 手挑用例，漏掉没想到的分支 |
+| **Falsifiable** | 用例真会咬——错了就红，且你无法预先安排让它绿 | 空洞绿测（"没崩就行"）|
+| **Independent** | 判据在因果上独立于生产者（职责分离的软件版）| 合谋 check，跟代码共享盲点 |
+| **Control** | 有权拦截（fail build / block commit），不只 log | 只告警不拦，坏结果照样进 |
+
+### oracle 判据：什么时候才真的需要"换一个 agent"
+
+Independence 不等于"永远要另找一个人 / agent review"。真正的分界是**有没有一个生产者之外的 oracle**：
+
+| 情形 | 例子 | 谁写 check 重要吗 |
+|---|---|---|
+| **存在外部 oracle** | round-trip 逆运算 `decode(encode(x)) == x`、reference 实现差分、变换不变量、事先定死的 checksum | **不重要**——同一个 agent 写代码和 check 也糊弄不过去，因为判官是它控制不了的独立因果物 |
+| **无 oracle** | 普通 example test，手写的期望值本身就是"真理标准" | **重要**——同一个 agent 会把同一个错误假设同时写进代码和期望值，一起错到底 |
+
+推论：**只有在"无 oracle"这种情形，才真正需要一个独立的 checker**（且这个 checker 只从契约推导、绝不读实现——读了就被带进同一盲点=合谋）。有 oracle 时，优先花小成本上 oracle-based check，比拉一个独立 reviewer 更便宜也更稳。这跟 [`coordination-patterns.md`](coordination-patterns.md) 的"验证别人的实现用 fresh worker 防 anchoring"是一体两面：那条讲无 oracle 时怎么隔离 checker，这条讲有 oracle 时可以省掉隔离。
+
+### 验证策略阶梯：优先选作者没写的判官
+
+按"判官独立性"从强到弱，选**能上的最便宜那一档**：
+
+1. **穷举有限域**——域有限就跑遍，不抽样。
+2. **round-trip 逆运算**——操作有逆就 `f⁻¹(f(x)) == x`。谁写的 round-trip 不影响判据。
+3. **差分 vs reference 实现**——有参照实现就两边都跑、diff 结果。
+4. **metamorphic 不变量**——断言关系而非具体值（如复杂度门断言 `f(2N) ≈ 2·f(N)`，比值抵消掉机器速度、跨机可移植；无需期望值也无需 reference）。
+5. **input-mutation 覆盖率**——把"我的 validator 覆盖了整个格式"这种不可证伪的空话变成一个数：拿一个合法输入，逐 bit / byte 翻转，断言 validator 现在**拒绝**它；被拒的比例就是覆盖率。两个防作弊前提：(a) 配一份全合法输入的 corpus 必须全过（否则"拒绝一切"的 checker 拿满分）；(b) 只统计"必须有意义"的字节（padding / checksum 排除区是合法 don't-care）。
+6. **property-based + shrink**——都不满足才生成属性、把失败 shrink 到最小反例。
+
+核心原则：**优先用作者没写的 oracle。** 手写的"期望值"本身可能就是 bug；round-trip / reference / 不变量不会，因为它们都不依赖"作者当初想对了"。
+
+> 来源：pmarreck，[MFIC — Mechanically-Falsifiable Independent Control](https://gist.github.com/pmarreck/b30aa3ca69cb70a5526f8a63ab8c8d7e)。把企业内控（COSO / SOX：职责分离 / 预防-检测-纠正控制 / 控制测试）搬到"LLM 是不可信方"的语境。TDD 只提供四要素里的 Falsifiable（红相证明测试能咬），其余三个要另外补。
+
 ## Adversarial Probes
 
 Choose probes relevant to the change:
@@ -109,3 +150,5 @@ Before reporting verification complete:
 ## Related Guidelines
 
 - See `guidelines/code/validation.md` for the declarative principles behind this technique.
+- [`techniques/enumerate-then-adjudicate.md`](enumerate-then-adjudicate.md) —— "选可信 check" 的一个具体落地：把"让 LLM 找全所有 X"这个静默失败换成"机械枚举候选 + LLM 逐条裁决"。
+- [`techniques/coordination-patterns.md`](coordination-patterns.md) —— 无 oracle 时怎么隔离一个独立 checker（fresh worker / 从契约推导）。

@@ -128,6 +128,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @techniques/adversarial-verification.md
 
+@techniques/enumerate-then-adjudicate.md
+
 @techniques/coordination-patterns.md
 
 @techniques/worker-instructions.md
