@@ -14,6 +14,7 @@ context 回调时序 + undo）。非 Maya 项目可 skip 本目录。
 5. **动态增删子 manip 用固定 rebuild 序列，且只在 context 激活时做**
 6. **隐藏子 manip 用 `setVisible(false)`，不要移到极远坐标**
 7. **viewport 绘制：`preDrawUI/postDrawUI` 仅 VP2.0；VP1.0 要重写 `draw()`**
+8. **Maya 不自动调容器的 `connectToDependNode`，context 必须在 `addManipulator` 后显式调（否则 `finishAddingManips` + stock 子 manip 配置全不跑）**
 
 ---
 
@@ -87,6 +88,33 @@ Maya 的 manip 节点**不在正常 DAG 层级**里——`cmds.ls` / outliner �
 要画圆环/辅助线等自定义 UI 元素时，VP2.0 走 `preDrawUI/postDrawUI`。若需跨版本兼容旧管线，
 再额外实现 `draw()`。跨 Maya 版本发布时两套都要实测。
 
+## 8. 容器的 `connectToDependNode` 必须 context 显式调，不会自动跑
+
+**Maya 不会自动调用 manip 容器的 `connectToDependNode` override** —— context 建完容器后必须**自己显式调**：
+
+```cpp
+// context 侧（devkit moveManip / componentScaleManip 均如此）：
+Container* c = (Container*)Container::newManipulator(kTypeName, manipObj, &s);
+addManipulator(manipObj);          // 加入容器
+c->connectToDependNode(target);    // ★ 必须手动调，Maya 不替你调
+```
+
+而 `finishAddingManips()`（stock 子 manip 显示的前提）+ 子 manip 的定位/朝向/初值配置**都写在这个
+override 里** → 不调它 = `finishAddingManips` 不跑 = **stock rotate/scale 等子 manip 根本不显示**。
+
+**跟第 4 条的关系（组合，不矛盾）**：
+- 第 4 条：你的 override 内部**不要**回调基类 `MPxManipContainer::connectToDependNode()`（无 plug 绑定时基类会失败/崩）。
+- 第 8 条：但 context **必须调你自己的 override**（去跑 `finishAddingManips` + 配置子 manip）。
+- 合起来：`override connectToDependNode(){ finishAddingManips(); 配置子manip; return kSuccess; }`（**不**调 `Super::`），context 显式调它。
+
+**极隐蔽**：若容器只挂**自定义 `MPxManipulatorNode`**（自绘 `drawUI`，不依赖 `finishAddingManips`），
+漏调 `connectToDependNode` **一点症状都没有**（自绘子 manip 照常显示）。等某天往容器**加 stock 子 manip**
+（rotate/scale）才发现它们死活不出现 —— 因为 stock manip 靠 `finishAddingManips` 注册显示，而那句从没跑过。
+
+**调用顺序**：devkit 范例是 `addManipulator` **之后**调 `connectToDependNode`。若把子 manip 定位写在
+override 里，注意 `addManipulator` 可能 re-parent 容器使先前设的定位失效 —— 定位放 override 里、
+`addManipulator` 之后调，正好规避。
+
 ---
 
 ## Anti-Patterns
@@ -96,6 +124,7 @@ Maya 的 manip 节点**不在正常 DAG 层级**里——`cmds.ls` / outliner �
 | `connectToPointPlug(self.plug)` 想"记住"位置 | NewScene 崩溃 | `setPoint()` 设位置 / 连外部 plug |
 | `setGlobalSize()` 调单个 manip 大小 | 污染会话内所有工具的 manip | `setManipScale()` 实例级 |
 | 无 plug 还调基类 `connectToDependNode()` | 失败 / 崩溃 | override 里直接 return kSuccess |
+| 以为 Maya 自动调容器 `connectToDependNode` | `finishAddingManips` 不跑 → stock 子 manip 不显示（只挂自绘 manip 时零症状，加 stock 才炸） | context 在 `addManipulator` 后显式调 |
 | rebuild 后不 sync 显示 | manip 停在旧位置 | rebuild 序列末尾显式 sync |
 | 移到极远坐标当"隐藏" | manip 仍参与命中/绘制 | `setVisible(false)` |
 
@@ -106,6 +135,12 @@ Maya 的 manip 节点**不在正常 DAG 层级**里——`cmds.ls` / outliner �
 - 初版用 `connectToPointPlug` 连自身 plug → 每次 New Scene 崩在 `DataModel.dll`，改连外部 joint plug + `setPoint` 定位后解决
 - effector 增删走 `deleteManipulators→newManipulator→connectToDependNode→addManipulator→syncHandlesToJoints` 序列，多次重建稳定
 - effector 显示过滤（只藏 Position 型保留 Rotation 型）用 `setVisible` 而非 rebuild，省 ~30% 开销
+
+某 Maya 曲线形变插件的 authoring manip 工具（第 8 条）：容器先只挂自定义平移 triad（自绘），context 漏调
+`connectToDependNode` **完全没症状**（triad 自绘照常显示、拖拽/undo 都正常）。后续往容器加 stock
+rotate/scale manip 做端点旋转/缩放 → 按 W 出 triad 正常、按 E/R **什么都不出**。读 devkit `moveManip` /
+`componentScaleManip` 源码才发现 Maya 不自动调容器的 `connectToDependNode`，`finishAddingManips` 从没跑过
+→ stock manip 没注册显示。context 在 `addManipulator` 后补一句 `container->connectToDependNode(target)` 修复。
 
 ## 相关 Guidelines
 
