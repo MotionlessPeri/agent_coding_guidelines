@@ -12,7 +12,7 @@ Guidelines are grouped by topic under `guidelines/`:
 |-----------|----------|
 | `guidelines/workflow/` | Commit rules, documentation rules, agent lifecycle, handoff workflow |
 | `guidelines/code/` | Code constraints, validation requirements |
-| `guidelines/cpp/` | C++ / Windows DLL / cmake / MSVC 工程底座的 hidden contract——跨 DLL 单例内联陷阱 / 符号导出 / 增量编译 ABI 不一致 / stale `.vcxproj` / 热路径 move 与 dynamic_cast。框架无关，多 DLL 插件（含 Maya `.mll`）高频命中。**非 C++ 项目可 skip** |
+| `guidelines/cpp/` | C++ / Windows DLL / cmake / MSVC 工程底座的 hidden contract——跨 DLL 单例内联陷阱 / 符号导出 / 增量编译 ABI 不一致 / stale `.vcxproj` / 热路径 move 与 dynamic_cast / `std::make_format_args` 左值契约（本地旧 toolset 编过、CI 新 toolset FAIL）。框架无关，多 DLL 插件（含 Maya `.mll`）高频命中。**非 C++ 项目可 skip** |
 | `guidelines/collaboration/` | Multi-agent setup, private docs policy |
 | `guidelines/ci-windows/` | Windows CI (PowerShell / GitLab runner) 跑 native command 时的 pitfall 集——PowerShell ↔ native exe 之间的抽象漏洞 |
 | `guidelines/claude-code/` | Claude Code 自身（harness / hooks / settings.json）的 hidden contract——文档没明说但实测如此的行为 |
@@ -65,6 +65,8 @@ Guidelines are grouped by topic under `guidelines/`:
 @guidelines/cpp/build-incremental-and-cmake.md
 
 @guidelines/cpp/hot-path-cpp.md
+
+@guidelines/cpp/make-format-args-lvalue.md
 
 @guidelines/collaboration/multi-agent.md
 
