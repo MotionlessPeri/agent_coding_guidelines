@@ -1,7 +1,7 @@
 ---
 name: conversation-walkthrough
-description: 编码对话收尾时的标准 review 环节——对本对话改过的代码做一次结构化走查：(1) 结构 map（文件级 + 函数级清单：每个非平凡函数列职责+行数，显式标 🔑key function 与 📏超长函数；既是 Phase 2 的覆盖率清单、也是像 MR description 一样主动呈给用户的 review 摘要主体——先呈给用户、获批再改，不自审完直接 move on；多单元走查每单元各呈一份），(2) self-review 三档（🔴 重构/可读性：套 function-clarity 行数阈值，>~50 行函数加 leading 概览、单步骤 >~80 行拆 sub-function、≥2 次重复抽 helper；🟡 优化；🟢 对抗式正确性读查），(3) 注释体检（按「注释自包含」原则剥 transient、保留 stable why；关键函数用 Doxygen `/** @param @return */` 契约头，但每个 tag 必带真内容、禁空 tag/复述参数名）。配套：用一份 ephemeral tracking 文档锚定讨论主线防偏移；重构与注释清理分成不同主题各自 commit；改完 cold rebuild + 冒烟验证语义没变；跑通后可据此 promote 项目级 lesson。默认在编码对话收尾触发，除非用户明说「后面是迭代不用 review」。
-when_to_use: Fires at the wrap-up of any coding conversation that produced non-trivial code changes (default-on standard closing step), UNLESS the user says upcoming work is iteration that doesn't need review. Also fires when the user asks to "review 一下这个对话改的代码 / walkthrough / 看看有没有重构点 / 整理注释". Covers: mapping what changed, self-reviewing for refactor/optimization/correctness, and humanizing comments (stripping iteration/agent-oriented noise). Pairs with guidelines/code/function-clarity.md (line thresholds + comment stability), guidelines/code/reuse-before-implementing.md (extract-on-2nd-occurrence), guidelines/workflow/commits.md (one commit = one theme). Skip for trivial/mechanical changes or when the user explicitly defers review to a later milestone.
+description: 编码对话收尾时的标准 review 环节——对本对话改过的代码做一次结构化走查：(1) 结构 map（文件级 + 函数级清单：每个非平凡函数列职责+行数，显式标 🔑key function 与 📏超长函数；既是 Phase 2 的覆盖率清单、也是像 MR description 一样主动呈给用户的 review 摘要主体——先呈给用户、获批再改，不自审完直接 move on；多单元走查每单元各呈一份），(2) self-review 三档（🔴 重构/可读性：套 function-clarity 行数阈值，>~50 行函数加 leading 概览、单步骤 >~80 行拆 sub-function、≥2 次重复抽 helper；🟡 优化；🟢 对抗式正确性读查），(3) 注释体检三轴——prose 质量走 guidelines/writing/prose-and-register.md（工作语言写散文+标识符保留原文/不说黑话/不翻译腔/简洁不丢信息，跟 doc-writing-style 共用同一份 SoT）、stability 按「注释自包含」原则剥 transient 保留 stable why、结构用 Doxygen `/** @param @return */` 契约头（每个 tag 必带真内容、禁空 tag/复述参数名）。配套：用一份 ephemeral tracking 文档锚定讨论主线防偏移；重构与注释清理分成不同主题各自 commit；改完 cold rebuild + 冒烟验证语义没变；跑通后可据此 promote 项目级 lesson。默认在编码对话收尾触发，除非用户明说「后面是迭代不用 review」。
+when_to_use: Fires at the wrap-up of any coding conversation that produced non-trivial code changes (default-on standard closing step), UNLESS the user says upcoming work is iteration that doesn't need review. Also fires when the user asks to "review 一下这个对话改的代码 / walkthrough / 看看有没有重构点 / 整理注释". Covers: mapping what changed, self-reviewing for refactor/optimization/correctness, and humanizing comments (stripping iteration/agent-oriented noise). Pairs with guidelines/writing/prose-and-register.md (comment prose register — shared SoT with doc-writing-style), guidelines/code/function-clarity.md (line thresholds + comment stability), guidelines/code/reuse-before-implementing.md (extract-on-2nd-occurrence), guidelines/workflow/commits.md (one commit = one theme). Skip for trivial/mechanical changes or when the user explicitly defers review to a later milestone.
 ---
 
 # 对话代码 Walkthrough（编码收尾的标准 review 环节）
@@ -51,7 +51,15 @@ when_to_use: Fires at the wrap-up of any coding conversation that produced non-t
 
 **拆函数的天然切法**:若一个函数按「输入→若干独立输出/分支」组织(典型:DG node 的 `compute` 按 plug 派发),**一个分支 = 一个 sub-function**,主函数收成派发 + 顶部一段「各分支算什么」概览。语义零改,只是把它本来就有的结构摊开。
 
-## Phase 3 — 注释体检(注释自包含原则)
+## Phase 3 — 注释体检
+
+注释跟文档同源——一条写得烂的注释(夹生英文、翻译腔、箭头公式)跟一份写得烂的文档是同一种病。本 Phase 查**三个轴**,别只查后两个:
+
+1. **prose 质量**——注释措辞走 [`guidelines/writing/prose-and-register.md`](../../../guidelines/writing/prose-and-register.md):工作语言写散文 + 标识符保留原文 / 不说黑话(半通用 CS 词 marshalling·parity·legacy 也算) / 别要翻译腔·别压箭头公式 / 简洁 ⇔ 不丢信息(砍冗余措辞、不砍"为什么这样设计"的事实)。跟 `doc-writing-style` skill 共用同一份 SoT,只是对象从文档散文换成注释。
+2. **stability(自包含原则)**——剥 transient、保留 stable why,见下。
+3. **结构**——关键函数 Doxygen 契约头,见下。
+
+### stability:注释自包含原则
 
 迭代积攒的注释常被 transient / 给-agent-看的标签污染。按下面这条清:
 
@@ -91,7 +99,7 @@ int splitSpline(int splineIdx, double t);
 - **块写契约(what),stable-why 仍 inline**(块内首句或函数体),两者不重复。
 - Doxygen 块放**声明处**(头文件,消费方读的地方);file-local/static helper 放定义处。
 
-> 本 Phase 扩展 `guidelines/code/function-clarity.md` Rule 2:Rule 2 讲 milestone tag(transient when),本条加「不引用 ephemeral 文档 + 自包含」+「关键函数 Doxygen 契约头(tag 必带真内容)」两个维度。
+> 本 Phase 三个轴的出处:**prose 质量** = `guidelines/writing/prose-and-register.md`(跨文档 / 注释共享的 SoT);**stability**(不引用 ephemeral 文档 + 自包含)扩展 `guidelines/code/function-clarity.md` Rule 2(那条讲 milestone tag / transient when);**结构**(关键函数 Doxygen 契约头,tag 必带真内容)是本 skill 加的维度。
 
 ## Phase 4 — 执行 + 验证
 
@@ -125,6 +133,8 @@ curve_articulation_maya(Maya C++ 插件)2026-06-15 对一轮「posed 编辑」�
 
 ## 相关 Guidelines / Skills
 
+- `guidelines/writing/prose-and-register.md` — Phase 3 轴 1(prose 质量)的 SoT;跟 `doc-writing-style` skill 共用,对象从文档散文换成注释
+- `skills/workflow/doc-writing-style/SKILL.md` — 同一份 prose-and-register 的文档场景执行面(+ 图示 discipline)
 - `guidelines/code/function-clarity.md` — 行数阈值(Rule 1)+ 注释 stability(Rule 2);本 skill 是它的「系统化执行 + 注释自包含扩展」
 - `guidelines/code/reuse-before-implementing.md` — ≥2 次重复抽 helper 的判据
 - `guidelines/workflow/commits.md` — 一 commit 一主题(重构/注释分开)

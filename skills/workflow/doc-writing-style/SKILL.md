@@ -1,6 +1,6 @@
 ---
 name: doc-writing-style
-description: 起草「交付级」文档（设计稿 / 任务书 / handoff / 用户使用文档 / brainstorm 结论稿 / CHANGELOG）时的文体 + 图示 discipline。两块——(1) 文体：用项目工作语言写散文、技术标识符保留原文、不说黑话（能本地化的业务术语就本地化、工程界共识词不强译）、简洁⇔不丢信息的张力（砍冗余 callout / 压重复，但具体期望值 / 路径 / 验证示例 / 限制描述一字不少）；(2) 图示：满足「多阶段流程 / 多分支决策 / 易漏步骤的关键操作」任一就**必须画图**不能纯文字（给了选型决策表 sequenceDiagram / flowchart / 编号列表），且图要**可移植**——按目标渲染器（GitLab / Confluence / mkdocs 等）版本写，不 hardcode 语法白名单（会过时），本地能渲染 ≠ 目标能渲染，必要时推探针实测能力边界。是 guidelines/workflow/documentation.md 的「执行面」补充：那条管何时同步 / 怎么拆 / 怎么建索引，这条管散文本身怎么写好 + 图怎么画。
+description: 起草「交付级」文档（设计稿 / 任务书 / handoff / 用户使用文档 / brainstorm 结论稿 / CHANGELOG）时的文体 + 图示 discipline。两块——(1) 文体：遵循 guidelines/writing/prose-and-register.md（工作语言写散文 + 标识符保留原文 / 不说黑话 / 简洁⇔不丢信息 / 不要翻译腔）在文档场景的应用（含项目自造词开篇 grounding）；(2) 图示：满足「多阶段流程 / 多分支决策 / 易漏步骤的关键操作」任一就**必须画图**不能纯文字（给了选型决策表 sequenceDiagram / flowchart / 编号列表），且图要**可移植**——按目标渲染器（GitLab / Confluence / mkdocs 等）版本写，不 hardcode 语法白名单（会过时），本地能渲染 ≠ 目标能渲染，必要时推探针实测能力边界。文体规则本身是 guidelines/writing/prose-and-register.md（跨文档 / 注释共享的 SoT）；本 skill 加文档场景应用 + 图示。是 guidelines/workflow/documentation.md 的「执行面」补充：那条管何时同步 / 怎么拆 / 怎么建索引，这条管散文本身怎么写好 + 图怎么画。
 when_to_use: Fires when drafting any deliverable-grade document meant for humans to read and act on — design docs, task briefs / handoffs, user-facing usage docs, brainstorm conclusion writeups, CHANGELOG / release notes, roadmaps. Covers prose register (work-language prose +原文 identifiers, de-jargon, concise-vs-complete tension) and diagram discipline (when a diagram is mandatory + renderer-portable mermaid). Pairs with guidelines/workflow/documentation.md (declarative sync/split/index rules — this skill is the "how to write the prose + draw the diagram" execution face). Skip for: throwaway scratch notes, private memory / session logs, commit messages, and chat replies (those follow their own per-project language prefs).
 ---
 
@@ -14,48 +14,14 @@ when_to_use: Fires when drafting any deliverable-grade document meant for humans
 
 - **触发**：起草交付级文档——设计稿 / 同事任务书 / handoff brief / 用户使用文档 / brainstorm 结论稿 / CHANGELOG / roadmap。
 - **跳过**：临时草稿 / 私人 memory / session log / commit message / 对话回复（这些走各自的 per-project 语言偏好，不强制本规范）。
-- **跟 [`guidelines/workflow/documentation.md`](../../../guidelines/workflow/documentation.md) 的关系**：那条 declarative，管**何时**同步 / **怎么**拆分 / **怎么**建索引 / 「结论先于细节」；本 skill 管**散文本身怎么写好 + 图怎么画**。两条配套，关系同 `function-clarity.md` ↔ `conversation-walkthrough` skill。
+- **跟 declarative guideline 的关系**：文体规则本身在 [`guidelines/writing/prose-and-register.md`](../../../guidelines/writing/prose-and-register.md)（跨「文档 + 代码注释」共享的 SoT）；[`guidelines/workflow/documentation.md`](../../../guidelines/workflow/documentation.md) 管**何时**同步 / **怎么**拆分 / **怎么**建索引 / 「结论先于细节」。本 skill = 前者在文档场景的应用 + 图示 discipline。关系同 `function-clarity.md` ↔ `conversation-walkthrough` skill。
 
-## 一、文体五条
+## 一、文体：遵循 prose-and-register，文档场景加两点
 
-### 1. 用项目工作语言写散文，技术标识符保留原文
+**文体规则本身在 [`guidelines/writing/prose-and-register.md`](../../../guidelines/writing/prose-and-register.md)**——工作语言写散文 + 标识符保留原文 / 不说黑话（业务术语本地化、工程共识词不强译、半通用 CS 词也算黑话）/ 简洁 ⇔ 不丢信息的张力 / 别要翻译腔·别压箭头公式 / 项目自造词首次出现先 grounding。那条是跨「文档 + 代码注释」共享的 SoT，起草文档前先过一遍。本 skill 不复制这些规则，只在其上加两点文档场景的应用：
 
-- **散文 / 解释 / 流程描述**：用项目工作语言（本项目=中文；按项目定，写进项目 AGENTS.md 的 "Documentation Language Policy" 段）。
-- **保留原文不翻译**：框架类型名 / API 签名 / 字段名 / SQL 关键字 / shell 命令 / UI 按钮 label / 技术缩写（DB / UI / AR / UPROPERTY …）/ 业务专名（LineID / Choice …）/ code block 内注释。
-- 判据：这个 token 对应代码里的某个标识符 → 保留原文（强译反增查找成本）；是说人话的散文 → 用工作语言。
-
-### 2. 不说黑话
-
-能本地化的**业务术语**就本地化；工程界共识技术词**不强译**。**半通用的 CS 词（marshalling / parity / legacy 这类）也算黑话**——它们不像 fixture / idempotent 那样无可替代，拿不准就本地化。项目可调一张替换表，例：
-
-| 黑话 | 本地化 | | 不强译（保留） |
-|---|---|---|---|
-| limitation | 限制 | | fixture |
-| scope | 范围 | | smoke / dry-run |
-| trigger | 触发 | | stale / orphan |
-| expected / actual | 期望 / 实际 | | idempotent |
-| marshalling | 数据格式转换 | | |
-| parity | （两边）结果一致 | | |
-| legacy | 旧（X）/ 旧路径 | | |
-
-- **项目内部自造词**（如某项目的 carrier / 中性 / curvenet——既非框架标识符、又非通用词）：保留原文没问题，但**首次出现必须 grounding**——开篇放个"先认几个词"小块一句话交代，别假设读者懂。
-
-### 3. 简洁
-
-砍冗余 callout、压重复句、合并相似段、删凑数的"（详见 §X.Y）"空引用。
-
-### 4. 不丢信息（简洁的对立约束）
-
-简洁 ≠ 删信息。**操作必需**的内容一字不少：具体期望值、验证示例（SQL / 命令 / 输出）、文件路径、限制描述、关键看点。砍的是冗余表达，不是信息密度。
-
-> 3 和 4 是一对张力：每删一句先问"这是冗余表达，还是读者照做时需要的事实？"——前者删，后者留。
-
-### 5. 别要翻译腔，别压成黑话公式
-
-- **翻译腔**：英文习语直译成中文仍不地道——"thin method → 薄方法"、"under its name → 它名下的"、"first-class → 一等公民"。
-  用中文惯用说法（"只做一层简单包装的方法" / "属于它的"）。判据：**这句中文你会对同事当面说出口吗**？不会就是翻译腔，重写。
-- **别把摘要 / 职责行压成 "A → B" 箭头公式**塞满没交代的术语。反例："端点旋转 → 名下切线手柄在切平面 orbit（每端点一个）"
-  ——读者完全接不住。写成完整句子，讲清"谁、做什么、（必要时）为什么"；箭头公式留给图，不留给散文。
+1. **项目自造词开篇 grounding**：文档比注释更依赖统一上下文——读者需要一次性看懂术语。guideline 要求首次出现的自造词（carrier / 中性 / curvenet 这类）grounding，文档场景把它落成**开篇一个"先认几个词"小块**一句话交代，别散落到正文各处才解释。
+2. **黑话替换表落到项目**：guideline 给了示例表，具体表由项目补自己的业务术语（写进项目 AGENTS.md / memory）。
 
 ## 二、图示 discipline
 
@@ -87,17 +53,13 @@ when_to_use: Fires when drafting any deliverable-grade document meant for humans
 
 ## Anti-Patterns
 
+> 文体反 pattern（夹生英文 / 强译共识词 / 翻译腔 / 箭头公式 / 为简洁删信息）见 [`guidelines/writing/prose-and-register.md`](../../../guidelines/writing/prose-and-register.md)。下面是文档 / 图示专属的：
+
 | 反 pattern | 为什么错 | 修法 |
 |---|---|---|
-| 散文里夹生英文（"已知 limitation" / "scope 边界"） | 增加阅读门槛 | 业务术语本地化，标识符才保留原文 |
-| 强译工程共识词（fixture→夹具） | 反增查找成本 | 共识技术词保留原文 |
-| 半通用 CS 词当共识词保留（marshalling / parity / legacy） | 其实是可本地化的黑话 | 本地化（见替换表）|
-| 英文习语直译（薄方法 / 它名下的 / 一等公民） | 翻译腔、不地道 | 中文惯用语；"能当面说出口"作判据 |
-| 摘要/职责行写成 "A → B" 箭头公式 + 没交代的术语 | 读者接不住、不知所云 | 完整句子讲清谁做什么；项目自造词先 grounding |
-| 项目自造词（carrier / 中性…）首次出现不交代 | 读者无从理解 | 开篇"先认几个词"小块一句话 grounding |
+| 项目自造词首次出现不在开篇小块交代 | 读者无从理解、正文各处才解释 | 开篇"先认几个词"小块一句话 grounding |
 | 多阶段流程纯文字描述 | 读者漏关键步骤（尤其手动操作步） | 按选型表画图 + 高亮易漏步 |
 | 简单 2 步也画 flowchart | 过度表达 | 编号列表就够 |
-| 为"简洁"删掉验证示例 / 具体期望值 | 读者照做时缺信息 | 砍冗余表达，不砍操作事实 |
 | 文档里 hardcode mermaid 语法白名单 | 渲染器升级后过时 | 项目侧维护版本约束 + 探针实测 |
 | 只在本地 preview 验证就推上去 | 目标渲染器可能渲不出 | 以目标渲染器为准 |
 | `classDef` 只设 `fill` 不设 `color` | 浅底 + renderer 默认浅灰字 → 读不清 | fill 必配深色 `color:` + `stroke` |
@@ -106,13 +68,14 @@ when_to_use: Fires when drafting any deliverable-grade document meant for humans
 
 | 项 | 本 skill 给的默认 | 项目可调 |
 |---|---|---|
-| 散文语言 | 中文 | 任意工作语言；写进项目 AGENTS.md |
-| 黑话替换表 | 上表示例 | 项目补自己的业务术语 |
 | 目标渲染器 + 版本约束 | 不 hardcode | 项目 memory / AGENTS.md 维护当前版本 + 能力边界 |
 | 高亮配色 | 橘 `#fff3e0` / 红描边，且 fill 必配深色 `color:`（如 `#000`） | 团队配色约定 |
 
+> 散文语言 / 黑话替换表的 tuning 移到 [`guidelines/writing/prose-and-register.md`](../../../guidelines/writing/prose-and-register.md)。
+
 ## 相关 Guidelines / Skills
 
+- [`guidelines/writing/prose-and-register.md`](../../../guidelines/writing/prose-and-register.md) —— 文体规则本身（工作语言 / 不说黑话 / 简洁⇔不丢信息 / 不翻译腔）；本 skill 是它在文档场景的执行面 + 图示 discipline
 - [`guidelines/workflow/documentation.md`](../../../guidelines/workflow/documentation.md) —— declarative 同步 / 拆分 / 索引规则；本 skill 是其「散文 + 图示执行面」补充
 - [`guidelines/code/function-clarity.md`](../../../guidelines/code/function-clarity.md) —— 同形态的「写好」discipline，但对象是代码注释 / 函数结构而非文档散文
-- [`skills/workflow/conversation-walkthrough/SKILL.md`](../conversation-walkthrough/SKILL.md) —— 收尾的注释体检跟本 skill 的散文规范同源（注释自包含 / stable why）
+- [`skills/workflow/conversation-walkthrough/SKILL.md`](../conversation-walkthrough/SKILL.md) —— 收尾的注释体检跟本 skill 共用同一份 prose-and-register（注释场景执行面）

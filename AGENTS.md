@@ -12,6 +12,7 @@ Guidelines are grouped by topic under `guidelines/`:
 |-----------|----------|
 | `guidelines/workflow/` | Commit rules, documentation rules, agent lifecycle, handoff workflow |
 | `guidelines/code/` | Code constraints, validation requirements |
+| `guidelines/writing/` | 面向人读的散文（文档 / 代码注释 / 交付文字）通用文体规则——工作语言写散文 + 标识符保留原文 / 不说黑话 / 简洁⇔不丢信息 / 不翻译腔。跨「文档 + 注释」共享的 SoT，由 `skills/workflow/doc-writing-style`（+图示 discipline）与 `skills/workflow/conversation-walkthrough` Phase 3（+注释 stability / Doxygen 契约头）两个 skill 承接执行面 |
 | `guidelines/cpp/` | C++ / Windows DLL / cmake / MSVC 工程底座的 hidden contract——跨 DLL 单例内联陷阱 / 符号导出 / 增量编译 ABI 不一致 / stale `.vcxproj` / 热路径 move 与 dynamic_cast / `std::make_format_args` 左值契约（本地旧 toolset 编过、CI 新 toolset FAIL）。框架无关，多 DLL 插件（含 Maya `.mll`）高频命中。**非 C++ 项目可 skip** |
 | `guidelines/collaboration/` | Multi-agent setup, private docs policy |
 | `guidelines/ci-windows/` | Windows CI (PowerShell / GitLab runner) 跑 native command 时的 pitfall 集——PowerShell ↔ native exe 之间的抽象漏洞 |
@@ -59,6 +60,8 @@ Guidelines are grouped by topic under `guidelines/`:
 @guidelines/code/diagnose-before-fixing.md
 
 @guidelines/code/validation.md
+
+@guidelines/writing/prose-and-register.md
 
 @guidelines/cpp/multi-dll-plugin.md
 
@@ -165,8 +168,8 @@ Guidelines are grouped by topic under `guidelines/`:
 - [`skills/workflow/autonomous-workflow/SKILL.md`](skills/workflow/autonomous-workflow/SKILL.md) — low-touch 工作流，仅 plan gate（实施阶段无 gate）；handoff 文档（brief / context / worklog / result）+ 强 TDD 作执行期安全网
 - [`skills/workflow/tdd-with-fixtures/SKILL.md`](skills/workflow/tdd-with-fixtures/SKILL.md) — augment superpowers TDD，加 milestone-level discipline + fixture/manual case escape hatch
 - [`skills/workflow/bugfix-tdd/SKILL.md`](skills/workflow/bugfix-tdd/SKILL.md) — bug-fix 场景的 TDD 红→绿 discipline。先写 demonstrate bug 的 failing test → 跑确认 FAIL → 改 production → 跑 PASS → 跑全 regression → test + fix 单 commit。跟 `superpowers:test-driven-development`（feature TDD）/ `superpowers:systematic-debugging`（debug 阶段方法论）/ `tdd-with-fixtures`（escape hatch）互补不重叠。防"看代码自信改一行"无证据修复
-- [`skills/workflow/conversation-walkthrough/SKILL.md`](skills/workflow/conversation-walkthrough/SKILL.md) — 编码对话收尾的标准 review 环节（默认开，除非用户说后面是迭代不用 review）。三 phase：结构 map / self-review 三档（🔴 重构套 function-clarity 行数阈值 + ≥2 次重复抽 helper / 🟡 优化 / 🟢 对抗式正确性）/ 注释体检（注释自包含原则——剥 milestone·Task·Phase 标签 + ephemeral 文档引用，why 浓缩 inline，只引 durable 目标）。配套：ephemeral tracking 文档锚讨论主线、重构与注释清理分主题各自 commit、cold rebuild + 冒烟验证语义不变。扩展 `guidelines/code/function-clarity.md`（行数阈值 Rule 1 + 注释 stability/自包含 Rule 2）的「系统化执行」面
-- [`skills/workflow/doc-writing-style/SKILL.md`](skills/workflow/doc-writing-style/SKILL.md) — 起草「交付级」文档（设计稿 / 任务书 / handoff / 用户文档 / brainstorm 结论稿 / CHANGELOG）时的文体 + 图示 discipline。两块：(1) 文体——用项目工作语言写散文 + 标识符保留原文 / 不说黑话（业务术语本地化、工程共识词不强译）/ 简洁⇔不丢信息张力（砍冗余表达不砍操作事实）；(2) 图示——多阶段流程 / 多分支决策 / 易漏关键步任一就**必须画图**（给了 sequenceDiagram / flowchart / 编号列表选型决策表），且图要**可移植**：按目标渲染器版本写、不 hardcode 语法白名单（会过时）、本地能渲染 ≠ 目标能渲染、必要时推探针实测能力边界。语言 / 黑话替换表 / 目标渲染器版本都是项目可调项。是 `guidelines/workflow/documentation.md`（何时同步 / 怎么拆 / 怎么建索引）的「散文 + 图示执行面」补充
+- [`skills/workflow/conversation-walkthrough/SKILL.md`](skills/workflow/conversation-walkthrough/SKILL.md) — 编码对话收尾的标准 review 环节（默认开，除非用户说后面是迭代不用 review）。三 phase：结构 map / self-review 三档（🔴 重构套 function-clarity 行数阈值 + ≥2 次重复抽 helper / 🟡 优化 / 🟢 对抗式正确性）/ 注释体检三轴（prose 质量走 `guidelines/writing/prose-and-register.md`——工作语言/不说黑话/不翻译腔/简洁不丢信息，跟 `doc-writing-style` 共用同一份 SoT；stability 按注释自包含原则剥 milestone·Task·Phase 标签 + ephemeral 文档引用、why 浓缩 inline 只引 durable 目标；结构用 Doxygen 契约头）。配套：ephemeral tracking 文档锚讨论主线、重构与注释清理分主题各自 commit、cold rebuild + 冒烟验证语义不变。扩展 `guidelines/code/function-clarity.md`（行数阈值 Rule 1 + 注释 stability/自包含 Rule 2）的「系统化执行」面
+- [`skills/workflow/doc-writing-style/SKILL.md`](skills/workflow/doc-writing-style/SKILL.md) — 起草「交付级」文档（设计稿 / 任务书 / handoff / 用户文档 / brainstorm 结论稿 / CHANGELOG）时的文体 + 图示 discipline。两块：(1) 文体——遵循 `guidelines/writing/prose-and-register.md`（工作语言写散文 + 标识符保留原文 / 不说黑话 / 简洁⇔不丢信息 / 不翻译腔）在文档场景的应用（+ 项目自造词开篇 grounding）；(2) 图示——多阶段流程 / 多分支决策 / 易漏关键步任一就**必须画图**（给了 sequenceDiagram / flowchart / 编号列表选型决策表），且图要**可移植**：按目标渲染器版本写、不 hardcode 语法白名单（会过时）、本地能渲染 ≠ 目标能渲染、必要时推探针实测能力边界。目标渲染器版本是项目可调项（语言 / 黑话替换表的 tuning 在 prose-and-register）。文体规则本身是 `guidelines/writing/prose-and-register.md`（跨文档 / 注释共享 SoT），本 skill 加文档场景应用 + 图示；也是 `guidelines/workflow/documentation.md`（何时同步 / 怎么拆 / 怎么建索引）的执行面补充
 
 **ue/** —— UE 专用：
 
