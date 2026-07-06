@@ -311,13 +311,76 @@ BuildPlugin 之后,在 package 脚本里(PowerShell 例):
 
 ---
 
+## Limitation 4: installed/distributed build 只开放 Editor target —— `-Rocket` 编 Game target 会被拒
+
+公司/自建源码构建的 **installed/distributed** 引擎(`Engine/Build/InstalledBuild.txt` 存在)常只开放 **Editor**
+target,不开放 Game / Program / Client / Server。而 `BuildPlugin -Rocket` **默认对每个 target 平台还编
+`UnrealGame`(Game target,Development + Shipping 两个配置)** —— editor target 编完就撞 game,整个 package 失败。
+
+### 现象
+
+`BuildPlugin -Rocket` 日志里 editor target 一路 `Result: Succeeded`(插件模块 dll 全 link 成功),紧接着开始编
+`UnrealGame` target,几秒内报:
+
+```
+Running: ...UnrealBuildTool.dll UnrealGame Win64 Development -Project=...HostProject.uproject -plugin=...
+Game targets are not currently supported from this engine distribution.
+Result: Failed (OtherCompilationError)      ← UBT ExitCode=6 → BuildPlugin failed
+```
+
+("`Program` targets are not currently supported ..." 是同源的另一种,程序化重生工程文件时也会遇到。)
+
+### Root cause（带源码引用，UE 5.8）
+
+- `Engine/Source/Programs/UnrealBuildTool/Configuration/UEBuildTarget.cs:1403`:installed 引擎按
+  `InstalledPlatformInfo` 校验 target type,不支持就 throw:
+  ```csharp
+  throw new BuildException("{0} targets are not currently supported from this engine distribution.", RulesObject.Type);
+  ```
+- `Engine/Source/Programs/AutomationTool/Scripts/BuildPluginCommand.Automation.cs`:BuildPlugin 对 host 平台编
+  editor、对**每个 target 平台编 `UnrealGame`**(L272-273 各编 Development + Shipping):
+  ```csharp
+  CompilePluginWithUBT(..., "UnrealGame", TargetType.Game, TargetPlatform, UnrealTargetConfiguration.Development, ...);
+  CompilePluginWithUBT(..., "UnrealGame", TargetType.Game, TargetPlatform, UnrealTargetConfiguration.Shipping,   ...);
+  ```
+  target 平台列表由 `GetTargetPlatforms` 决定,而它开头就是 `if(!Command.ParseParam("NoTargetPlatforms")) { ... 默认取所有 rocket target 平台 ... }`。
+
+### 修法:`-NoTargetPlatforms` 只编 editor host target
+
+package 命令传 **`-NoTargetPlatforms`**(替掉 `-TargetPlatforms=<...>`)→ `GetTargetPlatforms` 返回空列表 →
+`if(TargetPlatforms.Count > 0)` 为 false → **完全跳过 `UnrealGame`,只编 editor host target**:
+
+```
+RunUAT BuildPlugin -Plugin=<...> -Package=<...> -NoTargetPlatforms -Rocket
+```
+
+editor target 在 installed distribution 上本就支持(这个引擎就是这么一个 installed editor),所以只编 editor 能过。
+
+### 代价 + 何时可接受
+
+`-NoTargetPlatforms` 后交付包**只含 editor 二进制**(`UnrealEditor-*.dll` + RuntimeDependency 的 dll),
+**无 game/runtime 二进制**(`UnrealGame-*.dll`)。对 **editor 工具型插件**(消费方在编辑器里用、automation 装进
+editor 跑)完全够用。**若插件要打进独立游戏 runtime 分发**,才需要一个开放 Game target 的引擎 —— installed
+distribution 给不了,得换引擎(或让引擎团队在打包时开放 Game target)。
+
+### Anti-Patterns
+
+| 反 pattern | 后果 | 修法 |
+|---|---|---|
+| 以为 `BuildPlugin -Rocket` 在任何引擎都能出全平台包 | installed distribution 上编 Game target 被拒,package fail | editor 工具插件用 `-NoTargetPlatforms` 只编 editor |
+| 撞 "Game targets not supported" 去查插件代码 / 模块 type | 查错方向(是**引擎 distribution 的限制**,不是插件问题) | 认准 UBT distribution 检查,加 `-NoTargetPlatforms` |
+| 为出 game 包去改引擎 `InstalledPlatformInfo` | 改引擎分发、跨升级重打、风险大 | 接受 editor-only,或换开放 Game target 的引擎 |
+
+---
+
 ## 项目实例参考
 
-UE 5.5 dialogue plugin（DialogueSystemSample）的 GitLab CI ship 期间踩穿 Limitation 1/2；UE 5.8 curvenet 形变插件(含 CHOLMOD/OpenBLAS 预编译 dll)踩穿 Limitation 3：
+UE 5.5 dialogue plugin（DialogueSystemSample）的 GitLab CI ship 期间踩穿 Limitation 1/2；UE 5.8 curvenet 形变插件(含 CHOLMOD/OpenBLAS 预编译 dll)踩穿 Limitation 3/4：
 
 - **Limitation 1**: BuildPlugin 输出的 plugin artifact 完全没 `Config/` 和 `Scripts/` 目录。`CoreRedirects` 失效导致 `LegacyNodeClassRedirects` automation test 失败 + plugin 走 subprocess 调 Python 脚本的功能链全断
 - **Limitation 2**: `.uplugin` 里 `PythonRequirements: ["openpyxl>=3.1.2"]` 被 BuildPlugin 剥掉，接收方 UE 不触发 PipInstall
 - **Limitation 3**: curvenet 插件交付包 819M → 104M —— `Intermediate` ~540M + `*.pdb` ~175M(占 63%)+ `libopenblas.dll` 在包里只在 `Source/ThirdParty/.../bin`(RuntimeDependency 没进包 Binaries);修法 = package 脚本移 dll→Binaries + 删 Intermediate/pdb/空 bin + 自检。初次本机验证还撞了深 scratch 路径的 260-char limit
+- **Limitation 4**: CI 从官方 launcher 5.8 切到公司源码构建 OF_UE_58(installed distribution)后,`BuildPlugin -Rocket` 的 editor target 编成功、紧接编 `UnrealGame` 报 "Game targets are not currently supported from this engine distribution"(UBT ExitCode=6)。修法 = package 命令 `-TargetPlatforms=Win64` 换成 `-NoTargetPlatforms`,只编 editor(该插件是 editor 工具、automation 装 editor 跑,不需要 game 二进制)。同轮还先踩了 runner 引擎 sync 不全(RulesError / UHT 找不到父类)、误删 installed build 的预编译 `UE5Rules.dll`(报 `Precompiled rules assembly does not exist`,installed build 不自动重编)两个 runner 环境坑 —— 但那俩是 runner bring-up、非 BuildPlugin 本身,归 CI 侧文档
 
 Limitation 1/2 的修法——加 `Config/FilterPlugin.ini` + CI package stage PowerShell 后处理写回 PythonRequirements。
 
