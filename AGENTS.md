@@ -131,6 +131,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/maya/move-rotate-manip-axis-orientation.md
 
+@guidelines/maya/scriptjob-callback-command-undo-pollution.md
+
 ---
 
 ## Techniques
