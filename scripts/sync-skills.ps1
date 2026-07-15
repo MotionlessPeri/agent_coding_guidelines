@@ -1,5 +1,22 @@
 # sync-skills.ps1
-# One-way sync from the repository skill source to Claude Code and Codex.
+# One-way Windows sync from repository `skills/**` to Agent Skill discovery paths.
+#
+# Default user targets:
+#   Claude Code: %USERPROFILE%\.claude\skills\<name>
+#   Codex:       %USERPROFILE%\.agents\skills\<name>
+#
+# With -ProjectPath <repo>:
+#   Claude Code: <repo>\.claude\skills\<name>
+#   Codex:       <repo>\.agents\skills\<name>
+#
+# Usage:
+#   powershell -ExecutionPolicy Bypass -File .\scripts\sync-skills.ps1
+#   powershell -ExecutionPolicy Bypass -File .\scripts\sync-skills.ps1 -Targets Codex
+#   powershell -ExecutionPolicy Bypass -File .\scripts\sync-skills.ps1 -ProjectPath E:\some_project
+#
+# The script validates all source skills before writing. It replaces same-named target
+# directories so removed source files do not remain stale, but leaves unrelated skills
+# untouched. The categorized source layout is flattened by skill name at each target.
 
 [CmdletBinding()]
 param(

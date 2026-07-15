@@ -13,43 +13,59 @@ Extracted and generalized from real projects. Project-specific rules are exclude
 | `guidelines/code/` | Code constraints and validation requirements |
 | `guidelines/collaboration/` | Multi-agent setup and artifact placement |
 | `techniques/` | Procedural patterns and operational guides |
-| `skills/` | Claude Code skills (lazy-loaded by Claude Code at invocation, not eager-imported). Sync via `scripts/sync-skills.ps1` |
+| `skills/` | Agent Skills shared by Claude Code and Codex. Sync via `scripts/sync-skills.ps1` |
 | `scripts/` | Repo maintenance scripts (skill sync, etc.) |
 
 ## How to Connect to Your Projects
 
-**Option 1 — Global (all sessions on this machine):**
-Add to `~/.claude/CLAUDE.md`:
-```
+Claude Code can import the canonical entry point globally or per project:
+
+```text
+# ~/.claude/CLAUDE.md or a project's AGENTS.md
 @/path/to/agent_coding_guidelines/AGENTS.md
 ```
 
-**Option 2 — Per project:**
-Add to the project's `AGENTS.md`:
-```
-@/path/to/agent_coding_guidelines/AGENTS.md
+Codex discovers `AGENTS.md` but does not expand Claude Code's `@file` imports. Put an instruction like this in `~/.codex/AGENTS.md` or a project's `AGENTS.md`:
+
+```text
+Before working, read /path/to/agent_coding_guidelines/AGENTS.md and the applicable guideline files it references.
 ```
 
-**Option 3 — Project-local copy:**
-For projects that need customized rules, the agent copies and adapts relevant sections
-into the project's own `AGENTS.md`. The agent decides what to include based on project context.
+For projects that need customized rules, copy and adapt the relevant sections into the project's own `AGENTS.md`.
 
 ## Using the Skills
 
-Skills under `skills/` are Claude Code's lazy-loaded skill format (each skill = a directory with a `SKILL.md`). To install them locally:
+Skills under `skills/` use the shared Agent Skills format: each skill is a directory containing `SKILL.md` and optional resources or scripts. The repository is the source of truth.
 
+The default command installs every skill for the current user on both platforms:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\sync-skills.ps1
 ```
-pwsh ./scripts/sync-skills.ps1
+
+The targets are:
+
+- Claude Code: `%USERPROFILE%\.claude\skills\<name>`
+- Codex: `%USERPROFILE%\.agents\skills\<name>`
+
+Limit installation to one platform with `-Targets`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\sync-skills.ps1 -Targets Codex
 ```
 
-This copies skill directories from `skills/` to `~/.claude/skills/` (Claude Code's personal-scope discovery location). The script is one-way (repo → local) and never deletes skills you've added manually to `~/.claude/skills/`.
+Use `-ProjectPath` for project-level installation. The script writes `.claude\skills` and `.agents\skills` inside that project:
 
-Re-run after pulling repo updates to propagate skill changes.
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\sync-skills.ps1 -ProjectPath E:\some_project
+```
+
+The script validates every skill before writing, replaces only same-named managed skills, and leaves unrelated target skills untouched. Re-run it after pulling repository updates. This installer currently supports Windows only.
 
 ## Adding New Content
 
 1. **Guideline** (declarative rule): create a `.md` under the appropriate `guidelines/` subdirectory; add a `@` reference in `AGENTS.md`.
 2. **Technique** (procedural pattern): create a `.md` under `techniques/`; add a `@` reference in `AGENTS.md`.
-3. **Skill** (Claude Code skill): create `skills/<name>/SKILL.md` with frontmatter (`description` + `when_to_use`); add a line under AGENTS.md's Skills section; run the sync script.
+3. **Skill** (shared Agent Skill): create `skills/<category>/<name>/SKILL.md` with matching `name` and a self-contained `description`; add a line under AGENTS.md's Skills section; run the sync script.
 
-Keep each file focused on one topic. See `AGENTS.md` for the full organization rules.
+Keep each file focused on one topic. See `AGENTS.md` for the full organization rules. Codex uses `description` for implicit skill discovery, so do not put required trigger information only in optional platform-specific metadata such as `when_to_use`.

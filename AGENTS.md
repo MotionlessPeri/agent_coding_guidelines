@@ -4,6 +4,14 @@ This is the canonical instruction file for both Claude and Codex agents.
 
 ---
 
+## Platform Loading Rules
+
+- Claude Code treats the `@path` lines below as imports and loads their contents.
+- Codex discovers this `AGENTS.md`, but does not expand Claude Code `@path` imports. Before acting, Codex must open the applicable referenced files itself: start with the relevant files under `guidelines/workflow/`, `guidelines/code/`, and `guidelines/writing/`; load framework or tool directories such as `ue/`, `maya/`, `p4/`, and `ci-windows/` only when the task matches; load a `techniques/` file when its procedure applies.
+- Both platforms discover installed skills lazily from their own skill directories. Do not eager-import `SKILL.md` files here.
+
+---
+
 ## How This Repository Is Organized
 
 Guidelines are grouped by topic under `guidelines/`:
@@ -22,7 +30,7 @@ Guidelines are grouped by topic under `guidelines/`:
 | `guidelines/maya/` | Maya C++ 插件（`MPx*` plugin / manip / context / 多 `.mll` 共享 base 层）的 framework hidden contracts——靠踩坑得到、Maya 文档没明说的约束。**非 Maya 项目可整段 skip**。索引 + 配套 skill 见 [`guidelines/maya/INDEX.md`](guidelines/maya/INDEX.md) |
 | `techniques/` | Procedural patterns and step-by-step operational guides |
 | `docs/plans/` | 已确认设计的实施前记录；用于保存跨文件改造的边界、接口与验收标准 |
-| `skills/` | Claude Code skill files, organized by category under `skills/<category>/<name>/SKILL.md` (categories: `ue/` / `maya/` / `architecture/` / `workflow/` / `collaboration/`). **Lazy-loaded** by Claude Code at invocation time — NOT `@`-imported here. Synced **flat** to `~/.claude/skills/<name>/` (Claude Code discovery requires flat) via `scripts/sync-skills.ps1` (recursive scan + flat copy)。Codex 无对应机制，需手动读取 SKILL.md |
+| `skills/` | Shared Agent Skills, organized under `skills/<category>/<name>/SKILL.md`. `scripts/sync-skills.ps1` installs them flat to Claude Code's `.claude/skills/<name>/` and Codex's `.agents/skills/<name>/` discovery directories |
 | `_radar/` | **外部知识雷达暂存区**——`/research-radar` skill(`.claude/skills/research-radar/SKILL.md`,project-local + `disable-model-invocation` 纯手动)跑 deep research 产出的待审 digest 落点。是 inbox **不是** corpus：**绝不** `@`-import(会污染 always-loaded context)、**绝不**自动写进 `guidelines/`。从雷达到 corpus 是用户事后人工走 `knowledge-promotion.md` 的一步。政策见 [`_radar/README.md`](_radar/README.md) |
 
 **Adding new files:**
@@ -30,7 +38,7 @@ Guidelines are grouped by topic under `guidelines/`:
 - If no existing category fits, create a new subdirectory.
 - Add a reference to the new file in this AGENTS.md under the relevant section.
 - Keep each file focused on one topic. Split if it covers 3+ independent concerns or exceeds ~200-300 lines.
-- `guidelines/` = declarative rules ("always do X, never do Y"). `techniques/` = procedural patterns ("step 1, step 2, step 3"). `skills/` = Claude Code skills, triggered on demand (not eager-imported).
+- `guidelines/` = declarative rules ("always do X, never do Y"). `techniques/` = procedural patterns ("step 1, step 2, step 3"). `skills/` = shared Agent Skills, triggered on demand (not eager-imported).
 
 ---
 
@@ -164,12 +172,13 @@ Guidelines are grouped by topic under `guidelines/`:
 
 ## Skills
 
-`skills/` 下是 Claude Code skill 形态的内容。跟 guidelines / techniques 的核心区别：
+`skills/` 下是 Claude Code 与 Codex 共用的 Agent Skills。跟 guidelines / techniques 的核心区别：
 
-- **不通过 `@` 进 context**——由 Claude Code 在 invocation 时按需 lazy load
+- **不通过 `@` 进 context**——两个平台都在匹配任务后按需加载
 - 适合按 phase / domain 触发的内容（workflow 编排、跨工作流的 TDD discipline 等）
-- 通过 `scripts/sync-skills.ps1` 单向同步到 `~/.claude/skills/`（Claude Code 的 personal scope 发现位置）；repo 是 source of truth
-- Codex 无 skill 发现机制；如需 Codex 用，手动读取对应 `SKILL.md`（每个 skill 是 markdown 文档）
+- `skills/` 是 source of truth；`scripts/sync-skills.ps1` 默认同时同步到 `~/.claude/skills/` 与 `~/.agents/skills/`，也可用 `-ProjectPath` 安装到项目内对应目录
+- `name` 与 `description` 是双端共用的必需 frontmatter；`description` 必须自带触发和跳过条件，不能把 Codex 所需信息只放在可选的 `when_to_use`
+- 通用正文使用平台中性措辞；确实依赖 hooks、配置文件或客户端命令的内容必须明确平台分支或平台限制
 
 当前 skills：
 
