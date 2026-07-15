@@ -121,6 +121,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/nne-onnx-inference-contracts.md
 
+@guidelines/ue/rbf-and-tmemstack-need-memmark.md
+
 @guidelines/maya/manip-container-constraints.md
 
 @guidelines/maya/selection-context-and-undo.md
