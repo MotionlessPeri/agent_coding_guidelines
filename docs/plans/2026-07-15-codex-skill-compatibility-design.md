@@ -85,7 +85,7 @@ flowchart TB
 
 - 通用工作流使用 agent-neutral 措辞，不把调用方式写死为 Claude Code 的 `Skill` tool。
 - `description` 自身要包含触发条件与跳过条件，因为 Codex 主要用它决定是否隐式加载 skill。
-- 现有 `when_to_use` 可以保留，作为 Claude Code 元数据和人工阅读补充；不能把 Codex 所需的唯一触发信息只放在这里。
+- Portable frontmatter 只保留 `name` 和 `description`。实施期用 Codex 官方 validator 验证后确认 `when_to_use` 会被判为 unsupported key，因此原字段已移除；必要触发条件合并进 `description`，详细说明留在正文。
 - 真正依赖 Claude hooks、`settings.json` 或 `.claude/mcp.json` 的 skill 明确写出平台边界，并在有等价 Codex 路径时给出分支。
 - 对只在文字中误称“Claude Code session”的通用 skill，直接改为中性称呼。
 

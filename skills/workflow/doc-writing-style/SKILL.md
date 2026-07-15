@@ -1,7 +1,6 @@
 ---
 name: doc-writing-style
 description: 起草「交付级」文档（设计稿 / 任务书 / handoff / 用户使用文档 / brainstorm 结论稿 / CHANGELOG）时的文体 + 图示 discipline。两块——(1) 文体：遵循 guidelines/writing/prose-and-register.md（工作语言写散文 + 标识符保留原文 / 不说黑话 / 简洁⇔不丢信息 / 不要翻译腔）在文档场景的应用（含项目自造词开篇 grounding）；(2) 图示：满足「多阶段流程 / 多分支决策 / 易漏步骤的关键操作」任一就**必须画图**不能纯文字（给了选型决策表 sequenceDiagram / flowchart / 编号列表），且图要**可移植**——按目标渲染器（GitLab / Confluence / mkdocs 等）版本写，不 hardcode 语法白名单（会过时），本地能渲染 ≠ 目标能渲染，必要时推探针实测能力边界。文体规则本身是 guidelines/writing/prose-and-register.md（跨文档 / 注释共享的 SoT）；本 skill 加文档场景应用 + 图示。是 guidelines/workflow/documentation.md 的「执行面」补充：那条管何时同步 / 怎么拆 / 怎么建索引，这条管散文本身怎么写好 + 图怎么画。
-when_to_use: Fires when drafting any deliverable-grade document meant for humans to read and act on — design docs, task briefs / handoffs, user-facing usage docs, brainstorm conclusion writeups, CHANGELOG / release notes, roadmaps. Covers prose register (work-language prose +原文 identifiers, de-jargon, concise-vs-complete tension) and diagram discipline (when a diagram is mandatory + renderer-portable mermaid). Pairs with guidelines/workflow/documentation.md (declarative sync/split/index rules — this skill is the "how to write the prose + draw the diagram" execution face). Skip for: throwaway scratch notes, private memory / session logs, commit messages, and chat replies (those follow their own per-project language prefs).
 ---
 
 # 交付文档的文体 + 图示 discipline

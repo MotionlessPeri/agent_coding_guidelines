@@ -177,7 +177,7 @@ Guidelines are grouped by topic under `guidelines/`:
 - **不通过 `@` 进 context**——两个平台都在匹配任务后按需加载
 - 适合按 phase / domain 触发的内容（workflow 编排、跨工作流的 TDD discipline 等）
 - `skills/` 是 source of truth；`scripts/sync-skills.ps1` 默认同时同步到 `~/.claude/skills/` 与 `~/.agents/skills/`，也可用 `-ProjectPath` 安装到项目内对应目录
-- `name` 与 `description` 是双端共用的必需 frontmatter；`description` 必须自带触发和跳过条件，不能把 Codex 所需信息只放在可选的 `when_to_use`
+- 双端共用的 portable frontmatter 只保留 `name` 与 `description`；`description` 必须自带触发和跳过条件，详细流程与平台分支放正文
 - 通用正文使用平台中性措辞；确实依赖 hooks、配置文件或客户端命令的内容必须明确平台分支或平台限制
 
 当前 skills：
@@ -211,4 +211,4 @@ Guidelines are grouped by topic under `guidelines/`:
 
 - [`skills/collaboration/multi-session-coordination/SKILL.md`](skills/collaboration/multi-session-coordination/SKILL.md) — 多个 Claude Code 对话并发在同一 repo 工作时的协调协议。bundle 了 hook 脚本 (`multi_session.py`) + agent-side 政策（lease 让/抢/协商 heuristics + commit-then-release 强约束）+ 安装文档 (`install.md` / `install.ps1`)。Hook 机制由 `settings.json` 注册自动跑（SessionStart 注册 / PreToolUse 撞 lease deny / PostToolUse 记 touched_files / UserPromptSubmit 注入 inbox + git log since last turn / Stop 释放 lease）；skill 仅在 hook surface 协调信息时按需 load。需走 `install.ps1` 一次注册 hook
 
-> Sync 注：repo 是分类目录（`<category>/<name>/SKILL.md`），但 sync 到 `~/.claude/skills/` 时**扁平化**为 `<name>/`（Claude Code discovery 不识别嵌套）。`ue-*` prefix 在 sync 后的 flat target 仍然可见 UE 归属。详 `scripts/sync-skills.ps1`
+> Sync 注：repo 是分类目录（`<category>/<name>/SKILL.md`），安装到 Claude Code 的 `~/.claude/skills/` 或 Codex 的 `~/.agents/skills/` 时都按 `<name>/` 扁平化。`ue-*` prefix 在安装后仍然可见 UE 归属。详 `scripts/sync-skills.ps1`。

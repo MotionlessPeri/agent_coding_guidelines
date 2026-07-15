@@ -1,10 +1,11 @@
 ---
 name: multi-session-coordination
-description: Async coordination protocol for multiple Claude Code conversations sharing one repo working tree. Covers lease claim / release, inbox messaging for negotiation (release_request / preempt_request / piggyback_notice / release_notice), commit-then-release strong contract, and the decision heuristics for letting / grabbing / negotiating when leases conflict. The mechanism layer (hooks) runs automatically — this skill teaches the agent-side policy that hooks alone can't enforce. Bundled with multi_session.py which provides the state library + hook handlers.
-when_to_use: Triggers automatically when hook output mentions (1) other active sessions surfaced at SessionStart, (2) pending inbox messages at UserPromptSubmit, (3) PreToolUse(Edit/Write) deny due to lease held by another session, (4) PreToolUse(Bash) deny due to catchall `git add`. Also use proactively when an agent transitions from discussion/exploration into a real implementation phase that's going to edit files — claim a lease at that moment. Skip for pure discussion conversations that never plan to write to disk.
+description: Use only in Claude Code when installed coordination hooks report other active sessions, pending inbox messages, lease conflicts, or blocked catch-all `git add`; or when a Claude Code conversation is about to edit and must claim a lease. Do not use from Codex because the current hook handlers, event payloads, session identifiers, and installer have not been ported to Codex hooks.
 ---
 
 # Multi-Session Coordination
+
+> **Platform limit — Claude Code only.** This implementation depends on Claude Code's `settings.json` hook registration, hook event schema, and session identifiers. Codex may discover this skill after a shared sync, but must not run `install.ps1`, register these handlers, or assume the lease mechanism is active. A Codex port requires separate hook-schema validation.
 
 This skill is the **agent-side policy layer** of the multi-session coordination system. The **mechanism layer** (hook scripts in `multi_session.py`) runs automatically via `settings.json` hooks and handles registry I/O, stale cleanup, lease checks on Edit/Write, touched-files tracking, and post-commit awareness. The mechanism cannot decide *what to do* when something goes wrong — that's this skill's job.
 

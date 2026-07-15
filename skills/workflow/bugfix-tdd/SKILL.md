@@ -1,7 +1,6 @@
 ---
 name: bugfix-tdd
 description: Bug-fix TDD discipline — 红→绿 流程。修 bug 必须先写一条能复现 bug 的 failing test（红测），跑出来真的看到 FAIL，再改 production code 到 test PASS（绿测），跑全 regression，最后 test + fix 单 commit 落地。跟 superpowers:test-driven-development 的区别：那条是 feature TDD（写 spec test → 实现满足 spec），本 skill 是 bug-fix TDD（写 reproduction test → demonstrate bug → fix → demonstrate fix）。跟 superpowers:systematic-debugging 衔接：那条管"怎么定位 root cause"（debug 阶段），本 skill 管"root cause 定位完后怎么修"（fix 阶段）。防的是"看了一眼代码、自信改了一行"这种无证据修复——经常修了一个症状漏掉同类 N 个、或改错位置。
-when_to_use: 任何 bug 修复场景——user 报 bug + agent 确认 root cause 之后进入修复阶段，写 fix 代码前。包括：项目代码 bug、工具/脚本 bug、CI/部署 bug、test 自身 bug。Skip 场景：纯 typo / 文档 / 注释修正（无行为变化）；明确是 cosmetic-only 改动（格式、命名）；user 显式说"先快速试一下不走完整流程"（但要在回复里点出跳过了，并标记后续需要补红测）。
 ---
 
 # Bug-Fix TDD (红→绿 Discipline)

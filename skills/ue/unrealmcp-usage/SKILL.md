@@ -1,7 +1,6 @@
 ---
 name: unrealmcp-usage
-description: How to use UnrealMCP plugin from a Claude Code session to programmatically read / mutate UE editor state (spawn actor / set property / query actor list / call subsystem function / save-exit editor / etc.). Bundles the canonical TCP client `ue_cmd.py` (preferred over Claude Code's native MCP integration which is unreliable). Covers — (1) detection: how to tell whether UnrealMCP is available in the current project, (2) invocation: TCP-direct `ue_cmd.py` pattern + Windows path quoting, (3) capability gap policy (ask user before working around MCP), (4) top 5 inline gotchas with one-line summaries + link to fork's `Docs/known-issues.md` for code examples, (5) where to find command reference (project's `UnrealMCP_Docs/commands.md` synced from fork), (6) onboarding: how to add UnrealMCP to a new UE project (sync script + mcp.json + AGENTS.md sections), (7) extending UnrealMCP: dual-side registration (C++ dispatcher + Python tool layer) + Progress.md discipline + cold-rebuild rule. The skill ships `ue_cmd.py` itself so consumer projects do not need their own copy.
-when_to_use: Fires when (1) the current project has any of `Plugins/UnrealMCP/` / `UnrealMCP_Docs/` / `.claude/mcp.json` / `sync_unreal_mcp.sh` — indicating UnrealMCP is integrated; (2) agent task involves programmatically reading or mutating UE editor state (spawn / list / modify actor properties, call subsystem functions, save and exit editor, automate level setup, fix asset state, etc.) and the editor is running; (3) agent must decide between using MCP vs writing C++ / direct file edits for a UE editor operation; (4) user mentions "UnrealMCP" / "MCP server" / "ue_cmd" / "mcp.json"; (5) onboarding a new UE project to use UnrealMCP. On UE 5.8+ the official `ModelContextProtocol` MCP is the default — check `official-mcp-usage` first and treat this fork as legacy/fallback (niche only); the fork is NOT deprecated on UE 5.7 and earlier, where it is the only option. Skip if the project has no UnrealMCP integration and the task does not involve UE editor automation.
+description: How to use the UnrealMCP plugin from an agent session to programmatically read or mutate UE editor state. Use when a project contains `Plugins/UnrealMCP`, `UnrealMCP_Docs`, `sync_unreal_mcp.sh`, or related MCP client configuration; when a task needs editor automation through `ue_cmd.py`; or when deciding whether to extend the fork. On UE 5.8+, check `official-mcp-usage` first and use this fork only when the official MCP lacks the required operation. Skip when the project has no UnrealMCP integration and the task does not involve UE editor automation.
 ---
 
 # UnrealMCP Usage
@@ -9,6 +8,17 @@ when_to_use: Fires when (1) the current project has any of `Plugins/UnrealMCP/` 
 UnrealMCP 是一个 UE 编辑器侧 C++ 插件 + Python tool layer，让 agent / 外部脚本通过 TCP 命令读 / 改 editor state（actor / property / blueprint graph / subsystem 调用 / 保存退出 etc.）。源 repo 是 fork：`E:\xd_projects\unreal-mcp`（私有），消费侧通过 `sync_unreal_mcp.sh` 同步插件 + Python + Docs 进项目。
 
 本 skill 教**消费侧** agent 怎么用，不教扩展 fork（扩展见文末 §Extending）。
+
+## Platform Paths
+
+本文用 `<skill-dir>` 表示当前平台安装后的 skill 目录：
+
+| 平台 | `<skill-dir>` |
+|---|---|
+| Claude Code | `~/.claude/skills/unrealmcp-usage` |
+| Codex | `~/.agents/skills/unrealmcp-usage` |
+
+TCP 直连不依赖 agent 客户端的 MCP 配置。下文命令中的 `<skill-dir>` 必须先替换成当前平台路径。
 
 > ## ⚠️ UE 5.8+ → 优先官方 MCP，本 fork 在 5.8+ 上是 legacy / fallback
 >
@@ -25,7 +35,7 @@ UnrealMCP 是一个 UE 编辑器侧 C++ 插件 + Python tool layer，让 agent /
 | 触发信号 | 行动 |
 |---|---|
 | **项目是 UE 5.8+** | **先查官方 MCP**（`official-mcp-usage` skill）；fork 仅作 niche fallback（见上方 banner） |
-| 项目里看到 `Plugins/UnrealMCP/` / `UnrealMCP_Docs/` / `.claude/mcp.json` / `sync_unreal_mcp.sh` | 本项目已集成 UnrealMCP，UE 编辑器自动化任务优先考虑用 MCP（**5.8+ 先确认官方不够用**） |
+| 项目里看到 `Plugins/UnrealMCP/` / `UnrealMCP_Docs/` / `.claude/mcp.json` / `.codex/config.toml` / `sync_unreal_mcp.sh` | 本项目可能已集成 UnrealMCP；先 ping 验证（**5.8+ 先确认官方不够用**） |
 | 任务需要 spawn actor / 改 property / 查 actor list / call subsystem function / 控制编辑器生命周期 | 先 ping 看 MCP 可用否，可用就走 MCP 不要写 C++ / 手 edit asset 文件 |
 | 任务要操作 UE editor 但项目**没**集成 UnrealMCP | 跟 user 确认要不要先装（详 §Onboarding） |
 | 撞到 MCP 工具不够用 | **先问 user 要不要扩 fork**，不要静默绕过（详 §Capability Gap Policy） |
@@ -37,24 +47,25 @@ UnrealMCP 是一个 UE 编辑器侧 C++ 插件 + Python tool layer，让 agent /
 ls Plugins/UnrealMCP/ 2>/dev/null && echo "C++ plugin OK"
 ls UnrealMCP_Docs/ 2>/dev/null && echo "Docs synced"
 test -f .claude/mcp.json && echo "MCP config OK"
+test -f .codex/config.toml && echo "Codex config present"
 test -f sync_unreal_mcp.sh && echo "Sync script OK"
 ```
 
-四个 artifact 都在 = 项目已经走完 onboarding，直接用。缺一个或多个 → 走 §Onboarding。
+插件、文档和同步脚本都在，且 ping 成功，才算可直接使用。客户端配置只是辅助线索；缺少配置不影响 TCP 直连。
 
-> **`.claude/mcp.json` 仅是项目集成的边缘指标，不影响实际 invoke 路径**——本 skill 默认走 §Invocation 的 TCP 直连（`ue_cmd.py`），不读 mcp.json。mcp.json 只在 user 选择走 Claude Code 原生 MCP 集成时才生效（不推荐，见 §Invocation 开头）。
+> **`.claude/mcp.json` 与 `.codex/config.toml` 都不影响默认 invoke 路径**——本 skill 默认走 §Invocation 的 TCP 直连（`ue_cmd.py`），不读取客户端 MCP 配置。`.claude/mcp.json` 只在选择 Claude Code 原生 MCP 集成时生效；Codex 的 MCP server 配置位于 `.codex/config.toml`，但本 fork 的 Codex 原生集成不在本 skill 的已验证范围内。
 
 ## Invocation — 优先 `ue_cmd.py` TCP 直连
 
-**默认走 TCP 直连，不依赖 Claude Code 的 MCP 集成**（Claude Code VSCode 扩展加载 mcp.json 不稳定，`/mcp` 经常显示 "No MCP servers configured" 即使配置正确——已踩过；详 fork `Docs/known-issues.md` #5）。
+**默认走 TCP 直连，不依赖 agent 客户端的 MCP 集成**。Claude Code VSCode 扩展加载 mcp.json 不稳定是选择直连的已知原因之一；Codex 也使用同一条直连路径，因此不需要伪造一套未经验证的原生 MCP 配置。
 
 本 skill 自带 `ue_cmd.py`。调用路径：
 
 | Shell | 调用 |
 |---|---|
-| Bash / Git-Bash | `python ~/.claude/skills/unrealmcp-usage/ue_cmd.py <command> [json_params]` |
-| PowerShell | `python $env:USERPROFILE/.claude/skills/unrealmcp-usage/ue_cmd.py <command> [json_params]` |
-| cmd.exe | `python %USERPROFILE%\.claude\skills\unrealmcp-usage\ue_cmd.py <command> [json_params]` |
+| Bash / Git-Bash | `python <skill-dir>/ue_cmd.py <command> [json_params]` |
+| PowerShell | `python <skill-dir>/ue_cmd.py <command> [json_params]` |
+| cmd.exe | `python <skill-dir>\ue_cmd.py <command> [json_params]` |
 
 ### 协议
 
@@ -91,16 +102,16 @@ start "" "C:/Program Files/Epic Games/UE_5.X/Engine/Binaries/Win64/UnrealEditor.
 
 ```bash
 # 1. 先 ping 确认 editor 在跑 + 插件加载了
-python ~/.claude/skills/unrealmcp-usage/ue_cmd.py ping
+python <skill-dir>/ue_cmd.py ping
 
 # 2. 查命令列表（runtime 查询）
-python ~/.claude/skills/unrealmcp-usage/ue_cmd.py help
+python <skill-dir>/ue_cmd.py help
 
 # 3. 查具体命令参数
-python ~/.claude/skills/unrealmcp-usage/ue_cmd.py help '{"command":"spawn_actor"}'
+python <skill-dir>/ue_cmd.py help '{"command":"spawn_actor"}'
 
 # 4. 调
-python ~/.claude/skills/unrealmcp-usage/ue_cmd.py spawn_actor '{"type":"PointLight","name":"MyLight","location":[0,0,200]}'
+python <skill-dir>/ue_cmd.py spawn_actor '{"type":"PointLight","name":"MyLight","location":[0,0,200]}'
 ```
 
 ### 静态命令参考
@@ -193,7 +204,7 @@ Build.bat <Project>Editor Win64 Development -Project="<uproject>" -WaitMutex -Fr
 # 启动
 start "" UnrealEditor.exe "<uproject>"
 # verify
-python ~/.claude/skills/unrealmcp-usage/ue_cmd.py ping
+python <skill-dir>/ue_cmd.py ping
 ```
 
 `ping` 返回 `{"status":"success",...}` → 装好了。
@@ -207,8 +218,8 @@ python ~/.claude/skills/unrealmcp-usage/ue_cmd.py ping
 - Python server: `UnrealMCP_Python/` (synced)
 - Docs: `UnrealMCP_Docs/` (synced)
 - Sync script: `./sync_unreal_mcp.sh`
-- TCP 直连: `python ~/.claude/skills/unrealmcp-usage/ue_cmd.py <command> [json]`
-- Agent 用法 + 命令参考 + 踩坑见 `UnrealMCP_Docs/`；通用 agent 协作纪律见 `~/.claude/skills/unrealmcp-usage/SKILL.md`
+- TCP 直连: `python <skill-dir>/ue_cmd.py <command> [json]`（按当前 agent 平台替换 `<skill-dir>`）
+- Agent 用法 + 命令参考 + 踩坑见 `UnrealMCP_Docs/`；通用 agent 协作纪律见 `<skill-dir>/SKILL.md`
 - Capability gap → 先问 user 要不要扩 fork
 ```
 
@@ -318,7 +329,7 @@ Build.bat ...
 start "" UnrealEditor.exe ...
 
 # 3. live smoke
-python ~/.claude/skills/unrealmcp-usage/ue_cmd.py <new_command> '...'
+python <skill-dir>/ue_cmd.py <new_command> '...'
 
 # 4. sync 进消费项目（如果不是在消费项目里直接 fork-link 开发）
 ./sync_unreal_mcp.sh
@@ -334,7 +345,7 @@ python ~/.claude/skills/unrealmcp-usage/ue_cmd.py <new_command> '...'
 
 - 改 fork 的 commit 一次，跑各项目 `sync_unreal_mcp.sh` 各拉一次
 - fork 里的踩坑全 N 个项目共享，不再重复整理
-- 本 skill ship 的 `ue_cmd.py` 全 N 个项目共用同一份（`~/.claude/skills/unrealmcp-usage/ue_cmd.py`）
+- 本 skill ship 的 `ue_cmd.py` 全 N 个项目共用同一份（`<skill-dir>/ue_cmd.py`）
 
 新项目 onboarding 走 §Onboarding。已有项目升级 fork 走 `UnrealMCP_Docs/ForkWorkflow.md`。
 

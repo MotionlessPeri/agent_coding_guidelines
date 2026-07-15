@@ -1,7 +1,6 @@
 ---
 name: autonomous-workflow
-description: Low-touch workflow orchestrator for substantial tasks. Composes superpowers brainstorming, writing-plans, executing-plans, and requesting-code-review with EXACTLY ONE user-review gate — at the plan stage. After the user approves the plan, execution runs without further gates. Three safety nets: (1) plan gate catches strategic bias before any code is written, (2) handoff-style documentation (brief / context / worklog / result) lets the user audit afterward, (3) mandatory tdd-with-fixtures discipline blocks milestone advancement on failing tests. Use when the user explicitly requests autonomous workflow OR when the task is functional-only with a clear pre-defined pipeline and the user does not want to be in the loop for per-milestone reviews. Skip for trivial tasks and for tasks where architectural decisions need user involvement throughout.
-when_to_use: User explicitly says "use autonomous / 自主 / agent-led / 你自己来" workflow, OR user asks agent to evaluate workflow choice and the task is functional-only with a clear pipeline AND the user does not want per-milestone review (one plan-review checkpoint is still required). Skip when supervised workflow is selected, when the task is trivial, or when architectural decisions need user input throughout.
+description: Use when the user explicitly requests an autonomous, low-touch, or agent-led workflow for a substantial task; or when the task has a clear predefined pipeline and the user wants only one approval gate at the implementation plan. Skip for trivial work, ambiguous acceptance criteria, supervised workflow, or tasks whose architecture and interfaces require user decisions during implementation.
 ---
 
 # Autonomous Workflow
@@ -11,6 +10,17 @@ Orchestrator skill. Same composition chain as `supervised-workflow` but only **o
 1. **Plan gate** — catches strategic bias (wrong scope / wrong approach / wrong milestone breakdown) BEFORE any code is written. Cheapest possible insurance, highest leverage of the three.
 2. **Documentation** — durable handoff artifacts (brief / context / worklog / result) let the user audit afterward. Worklog is append-only and readable as a status check anytime.
 3. **TDD discipline** — `tdd-with-fixtures` is mandatory; failing tests block milestone advancement. Acts as the safety net during the gateless execution phase.
+
+## Platform Paths
+
+Resolve these placeholders once at workflow start and use them throughout:
+
+| Placeholder | Claude Code | Codex |
+|---|---|---|
+| `<project-skill-root>` | `<project>/.claude/skills` | `<project>/.agents/skills` |
+| `<agent-state-root>` | `~/.claude` | `${CODEX_HOME}` when set, otherwise `~/.codex` |
+
+Do not mix roots within one run. Project-local Codex skills come from `.agents/skills`; Codex configuration and private state remain under `.codex` / `CODEX_HOME`.
 
 **Diff vs `supervised-workflow`:**
 
@@ -59,7 +69,7 @@ Phase 1: Self-Brainstorm
   → write context.md: relevant files, constraints, known risks,
     framework references (engine source pointers, related guidelines)
   → ★ Pattern recognition (if project has it). Check whether the project has
-    `<project>/.claude/skills/pattern-recognition-prep/SKILL.md`. If yes,
+    `<project-skill-root>/pattern-recognition-prep/SKILL.md`. If yes,
     invoke it on the task statement. Capture findings in context.md under
     "Related Patterns" section:
       - Strong Established match → "Reuse Pattern X" (drives Phase 2 plan
@@ -96,7 +106,7 @@ Phase 3: Per-Milestone Implementation (TDD-strict, no gates)
        do not advance to next Milestone with red state.
     c.5. Audit (if project-side audit skills exist). After build/tests pass
        and BEFORE commit, check whether the project has audit skills under
-       `<project>/.claude/skills/` (typical: `code-size-audit`,
+       `<project-skill-root>/` (typical: `code-size-audit`,
        `code-clarity-audit`). For each existing one, invoke it on files
        modified by this Milestone. Findings are **non-blocking** — they do
        NOT stop the commit. Record findings in worklog.md "Audit Findings"
@@ -139,7 +149,7 @@ Phase 4: Self-Review and Result
      For each candidate, classify:
        - **Project skill candidate**: the rule only makes sense in THIS project
          (uses project helpers / business invariants / data conventions).
-         Target location: `<project>/.claude/skills/<name>/SKILL.md`. Low bar.
+         Target location: `<project-skill-root>/<name>/SKILL.md`. Low bar.
        - **Global skill candidate**: rule applies across projects / framework
          level. Target location: `agent_coding_guidelines/skills/`. Higher bar:
          needs evidence per knowledge-promotion.md (two-strike rule, hidden
@@ -164,9 +174,9 @@ Phase 4: Self-Review and Result
   → write result.md with conclusion, all changes, commits, test results,
     known limitations, recommended next steps, AND skill candidates
   → DAILY LOG + OPEN-ITEMS SYNC: per `guidelines/workflow/daily-and-open-items.md`:
-       - Append entry to today's `~/.claude/daily/YYYY-MM-DD.md` under the
+       - Append entry to today's `<agent-state-root>/daily/YYYY-MM-DD.md` under the
          relevant project section, with reference to `handoffs/<task-slug>/result.md`
-       - Sync task status to `~/.claude/projects/<project>/open-items.md`:
+       - Sync task status to `<agent-state-root>/projects/<project>/open-items.md`:
          - task fully done → remove or close the in-flight item; record under
            daily's "Open Items Δ → Closed"
          - task escalated / incomplete → ensure an in-flight item exists with
@@ -184,7 +194,7 @@ Per `guidelines/collaboration/private-docs-policy.md`: agent artifacts (everythi
 
 ### Agent Artifact Layout
 
-Agent artifacts live under `~/.claude/projects/<project>/`, organized into 5 sibling subdirectories:
+Agent artifacts live under `<agent-state-root>/projects/<project>/`, organized into 5 sibling subdirectories:
 
 | Subdirectory | Holds | Used by |
 |--------------|-------|---------|
@@ -202,11 +212,11 @@ Distinction from project deliverables: a `design.md` or `impl-plan.md` that the 
 
 ### `<handoff-root>` Resolution
 
-For autonomous workflow specifically, `<handoff-root>` = `~/.claude/projects/<project>/handoffs/` (the `handoffs/` row in the table above).
+For autonomous workflow specifically, `<handoff-root>` = `<agent-state-root>/projects/<project>/handoffs/` (the `handoffs/` row in the table above).
 
 Resolution order (in priority):
 1. If project AGENTS.md specifies a handoff directory → use it (project override)
-2. Default: `~/.claude/projects/<project>/handoffs/` (matches the Agent Artifact Layout)
+2. Default: `<agent-state-root>/projects/<project>/handoffs/` (matches the Agent Artifact Layout)
 3. Fallback when no `<project>` directory mapping is available: create `_agent_private/<project-name>/handoffs/` at workspace level and use it (notify user of the choice)
 
 **Never** put handoff docs inside the project tree where they would be committed.
@@ -355,9 +365,12 @@ Autonomous Phase 3 commits per Milestone. If `git commit` is gated by a `permiss
 
 ### Detection (Phase 0)
 
-Read `~/.claude/settings.json` and (if present) the project's `.claude/settings.json` / `.claude/settings.local.json`. Look for `Bash(git commit:*)` or `Bash(git commit*)` in the `permissions.ask` list.
+Run the platform-specific permission pre-flight:
 
-If found in ANY of these files → commit is gated. Surface at plan gate.
+- **Claude Code:** read `~/.claude/settings.json` and, if present, the project's `.claude/settings.json` / `.claude/settings.local.json`. Look for `Bash(git commit:*)` or `Bash(git commit*)` in `permissions.ask`.
+- **Codex:** inspect the approval and sandbox policy exposed to the current session. Do not infer permission from Claude settings, and do not edit `.codex/config.toml` to weaken policy. If commits require approval that cannot be granted while the user is away, surface that limitation at the plan gate.
+
+If the active platform requires user approval for commit → commit is gated. Surface it at the plan gate.
 
 ### If Gated: Surface at Plan Gate
 
@@ -370,12 +383,14 @@ Plan gate output must include a "Pre-flight notice" section listing the gated lo
 - Tells agent to proceed
 - User restores `ask` rule at task end (or opens a follow-up reminder)
 
-**B. User authorizes agent to lift, agent restores at Phase 4 end.**
+**B. Claude Code only: user authorizes agent to lift, agent restores at Phase 4 end.**
 - Agent edits the same settings file(s): moves entry `ask` → `allow`
 - Verifies (read setting back; or attempt trivial commit if safe)
 - Records the lift in worklog.md including which file(s) were modified
 - At Phase 4 end: reverse-edits the same files, verifies restoration, records in result.md
 - Restoration is non-negotiable; result.md is NOT complete without it
+
+Codex must not emulate Option B by editing `.codex/config.toml`. Use Option A through the user's normal Codex policy controls, or Option C.
 
 **C. Proceed unlifted (will stall).**
 - Phase 3 runs until first commit, halts on prompt, escalates to user
@@ -447,8 +462,8 @@ This skill is an **orchestrator**:
 - `superpowers:executing-plans` — owns the per-Milestone execution structure in Phase 3
 - `superpowers:test-driven-development` — invoked inside each Milestone in Phase 3 (red/green/refactor cycle)
 - `tdd-with-fixtures` — invoked inside each Milestone in Phase 3 (milestone discipline + fixture/manual escape hatch). **Non-negotiable** — autonomous workflow cannot suspend its rules.
-- Project-side audit skills (optional, plural) — typical names: `code-size-audit`, `code-clarity-audit`. If the project has any under `<project>/.claude/skills/`, invoke each at Phase 3 step c.5 (after build/tests pass, before commit) for each Milestone. Findings are **non-blocking** and recorded in worklog.md "Audit Findings". If no such skills exist, skip silently — do not warn the user. When multiple audit skills overlap on the same finding (e.g. size + clarity both flag a long function), one main report + cross-reference is enough — do not duplicate.
-- Project-side `pattern-recognition-prep` skill (optional, design-time prep) — if `<project>/.claude/skills/pattern-recognition-prep/SKILL.md` exists, invoke it at Phase 1 (read direction: surface reusable Established / Watching patterns to inform plan) and Phase 4 (write direction: audit if novel pattern emerged for Watching addition / Watching → Established promotion). Findings are **non-blocking** but **architecturally important** (Phase 1 findings drive Milestone breakdown to favor reuse over re-implementation). User approve required before any catalog write.
+- Project-side audit skills (optional, plural) — typical names: `code-size-audit`, `code-clarity-audit`. If the project has any under `<project-skill-root>/`, invoke each at Phase 3 step c.5 (after build/tests pass, before commit) for each Milestone. Findings are **non-blocking** and recorded in worklog.md "Audit Findings". If no such skills exist, skip silently — do not warn the user. When multiple audit skills overlap on the same finding (e.g. size + clarity both flag a long function), one main report + cross-reference is enough — do not duplicate.
+- Project-side `pattern-recognition-prep` skill (optional, design-time prep) — if `<project-skill-root>/pattern-recognition-prep/SKILL.md` exists, invoke it at Phase 1 (read direction: surface reusable Established / Watching patterns to inform plan) and Phase 4 (write direction: audit if novel pattern emerged for Watching addition / Watching → Established promotion). Findings are **non-blocking** but **architecturally important** (Phase 1 findings drive Milestone breakdown to favor reuse over re-implementation). User approve required before any catalog write.
 - `superpowers:requesting-code-review` — owns Phase 4 (applied to own work adversarially)
 
 When composing these, **follow each composed skill's discipline fully**. Autonomous does not authorize skipping; it just removes the user-review pauses.

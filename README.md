@@ -68,4 +68,4 @@ The script validates every skill before writing, replaces only same-named manage
 2. **Technique** (procedural pattern): create a `.md` under `techniques/`; add a `@` reference in `AGENTS.md`.
 3. **Skill** (shared Agent Skill): create `skills/<category>/<name>/SKILL.md` with matching `name` and a self-contained `description`; add a line under AGENTS.md's Skills section; run the sync script.
 
-Keep each file focused on one topic. See `AGENTS.md` for the full organization rules. Codex uses `description` for implicit skill discovery, so do not put required trigger information only in optional platform-specific metadata such as `when_to_use`.
+Keep each file focused on one topic. See `AGENTS.md` for the full organization rules. For portable frontmatter, use only `name` and a self-contained `description`; put detailed procedures and platform branches in the skill body.

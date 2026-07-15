@@ -1,12 +1,22 @@
 ---
 name: supervised-workflow
 description: High-touch workflow orchestrator for substantial tasks with three mandatory user-review gates (plan, impl-plan, per-milestone). Composes superpowers brainstorming, writing-plans, executing-plans, and requesting-code-review into a gated chain. Use when the user explicitly requests supervised / gated / high-touch workflow, or when the user asks the agent to evaluate workflow choice on a task with substantial architecture or design decisions. Do NOT use for trivial tasks (single-file mechanical changes, typo fixes, single-commit bug fixes) or when the user has selected autonomous workflow.
-when_to_use: User explicitly says "use supervised / gated / 高介入 / 仔细 review" workflow, OR user asks agent to evaluate workflow choice and the task carries substantial design weight (architecture decisions, multi-file changes with cross-cutting effects, scope-ambiguous features). Skip for trivial tasks and skip when autonomous workflow is selected.
 ---
 
 # Supervised Workflow
 
 Orchestrator skill. Composes existing skills with **three hard user-review gates** between phases. Does NOT reimplement the composed skills' content — invoke them at each phase and add the gate behavior on top.
+
+## Platform Paths
+
+Resolve these placeholders once at workflow start:
+
+| Placeholder | Claude Code | Codex |
+|---|---|---|
+| `<project-skill-root>` | `<project>/.claude/skills` | `<project>/.agents/skills` |
+| `<agent-state-root>` | `~/.claude` | `${CODEX_HOME}` when set, otherwise `~/.codex` |
+
+Do not mix roots within one run. Project-local Codex skills and Codex private state intentionally use different roots.
 
 ## When This Fires
 
@@ -34,7 +44,7 @@ Phase 1: Brainstorm
   → invoke superpowers:brainstorming
   → output: problem framing, scope boundaries, alternatives considered, recommended approach
   → ★ Pattern recognition (if project has it). Check whether the project has
-    `<project>/.claude/skills/pattern-recognition-prep/SKILL.md`. If yes,
+    `<project-skill-root>/pattern-recognition-prep/SKILL.md`. If yes,
     invoke it on the task statement before GATE 1. Capture findings in the
     Phase 1 output:
       - Strong Established match → "Reuse Pattern X" (drives Phase 2 plan)
@@ -91,7 +101,7 @@ Phase 4: Overall Review
      FUTURE work (a pattern, contract, anti-pattern, or convention)?"
     For each candidate, classify:
       - **Project skill candidate**: only makes sense in THIS project. Target
-        location: `<project>/.claude/skills/<name>/SKILL.md`. Low bar.
+        location: `<project-skill-root>/<name>/SKILL.md`. Low bar.
       - **Global skill candidate**: applies across projects. Target location:
         `agent_coding_guidelines/skills/`. Higher bar (knowledge-promotion.md
         criteria: two-strike rule / hidden contract / validated pattern).
@@ -110,9 +120,9 @@ Phase 4: Overall Review
      Surface findings in overall review output. DO NOT auto-write to catalog —
      drafts only, user decides. If skill absent or no updates, say so.
   → DAILY LOG + OPEN-ITEMS SYNC: per `guidelines/workflow/daily-and-open-items.md`:
-    - Append entry to today's `~/.claude/daily/YYYY-MM-DD.md` under the
+    - Append entry to today's `<agent-state-root>/daily/YYYY-MM-DD.md` under the
       relevant project section, with reference to commits made and key decisions
-    - Sync task status to `~/.claude/projects/<project>/open-items.md`:
+    - Sync task status to `<agent-state-root>/projects/<project>/open-items.md`:
       task done → close item; task incomplete → ensure in-flight entry exists
     - Record changes under daily's "Open Items Δ"
 ```
@@ -154,7 +164,7 @@ This skill is an **orchestrator** — it invokes other skills, does not replace 
 - `superpowers:requesting-code-review` — owns Phase 4
 - `superpowers:test-driven-development` — base red/green/refactor cycle, invoked inside Phase 3
 - `tdd-with-fixtures` — milestone-level test discipline + fixture/manual escape hatch for behaviors auto-tests can't cover; invoked inside Phase 3 alongside superpowers:TDD. Non-negotiable: workflow gates do not suspend its rules.
-- Project-side `pattern-recognition-prep` skill (optional, design-time prep) — if `<project>/.claude/skills/pattern-recognition-prep/SKILL.md` exists, invoke it at Phase 1 (read direction: surface reusable Established / Watching patterns before GATE 1) and Phase 4 (write direction: audit novel pattern → Watching / Watching → Established promotion). Findings drive Milestone breakdown to favor reuse. User approve required before any catalog write.
+- Project-side `pattern-recognition-prep` skill (optional, design-time prep) — if `<project-skill-root>/pattern-recognition-prep/SKILL.md` exists, invoke it at Phase 1 (read direction: surface reusable Established / Watching patterns before GATE 1) and Phase 4 (write direction: audit novel pattern → Watching / Watching → Established promotion). Findings drive Milestone breakdown to favor reuse. User approve required before any catalog write.
 
 When invoking each composed skill, **follow that skill's own discipline fully**. Do not skip steps of a composed skill because this orchestrator is also running.
 
