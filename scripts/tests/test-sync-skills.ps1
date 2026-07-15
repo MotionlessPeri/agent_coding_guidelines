@@ -36,6 +36,18 @@ description: Test skill named $Name.
     Set-Content -Encoding UTF8 (Join-Path $SkillDir.FullName "reference.txt") "current"
 }
 
+function New-RawSkill {
+    param(
+        [string]$Root,
+        [string]$Category,
+        [string]$DirectoryName,
+        [string]$Content
+    )
+
+    $SkillDir = New-Item -ItemType Directory -Force (Join-Path $Root "$Category\$DirectoryName")
+    Set-Content -Encoding UTF8 (Join-Path $SkillDir.FullName "SKILL.md") $Content
+}
+
 function Invoke-Sync {
     param(
         [string]$UserHome,
@@ -43,8 +55,10 @@ function Invoke-Sync {
     )
 
     $PreviousUserProfile = $env:USERPROFILE
+    $PreviousErrorAction = $ErrorActionPreference
     try {
         $env:USERPROFILE = $UserHome
+        $ErrorActionPreference = "Continue"
         $Output = & $PowerShellExe -NoProfile -ExecutionPolicy Bypass -File $ScriptUnderTest @Arguments 2>&1
         return [pscustomobject]@{
             ExitCode = $LASTEXITCODE
@@ -53,6 +67,7 @@ function Invoke-Sync {
     }
     finally {
         $env:USERPROFILE = $PreviousUserProfile
+        $ErrorActionPreference = $PreviousErrorAction
     }
 }
 
@@ -142,6 +157,97 @@ try {
         Assert-True (-not (Test-Path "$FakeHome\.agents\skills\delta\stale.txt")) "stale managed file was not removed"
         Assert-True (Test-Path "$FakeHome\.agents\skills\unrelated\SKILL.md") "unrelated skill was removed"
         Assert-True ((Get-Content -Raw "$FakeHome\.agents\skills\delta\reference.txt").Trim() -eq "updated") "updated source was not copied"
+    }
+
+    Invoke-Test "invalid frontmatter is rejected before target writes" {
+        $Cases = @(
+            @{ Name = "missing-name"; Directory = "missing-name"; Body = "---`ndescription: Missing name.`n---" },
+            @{ Name = "empty-name"; Directory = "empty-name"; Body = "---`nname:`ndescription: Empty name.`n---" },
+            @{ Name = "missing-description"; Directory = "missing-description"; Body = "---`nname: missing-description`n---" },
+            @{ Name = "empty-description"; Directory = "empty-description"; Body = "---`nname: empty-description`ndescription:`n---" },
+            @{ Name = "missing-boundaries"; Directory = "missing-boundaries"; Body = "name: missing-boundaries`ndescription: No delimiters." }
+        )
+
+        foreach ($Case in $Cases) {
+            $Source = Join-Path $TestRoot "$($Case.Name)-source"
+            $FakeHome = Join-Path $TestRoot "$($Case.Name)-home"
+            New-RawSkill $Source "workflow" $Case.Directory $Case.Body
+            New-Item -ItemType Directory -Force "$FakeHome\.agents\skills\unrelated" | Out-Null
+            Set-Content -Encoding UTF8 "$FakeHome\.agents\skills\unrelated\sentinel.txt" "keep"
+
+            $Result = Invoke-Sync $FakeHome @("-SourcePath", $Source, "-UserHome", $FakeHome, "-Targets", "Codex")
+
+            Assert-True ($Result.ExitCode -ne 0) "$($Case.Name) should fail validation"
+            Assert-True (Test-Path "$FakeHome\.agents\skills\unrelated\sentinel.txt") "$($Case.Name) changed an existing target"
+            Assert-True (-not (Test-Path "$FakeHome\.agents\skills\$($Case.Directory)")) "$($Case.Name) was copied before validation completed"
+        }
+    }
+
+    Invoke-Test "metadata name must match directory name" {
+        $Source = Join-Path $TestRoot "mismatch-source"
+        $FakeHome = Join-Path $TestRoot "mismatch-home"
+        New-RawSkill $Source "workflow" "directory-name" "---`nname: metadata-name`ndescription: Names differ.`n---"
+        New-Item -ItemType Directory -Force $FakeHome | Out-Null
+
+        $Result = Invoke-Sync $FakeHome @("-SourcePath", $Source, "-UserHome", $FakeHome, "-Targets", "Codex")
+
+        Assert-True ($Result.ExitCode -ne 0) "name mismatch should fail validation"
+        Assert-True (-not (Test-Path "$FakeHome\.agents\skills")) "target was created before validation completed"
+    }
+
+    Invoke-Test "duplicate metadata names are rejected before target writes" {
+        $Source = Join-Path $TestRoot "duplicate-metadata-source"
+        $FakeHome = Join-Path $TestRoot "duplicate-metadata-home"
+        New-RawSkill $Source "workflow" "first" "---`nname: shared`ndescription: First duplicate.`n---"
+        New-RawSkill $Source "ue" "second" "---`nname: shared`ndescription: Second duplicate.`n---"
+        New-Item -ItemType Directory -Force $FakeHome | Out-Null
+
+        $Result = Invoke-Sync $FakeHome @("-SourcePath", $Source, "-UserHome", $FakeHome, "-Targets", "Codex")
+
+        Assert-True ($Result.ExitCode -ne 0) "duplicate metadata names should fail validation"
+        Assert-True (-not (Test-Path "$FakeHome\.agents\skills")) "target was created before validation completed"
+    }
+
+    Invoke-Test "duplicate directory names are rejected before target writes" {
+        $Source = Join-Path $TestRoot "duplicate-directory-source"
+        $FakeHome = Join-Path $TestRoot "duplicate-directory-home"
+        New-TestSkill $Source "workflow" "same-name"
+        New-TestSkill $Source "ue" "same-name"
+        New-Item -ItemType Directory -Force $FakeHome | Out-Null
+
+        $Result = Invoke-Sync $FakeHome @("-SourcePath", $Source, "-UserHome", $FakeHome, "-Targets", "Codex")
+
+        Assert-True ($Result.ExitCode -ne 0) "duplicate directory names should fail validation"
+        Assert-True (-not (Test-Path "$FakeHome\.agents\skills")) "target was created before validation completed"
+    }
+
+    Invoke-Test "invalid project path is rejected before user target writes" {
+        $Source = Join-Path $TestRoot "invalid-project-source"
+        $FakeHome = Join-Path $TestRoot "invalid-project-home"
+        $MissingProject = Join-Path $TestRoot "does-not-exist"
+        New-TestSkill $Source "workflow" "epsilon"
+        New-Item -ItemType Directory -Force $FakeHome | Out-Null
+
+        $Result = Invoke-Sync $FakeHome @(
+            "-SourcePath", $Source,
+            "-UserHome", $FakeHome,
+            "-Targets", "Codex",
+            "-ProjectPath", $MissingProject
+        )
+
+        Assert-True ($Result.ExitCode -ne 0) "invalid project path should fail"
+        Assert-True (-not (Test-Path "$FakeHome\.agents\skills")) "user target was written during failed project sync"
+    }
+
+    Invoke-Test "empty skill source is rejected" {
+        $Source = Join-Path $TestRoot "empty-source"
+        $FakeHome = Join-Path $TestRoot "empty-home"
+        New-Item -ItemType Directory -Force $Source, $FakeHome | Out-Null
+
+        $Result = Invoke-Sync $FakeHome @("-SourcePath", $Source, "-UserHome", $FakeHome, "-Targets", "Codex")
+
+        Assert-True ($Result.ExitCode -ne 0) "empty source should fail validation"
+        Assert-True (-not (Test-Path "$FakeHome\.agents\skills")) "target was created for empty source"
     }
 }
 finally {

@@ -16,33 +16,137 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$RepoSkills = (Resolve-Path -LiteralPath $SourcePath).Path
-$ScopeRoot = if ($ProjectPath) {
-    (Resolve-Path -LiteralPath $ProjectPath).Path
-}
-else {
-    $UserHome
+function Get-YamlScalarField {
+    param(
+        [string]$Yaml,
+        [string]$FieldName
+    )
+
+    $Pattern = '(?m)^' + [regex]::Escape($FieldName) + ':[ \t]*(?<value>[^\r\n]*)$'
+    $Match = [regex]::Match($Yaml, $Pattern)
+    if (-not $Match.Success) {
+        return $null
+    }
+
+    $Value = $Match.Groups["value"].Value.Trim()
+    if ($Value.Length -ge 2) {
+        $First = $Value.Substring(0, 1)
+        $Last = $Value.Substring($Value.Length - 1, 1)
+        if (($First -eq '"' -and $Last -eq '"') -or ($First -eq "'" -and $Last -eq "'")) {
+            $Value = $Value.Substring(1, $Value.Length - 2).Trim()
+        }
+    }
+
+    return $Value
 }
 
+function Get-SkillMetadata {
+    param([System.IO.DirectoryInfo]$SkillDirectory)
+
+    $SkillFile = Join-Path $SkillDirectory.FullName "SKILL.md"
+    $Content = Get-Content -Raw -LiteralPath $SkillFile
+    $Frontmatter = [regex]::Match(
+        $Content,
+        '(?s)\A---[ \t]*\r?\n(?<yaml>.*?)\r?\n---[ \t]*(?:\r?\n|\z)'
+    )
+
+    if (-not $Frontmatter.Success) {
+        return [pscustomobject]@{
+            Directory = $SkillDirectory
+            Name = $null
+            Description = $null
+            Error = "$SkillFile`: missing valid YAML frontmatter boundaries"
+        }
+    }
+
+    $Yaml = $Frontmatter.Groups["yaml"].Value
+    return [pscustomobject]@{
+        Directory = $SkillDirectory
+        Name = Get-YamlScalarField $Yaml "name"
+        Description = Get-YamlScalarField $Yaml "description"
+        Error = $null
+    }
+}
+
+$ValidationErrors = [System.Collections.Generic.List[string]]::new()
+
+if (-not (Test-Path -LiteralPath $SourcePath -PathType Container)) {
+    $ValidationErrors.Add("Skill source does not exist or is not a directory: $SourcePath")
+}
+
+if ($ProjectPath -and -not (Test-Path -LiteralPath $ProjectPath -PathType Container)) {
+    $ValidationErrors.Add("ProjectPath does not exist or is not a directory: $ProjectPath")
+}
+
+if ($ValidationErrors.Count -gt 0) {
+    Write-Host "ERROR: Skill sync validation failed:" -ForegroundColor Red
+    foreach ($ValidationError in $ValidationErrors) {
+        Write-Host "  - $ValidationError" -ForegroundColor Red
+    }
+    exit 1
+}
+
+$RepoSkills = (Resolve-Path -LiteralPath $SourcePath).Path
 $SkillDirs = @(Get-ChildItem -Recurse -Directory $RepoSkills | Where-Object {
     Test-Path -LiteralPath (Join-Path $_.FullName "SKILL.md")
 })
 
 if ($SkillDirs.Count -eq 0) {
-    Write-Host "No skills found under $RepoSkills"
-    exit 0
+    $ValidationErrors.Add("No skills found under $RepoSkills")
 }
 
 $NameGroups = @($SkillDirs | Group-Object -Property Name | Where-Object { $_.Count -gt 1 })
-if ($NameGroups.Count -gt 0) {
-    Write-Host "ERROR: Skill basename collision (target directory would collide):" -ForegroundColor Red
-    foreach ($Group in $NameGroups) {
-        Write-Host "  $($Group.Name):" -ForegroundColor Red
-        foreach ($Directory in $Group.Group) {
-            Write-Host "    $($Directory.FullName)" -ForegroundColor Red
-        }
+foreach ($Group in $NameGroups) {
+    $Paths = ($Group.Group | Select-Object -ExpandProperty FullName) -join ", "
+    $ValidationErrors.Add("Skill directory name '$($Group.Name)' is duplicated: $Paths")
+}
+
+$SkillMetadata = @($SkillDirs | ForEach-Object { Get-SkillMetadata $_ })
+foreach ($Metadata in $SkillMetadata) {
+    if ($Metadata.Error) {
+        $ValidationErrors.Add($Metadata.Error)
+        continue
+    }
+
+    $SkillFile = Join-Path $Metadata.Directory.FullName "SKILL.md"
+    if ([string]::IsNullOrWhiteSpace($Metadata.Name)) {
+        $ValidationErrors.Add("$SkillFile`: frontmatter field 'name' is missing or empty")
+    }
+    elseif ($Metadata.Name -ne $Metadata.Directory.Name) {
+        $ValidationErrors.Add(
+            "$SkillFile`: frontmatter name '$($Metadata.Name)' must match directory '$($Metadata.Directory.Name)'"
+        )
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Metadata.Description)) {
+        $ValidationErrors.Add("$SkillFile`: frontmatter field 'description' is missing or empty")
+    }
+}
+
+$MetadataNameGroups = @(
+    $SkillMetadata |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_.Name) } |
+        Group-Object -Property Name |
+        Where-Object { $_.Count -gt 1 }
+)
+foreach ($Group in $MetadataNameGroups) {
+    $Paths = ($Group.Group | ForEach-Object { Join-Path $_.Directory.FullName "SKILL.md" }) -join ", "
+    $ValidationErrors.Add("Skill metadata name '$($Group.Name)' is duplicated: $Paths")
+}
+
+if ($ValidationErrors.Count -gt 0) {
+    Write-Host "ERROR: Skill sync validation failed:" -ForegroundColor Red
+    foreach ($ValidationError in $ValidationErrors) {
+        Write-Host "  - $ValidationError" -ForegroundColor Red
     }
     exit 1
+}
+
+$ScopeRoot = if ($ProjectPath) {
+    (Resolve-Path -LiteralPath $ProjectPath).Path
+}
+else {
+    $UserHome
 }
 
 $TargetSpecs = foreach ($TargetName in ($Targets | Select-Object -Unique)) {
