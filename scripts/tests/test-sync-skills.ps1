@@ -114,7 +114,6 @@ try {
         $Result = Invoke-Sync $FakeHome @(
             "-SourcePath", $Source,
             "-UserHome", $FakeHome,
-            "-Targets", "Claude,Codex",
             "-ProjectPath", $Project
         )
 
