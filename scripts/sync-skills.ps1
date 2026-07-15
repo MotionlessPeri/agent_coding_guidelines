@@ -25,13 +25,17 @@ param(
 
     [string]$ProjectPath,
 
-    [string]$SourcePath = (Join-Path $PSScriptRoot "..\skills"),
+    [string]$SourcePath,
 
     [Parameter(DontShow)]
     [string]$UserHome = $env:USERPROFILE
 )
 
 $ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($SourcePath)) {
+    $SourcePath = Join-Path $PSScriptRoot "..\skills"
+}
 
 function Get-YamlScalarField {
     param(
@@ -72,15 +76,39 @@ function Get-SkillMetadata {
             Directory = $SkillDirectory
             Name = $null
             Description = $null
+            DescriptionRaw = $null
+            DescriptionQuoted = $false
+            Keys = @()
             Error = "$SkillFile`: missing valid YAML frontmatter boundaries"
         }
     }
 
     $Yaml = $Frontmatter.Groups["yaml"].Value
+    $DescriptionLine = [regex]::Match($Yaml, '(?m)^description:[ \t]*(?<value>[^\r\n]*)$')
+    $DescriptionRaw = if ($DescriptionLine.Success) {
+        $DescriptionLine.Groups["value"].Value.Trim()
+    }
+    else {
+        $null
+    }
+    $DescriptionQuoted = $false
+    if ($DescriptionRaw -and $DescriptionRaw.Length -ge 2) {
+        $First = $DescriptionRaw.Substring(0, 1)
+        $Last = $DescriptionRaw.Substring($DescriptionRaw.Length - 1, 1)
+        $DescriptionQuoted = ($First -eq '"' -and $Last -eq '"') -or ($First -eq "'" -and $Last -eq "'")
+    }
+    $Keys = @(
+        [regex]::Matches($Yaml, '(?m)^(?<key>[A-Za-z][A-Za-z0-9_-]*):') |
+            ForEach-Object { $_.Groups["key"].Value }
+    )
+
     return [pscustomobject]@{
         Directory = $SkillDirectory
         Name = Get-YamlScalarField $Yaml "name"
         Description = Get-YamlScalarField $Yaml "description"
+        DescriptionRaw = $DescriptionRaw
+        DescriptionQuoted = $DescriptionQuoted
+        Keys = $Keys
         Error = $null
     }
 }
@@ -126,6 +154,16 @@ foreach ($Metadata in $SkillMetadata) {
     }
 
     $SkillFile = Join-Path $Metadata.Directory.FullName "SKILL.md"
+    $UnsupportedKeys = @($Metadata.Keys | Where-Object { $_ -notin @("name", "description") })
+    foreach ($UnsupportedKey in $UnsupportedKeys) {
+        $ValidationErrors.Add("$SkillFile`: unsupported frontmatter field '$UnsupportedKey'; use only name and description")
+    }
+
+    $DuplicateKeys = @($Metadata.Keys | Group-Object | Where-Object { $_.Count -gt 1 })
+    foreach ($DuplicateKey in $DuplicateKeys) {
+        $ValidationErrors.Add("$SkillFile`: frontmatter field '$($DuplicateKey.Name)' appears more than once")
+    }
+
     if ([string]::IsNullOrWhiteSpace($Metadata.Name)) {
         $ValidationErrors.Add("$SkillFile`: frontmatter field 'name' is missing or empty")
     }
@@ -134,9 +172,23 @@ foreach ($Metadata in $SkillMetadata) {
             "$SkillFile`: frontmatter name '$($Metadata.Name)' must match directory '$($Metadata.Directory.Name)'"
         )
     }
+    elseif ($Metadata.Name.Length -gt 64 -or $Metadata.Name -notmatch '^[a-z0-9]+(?:-[a-z0-9]+)*$') {
+        $ValidationErrors.Add("$SkillFile`: name must be at most 64 lowercase letters, digits, or hyphen-separated words")
+    }
 
     if ([string]::IsNullOrWhiteSpace($Metadata.Description)) {
         $ValidationErrors.Add("$SkillFile`: frontmatter field 'description' is missing or empty")
+    }
+    else {
+        if ($Metadata.Description.Length -gt 1024) {
+            $ValidationErrors.Add("$SkillFile`: description exceeds the 1024-character portable limit")
+        }
+        if ($Metadata.Description -match '[<>]') {
+            $ValidationErrors.Add("$SkillFile`: description cannot contain angle brackets")
+        }
+        if (-not $Metadata.DescriptionQuoted -and $Metadata.DescriptionRaw -match ':\s') {
+            $ValidationErrors.Add("$SkillFile`: quote a description containing colon followed by whitespace")
+        }
     }
 }
 

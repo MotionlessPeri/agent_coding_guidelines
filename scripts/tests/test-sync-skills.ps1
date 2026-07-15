@@ -106,6 +106,16 @@ try {
         Assert-True (Test-Path "$FakeHome\.agents\skills\alpha\SKILL.md") "Codex user target is missing"
     }
 
+    Invoke-Test "default source path resolves relative to the sync script" {
+        $FakeHome = Join-Path $TestRoot "default-source-home"
+        New-Item -ItemType Directory -Force $FakeHome | Out-Null
+
+        $Result = Invoke-Sync $FakeHome @("-UserHome", $FakeHome, "-Targets", "Codex")
+
+        Assert-True ($Result.ExitCode -eq 0) "default source sync failed: $($Result.Output)"
+        Assert-True (Test-Path "$FakeHome\.agents\skills\tdd-with-fixtures\SKILL.md") "default repository source was not resolved"
+    }
+
     Invoke-Test "single target sync installs only Codex" {
         $Source = Join-Path $TestRoot "single-source"
         $FakeHome = Join-Path $TestRoot "single-home"
@@ -165,7 +175,12 @@ try {
             @{ Name = "empty-name"; Directory = "empty-name"; Body = "---`nname:`ndescription: Empty name.`n---" },
             @{ Name = "missing-description"; Directory = "missing-description"; Body = "---`nname: missing-description`n---" },
             @{ Name = "empty-description"; Directory = "empty-description"; Body = "---`nname: empty-description`ndescription:`n---" },
-            @{ Name = "missing-boundaries"; Directory = "missing-boundaries"; Body = "name: missing-boundaries`ndescription: No delimiters." }
+            @{ Name = "missing-boundaries"; Directory = "missing-boundaries"; Body = "name: missing-boundaries`ndescription: No delimiters." },
+            @{ Name = "unsupported-field"; Directory = "unsupported-field"; Body = "---`nname: unsupported-field`ndescription: Has an extra key.`nwhen_to_use: Never portable.`n---" },
+            @{ Name = "long-description"; Directory = "long-description"; Body = "---`nname: long-description`ndescription: $(('x' * 1025))`n---" },
+            @{ Name = "angle-description"; Directory = "angle-description"; Body = "---`nname: angle-description`ndescription: Use with <placeholder>.`n---" },
+            @{ Name = "invalid-name"; Directory = "Bad_Name"; Body = "---`nname: Bad_Name`ndescription: Invalid portable name.`n---" },
+            @{ Name = "invalid-plain-yaml"; Directory = "invalid-plain-yaml"; Body = "---`nname: invalid-plain-yaml`ndescription: Unquoted colon: invalid YAML.`n---" }
         )
 
         foreach ($Case in $Cases) {
