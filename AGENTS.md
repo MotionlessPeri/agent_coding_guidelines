@@ -123,6 +123,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/rbf-and-tmemstack-need-memmark.md
 
+@guidelines/ue/deformer-graph-keep-authored-normals.md
+
 @guidelines/maya/manip-container-constraints.md
 
 @guidelines/maya/selection-context-and-undo.md

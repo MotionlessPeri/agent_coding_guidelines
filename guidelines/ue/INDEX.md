@@ -109,6 +109,7 @@ technique，另有 4 份内容已 promote 到 skill：`skills/ue-module-architec
 - **程序化建 RigVM / Control Rig 图(生成 CR / 加 RigUnit)** → [`rigvm-bulk-data-as-metadata-not-pins.md`](rigvm-bulk-data-as-metadata-not-pins.md)(逐元素大批量数据走 metadata 不走 pin 默认值)
 - **批量烤动画 key 到 Sequencer 里的 Control Rig(import anim / bake clip)** → [`controlrig-sequencer-bulk-key-bake.md`](controlrig-sequencer-bulk-key-bake.md)(别逐 key `SetLocalControlRig*`,直接写 section 浮点通道 + 一次刷新)
 - **程序化 / 神经网络驱动骨骼动画（不走 AnimBP 状态机）** → [`animinstance-proxy-and-offline-eval.md`](animinstance-proxy-and-offline-eval.md)（pose 注入 + 离线评估）+ [`nne-onnx-inference-contracts.md`](nne-onnx-inference-contracts.md)（模型推理接入）
+- **给 SkeletalMesh 挂 Deformer Graph（Optimus）、法线在接缝/硬边/开放边界发虚或塌陷** → [`deformer-graph-keep-authored-normals.md`](deformer-graph-keep-authored-normals.md)（纯 `ComputeNormalsTangents` 丢 authored 法线 → 换引擎 `Keep{Imported,Input}Normals` 变体；Wireframe/Unlit 分离几何 vs 着色）
 - **接到一个 UE bug / weird behavior** → skill [`ue-reference-engine-source`](../../skills/ue-reference-engine-source/SKILL.md) 的"按子系统分类的 reference 清单"找最相近 engine source 看怎么实现的
 
 ## 增长状态
