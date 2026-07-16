@@ -138,6 +138,10 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/deformer-graph-keep-authored-normals.md
 
+@guidelines/ue/ue-module-parallelism.md
+
+@guidelines/ue/gpu-numerical-lib-consumption.md
+
 @guidelines/maya/manip-container-constraints.md
 
 @guidelines/maya/selection-context-and-undo.md
