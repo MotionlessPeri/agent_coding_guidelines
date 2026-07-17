@@ -16,6 +16,19 @@
    别 fabricate」。让唤醒在一个只能等用户的点上反复醒来是纯浪费。
 5. **到边际递减 / 没有真价值的活了:停**——别 manufacture busywork 喂 loop。
 
+## 什么时候用它 vs `/goal`
+
+Claude Code 另有一个原生的「朝目标自主推进」命令 `/goal`,跟本条是**两个不同机制,按任务形态选**,不是二选一的优劣。对比如下(`/goal` 一栏据[官方文档](https://code.claude.com/docs/en/goal),**非本项目实测**):
+
+| 维度 | `/goal` | ScheduleWakeup 动态 loop(本条) |
+|---|---|---|
+| 停止判定 | 独立小模型每轮判完成条件——**软**,且只看对话输出、不跑命令不读文件 | agent 自己按 backlog + 测试 + stop 纪律判 |
+| 跨回合 / 扛 compaction / 断线续跑 | 弱:单 session;`--resume` 恢复条件但**轮次/计时/token 基线全重置** | **强**:prompt 重放 + 指向 durable SoT |
+| 失败熔断 | **无原生熔断**——只能把上限写进条件(仍是软判)或另叠脚本 Stop hook | 靠 stop 纪律 + 账号 usage limit 兜底 |
+| 适合 | **短、单 session 能收敛、完成条件能自证**(如「修到 `npm run lint` 退 0」) | **长、多里程碑、无人值守、怕中途断** |
+
+**选择判据**:一晚跑不完 / 会触发 compaction / 怕断线 → ScheduleWakeup(本条);任务短、单回合能收敛、且有一个「Claude 自己输出就能自证」的完成条件 → `/goal` 更省事(不用搭 worklog SoT 脚手架)。二者也可叠加(`/goal` 本身就是 session 级 prompt Stop hook),但叠加行为**未实测**,按需再验。
+
 ## 机制细节(hidden contract)
 
 - **arm 后继续工作**:实测 `ScheduleWakeup` 返回「nothing more to do this turn」只是**提示**(你可以停),
@@ -62,7 +75,7 @@
 
 ## 项目实例参考
 
-RetargetStudy(UE Retarget 移植的 GUI 测试工具)一次长 session:用户明确「goal/loop 自主做下去」。
+RetargetStudy(UE Retarget 移植的 GUI 测试工具)一次长 session:用户明确「goal/loop 自主做下去」。原 plan 提的是 `/goal`,最终改用 ScheduleWakeup,是用户要求**扛中途断线 / compaction**——正是上「vs `/goal`」表里 ScheduleWakeup 胜出的那一格。
 - arm 一个 25 分钟心跳 loop,prompt 指向 `Docs/handoffs/.../worklog.md`(SoT)+ 显式 backlog(B1–B6)+ 纪律;
   **本回合持续推进不干等唤醒**,每个里程碑一个 commit + append worklog。中途发生过 compaction,靠 worklog
   + commit 无缝恢复(验证了「prompt 指向 durable SoT」的价值)。
