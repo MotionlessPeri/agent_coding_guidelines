@@ -70,6 +70,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/code/validation.md
 
+@guidelines/code/gui-visual-machine-gating.md
+
 @guidelines/writing/prose-and-register.md
 
 @guidelines/cpp/multi-dll-plugin.md
@@ -86,6 +88,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/cpp/windows-native-crash-hang-evidence.md
 
+@guidelines/cpp/native-binding-surface.md
+
 @guidelines/collaboration/multi-agent.md
 
 @guidelines/collaboration/private-docs-policy.md
@@ -95,6 +99,8 @@ Guidelines are grouped by topic under `guidelines/`:
 @guidelines/ci-windows/gitlab-runner-service-and-powershell-pitfalls.md
 
 @guidelines/claude-code/hook-conventions.md
+
+@guidelines/claude-code/autonomous-loop-scheduling.md
 
 @guidelines/p4/charset-pitfalls.md
 
