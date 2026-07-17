@@ -23,6 +23,18 @@ hidden contracts。靠踩坑得到、Maya 官方文档没明说的客观约束�
 |---|---|
 | [`draw-override-and-command-invocation.md`](draw-override-and-command-invocation.md) | 从 C++ `executeCommand` 发带 object 的命令：MEL 字符串 flag 必须在 object 前（cmds-Python 自动排序、MEL 不会）/ `MPxDrawOverride::prepareForDraw` 复用 `oldData` → `buildDrawData` 每帧必须重置 transient flag（否则"状态清了但高亮不消失"）/ 屏幕空间恒定 UI 用 `points()`+`setPointSize`（像素），别用 `rect()/circle()` 世界尺寸×相机距离近似 |
 
+### GPU deformer / GUI 自动化
+
+| Guideline | 解决的问题 |
+|---|---|
+| [`gpu-deformer-gui-validation.md`](gpu-deformer-gui-validation.md) | `mayapy` 不能证明 GPU Override 真执行；GPU Active + 每节点新 success marker + 非零形变 + CPU 对照四重 Gate / `deformerEvaluator` 加载顺序 / CPU 读回污染 / `maya.exe -script bootstrap.mel` + Qt timer / licensing 与 crash 分类 / auxiliary mesh buffer 与显式 CPU fallback |
+
+### Mesh 拓扑 / 数值复现
+
+| Guideline | 解决的问题 |
+|---|---|
+| [`mesh-topology-fidelity.md`](mesh-topology-fidelity.md) | polygon 顶点列表不能唯一确定 Maya 表面；复刻最近点/绑定/权重时必须保存 `MFnMesh::getTriangles` 的实际 triangulation + triangle→polygon 映射，非共面 quad/n-gon 防 fan triangulation 假一致 |
+
 ### Build / 迭代 / 输出 / 脚本（工程化，非运行时）
 
 | Guideline | 解决的问题 |
@@ -34,6 +46,7 @@ hidden contracts。靠踩坑得到、Maya 官方文档没明说的客观约束�
 | Skill | 内容 |
 |---|---|
 | [`skills/maya/maya-tool-interaction`](../../skills/maya/maya-tool-interaction/SKILL.md) | DCC 拖拽编辑交互模式：press-time 完整重算 / press-time caching 防反馈漂移 / 位移阈值防抖 / snapshot-diff undo / undo 数据存业务对象而非 UI |
+| [`skills/maya/reverse-maya-closed-nodes`](../../skills/maya/reverse-maya-closed-nodes/SKILL.md) | 闭源 Maya 节点行为复刻：Ghidra/汇编/运行探针/差分 oracle/真实资产的分层证据链；防信伪代码、未激发测试、单合成夹具外推完成 |
 | [`skills/architecture/multi-plugin-shared-core`](../../skills/architecture/multi-plugin-shared-core/SKILL.md) | 框架无关：多插件共享一个 core 实体的架构（ExtensionContainer / feature-parser 注册 / Preset→Template→Instance / Snapshot+Ops / 非拥有 Registry / 权威类型不可扩展时编辑层 state 复用既有值）。Maya 多 `.mll` 场景的实际归宿 |
 
 ### C++/构建底座（非 Maya，但 Maya 插件常踩）
@@ -42,6 +55,7 @@ Maya C++ 插件是典型的多 `.mll`（多 DLL）+ cmake/VS 场景，下列底�
 - [`../cpp/multi-dll-plugin.md`](../cpp/multi-dll-plugin.md) — 跨 DLL 单例 / 符号导出 / 初始化顺序
 - [`../cpp/build-incremental-and-cmake.md`](../cpp/build-incremental-and-cmake.md) — 增量编译 ABI 不一致 / cmake 重构后 stale .vcxproj
 - [`../cpp/hot-path-cpp.md`](../cpp/hot-path-cpp.md) — 大对象传递 move/copy / dynamic_cast 热路径
+- [`../cpp/windows-native-crash-hang-evidence.md`](../cpp/windows-native-crash-hang-evidence.md) — Windows native crash/hang 分类 / Break All 全线程 / normal dump→按需 full heap / WinDbg RVA 映射 / race 结论门槛
 
 ---
 

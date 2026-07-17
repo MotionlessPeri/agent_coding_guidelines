@@ -21,7 +21,7 @@ Guidelines are grouped by topic under `guidelines/`:
 | `guidelines/workflow/` | Commit rules, documentation rules, agent lifecycle, handoff workflow |
 | `guidelines/code/` | Code constraints, validation requirements |
 | `guidelines/writing/` | 面向人读的散文（文档 / 代码注释 / 交付文字）通用文体规则——工作语言写散文 + 标识符保留原文 / 不说黑话 / 简洁⇔不丢信息 / 不翻译腔。跨「文档 + 注释」共享的 SoT，由 `skills/workflow/doc-writing-style`（+图示 discipline）与 `skills/workflow/conversation-walkthrough` Phase 3（+注释 stability / Doxygen 契约头）两个 skill 承接执行面 |
-| `guidelines/cpp/` | C++ / Windows DLL / cmake / MSVC 工程底座的 hidden contract——跨 DLL 单例内联陷阱 / 符号导出 / 增量编译 ABI 不一致 / stale `.vcxproj` / 热路径 move 与 dynamic_cast / `std::make_format_args` 左值契约（本地旧 toolset 编过、CI 新 toolset FAIL）/ perf 测量误测未优化(`/Od`)二进制 + 构建 flag cache 粘性 / 按项目标准选现代 C++ 特性（配置 C++20≠生效，SDK 钳制 + CI toolchain 差异）。框架无关，多 DLL 插件（含 Maya `.mll`）高频命中。**非 C++ 项目可 skip** |
+| `guidelines/cpp/` | C++ / Windows DLL / cmake / MSVC 工程底座的 hidden contract——跨 DLL 单例内联陷阱 / 符号导出 / 增量编译 ABI 不一致 / stale `.vcxproj` / 热路径 move 与 dynamic_cast / `std::make_format_args` 左值契约 / perf 测量误测未优化二进制 / 现代 C++ 标准钳制 / Windows native crash-hang dump 取证。框架无关，多 DLL 插件（含 Maya `.mll`）高频命中。**非 C++ 项目可 skip** |
 | `guidelines/collaboration/` | Multi-agent setup, private docs policy |
 | `guidelines/ci-windows/` | Windows CI (PowerShell / GitLab runner) 跑 native command 时的 pitfall 集——PowerShell ↔ native exe 之间的抽象漏洞 |
 | `guidelines/claude-code/` | Claude Code 自身（harness / hooks / settings.json）的 hidden contract——文档没明说但实测如此的行为 |
@@ -83,6 +83,8 @@ Guidelines are grouped by topic under `guidelines/`:
 @guidelines/cpp/make-format-args-lvalue.md
 
 @guidelines/cpp/modern-cpp-by-standard.md
+
+@guidelines/cpp/windows-native-crash-hang-evidence.md
 
 @guidelines/collaboration/multi-agent.md
 
@@ -154,6 +156,10 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/maya/scriptjob-callback-command-undo-pollution.md
 
+@guidelines/maya/gpu-deformer-gui-validation.md
+
+@guidelines/maya/mesh-topology-fidelity.md
+
 ---
 
 ## Techniques
@@ -210,6 +216,7 @@ Guidelines are grouped by topic under `guidelines/`:
 **maya/** —— Maya 插件专用：
 
 - [`skills/maya/maya-tool-interaction/SKILL.md`](skills/maya/maya-tool-interaction/SKILL.md) — DCC 拖拽编辑工具（Maya manip/context，泛化到其他 3D 工具）的五个交互模式：press-time 完整重算（不累加 delta）/ press-time caching 防反馈闭环漂移 / 位移阈值防抖 / snapshot-diff undo（非 plug-level）/ undo 数据存业务对象而非 UI manip。配套 framework 契约见 `guidelines/maya/`。单项目验证、apply-and-refine
+- [`skills/maya/reverse-maya-closed-nodes/SKILL.md`](skills/maya/reverse-maya-closed-nodes/SKILL.md) — 复刻或诊断闭源 Maya 节点时的分层证据工作流：Ghidra 伪代码只生成假设，汇编/ABI 裁决参数，单变量 probe + 激发守卫，正交合成差分 oracle，最后用真实资产多 pose 收敛；同时区分 confirmed / strong inference / open。
 
 **architecture/** —— 框架无关架构 pattern：
 

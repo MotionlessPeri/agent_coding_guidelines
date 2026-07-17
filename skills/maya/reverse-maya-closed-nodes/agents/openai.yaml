@@ -1,0 +1,4 @@
+interface:
+  display_name: "逆向 Maya 闭源节点"
+  short_description: "用静态分析、运行探针和差分 oracle 复刻闭源 Maya 节点"
+  default_prompt: "Use $reverse-maya-closed-nodes to reverse-engineer this closed-source Maya node with an evidence-backed differential oracle."
