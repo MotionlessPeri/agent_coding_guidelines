@@ -152,21 +152,7 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/gpu-numerical-lib-consumption.md
 
-@guidelines/maya/manip-container-constraints.md
-
-@guidelines/maya/selection-context-and-undo.md
-
-@guidelines/maya/plugin-build-and-scripting-contracts.md
-
-@guidelines/maya/draw-override-and-command-invocation.md
-
-@guidelines/maya/move-rotate-manip-axis-orientation.md
-
-@guidelines/maya/scriptjob-callback-command-undo-pollution.md
-
-@guidelines/maya/gpu-deformer-gui-validation.md
-
-@guidelines/maya/mesh-topology-fidelity.md
+> Maya guidelines（8 份）**不 eager `@`-import**——lazy-load via [`guidelines/maya/INDEX.md`](guidelines/maya/INDEX.md)（已在上方组织表链接、且 INDEX 完整覆盖全 8 份）。非 Maya 项目省 ~900 行常驻；接 Maya 插件任务时读 INDEX 导航到具体文件 / 触发 maya skill。Codex 本就按目录表 on-demand 打开 maya/，不受影响。（2026-07-18 context-budget audit S2）
 
 ---
 
