@@ -257,7 +257,7 @@ UnrealMCP_Docs/
 
 - **少而合并的高层命令 > 1:1 照搬引擎 API**。别把"列 X / 建 X / 连 X"拆成三个命令让 agent 挨个调；做一个"完成某编辑意图"的命令、内部把多步做完。命令越碎，agent 越容易用错、越吃 context。
 - **给命令定义塞 1-5 个具体调用样例**（JSON Schema 表达不清的用法）——Anthropic 实测复杂参数准确率 72%→90%。放 Python tool 层的 docstring / description 里。
-- **按需加载工具定义，别一股脑全塞**——同 [`techniques/context-budget-audit.md`](../../../techniques/context-budget-audit.md) 三档加载（那管 guideline/skill，这管工具定义）。命令多了考虑分组/catalog 暴露而非全量。
+- **按需加载工具定义，别一股脑全塞**——同 skill `context-budget-audit` 三档加载（那管 guideline/skill，这管工具定义）。命令多了考虑分组/catalog 暴露而非全量。
 - **eval-first 打磨命令**：让命令跑一批真实任务 → 把 transcript 喂回 Claude Code 找糙点 refactor → held-out 复测防过拟合。
 
 > 纯 Claude API feature（Programmatic Tool Calling / Tool Search `defer_loading` 参数）对 Claude Code MCP 消费者是 **awareness 非可配置项**，别当规则照搬。来源：Anthropic writing-tools-for-agents / advanced-tool-use / code-execution-with-mcp（radar `_radar/2026-07-18.md` #3）。

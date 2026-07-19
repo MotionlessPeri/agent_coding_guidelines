@@ -133,9 +133,7 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @techniques/fact-forcing-gate.md
 
-@techniques/context-budget-audit.md
-
-> 条件域 techniques 不 eager `@`-import——`techniques/ci-deploy-to-p4.md`（P4 + Windows CI 部署链）与 `techniques/claude-code-autonomous-permissions.md`（Claude Code permission list 配置）随对应 guidelines 子目录懒加载，触发场景见上 Guidelines 段末 P4 / CI / Claude-Code 说明。（2026-07-19 audit S2 Tier D）
+> 条件域 techniques 不 eager `@`-import——`techniques/ci-deploy-to-p4.md`（P4 + Windows CI 部署链）与 `techniques/claude-code-autonomous-permissions.md`（Claude Code permission list 配置）随对应 guidelines 子目录懒加载，触发场景见上 Guidelines 段末 P4 / CI / Claude-Code 说明。`context-budget-audit` 已转成 skill（审计常驻成本时自动触发），见下 Skills 段。（2026-07-19 audit S2 Tier D）
 
 ---
 
@@ -158,6 +156,7 @@ Guidelines are grouped by topic under `guidelines/`:
 - [`skills/workflow/tdd-with-fixtures/SKILL.md`](skills/workflow/tdd-with-fixtures/SKILL.md) — augment superpowers TDD，加 milestone-level discipline + fixture/manual case escape hatch
 - [`skills/workflow/bugfix-tdd/SKILL.md`](skills/workflow/bugfix-tdd/SKILL.md) — bug-fix 场景的 TDD 红→绿 discipline。先写 demonstrate bug 的 failing test → 跑确认 FAIL → 改 production → 跑 PASS → 跑全 regression → test + fix 单 commit。跟 `superpowers:test-driven-development`（feature TDD）/ `superpowers:systematic-debugging`（debug 阶段方法论）/ `tdd-with-fixtures`（escape hatch）互补不重叠。防"看代码自信改一行"无证据修复
 - [`skills/workflow/conversation-walkthrough/SKILL.md`](skills/workflow/conversation-walkthrough/SKILL.md) — 编码对话收尾的标准 review 环节（默认开，除非用户说后面是迭代不用 review）。三 phase：结构 map / self-review 三档（🔴 重构套 function-clarity 行数阈值 + ≥2 次重复抽 helper / 🟡 优化 / 🟢 对抗式正确性）/ 注释体检三轴（prose 质量走 `guidelines/writing/prose-and-register.md`——工作语言/不说黑话/不翻译腔/简洁不丢信息，跟 `doc-writing-style` 共用同一份 SoT；stability 按注释自包含原则剥 milestone·Task·Phase 标签 + ephemeral 文档引用、why 浓缩 inline 只引 durable 目标；结构用 Doxygen 契约头）。配套：ephemeral tracking 文档锚讨论主线、重构与注释清理分主题各自 commit、cold rebuild + 冒烟验证语义不变。扩展 `guidelines/code/function-clarity.md`（行数阈值 Rule 1 + 注释 stability/自包含 Rule 2）的「系统化执行」面
+- [`skills/workflow/context-budget-audit/SKILL.md`](skills/workflow/context-budget-audit/SKILL.md) — 审计 / 管理 agent-instruction 语料（AGENTS.md / CLAUDE.md @-import + skill description + hook 注入）的 **always-loaded context 常驻成本**：@-import 数偏高 / 加新 @-import 前 / 启动慢或 cache 命中率降 / 一批新 guideline 之后 / 判断某内容该常驻还是懒加载时触发。给四步 audit（Inventory / Classify / Detect / Report+Actions）+ 加载时机三档模型（常驻 / 碰文件触发 / 被调才进）+ anti-patterns。**本 skill 自己就是 Tier D 把 conditional 内容转 lazy 的产物**（原 `techniques/context-budget-audit.md`，2026-07-19 转成本 skill——审计工具只在审计时才需要）。非「维护 guidelines 语料库」项目 skip
 - [`skills/workflow/doc-writing-style/SKILL.md`](skills/workflow/doc-writing-style/SKILL.md) — 起草「交付级」文档（设计稿 / 任务书 / handoff / 用户文档 / brainstorm 结论稿 / CHANGELOG）时的文体 + 图示 discipline。两块：(1) 文体——遵循 `guidelines/writing/prose-and-register.md`（工作语言写散文 + 标识符保留原文 / 不说黑话 / 简洁⇔不丢信息 / 不翻译腔）在文档场景的应用（+ 项目自造词开篇 grounding）；(2) 图示——多阶段流程 / 多分支决策 / 易漏关键步任一就**必须画图**（给了 sequenceDiagram / flowchart / 编号列表选型决策表），且图要**可移植**：按目标渲染器版本写、不 hardcode 语法白名单（会过时）、本地能渲染 ≠ 目标能渲染、必要时推探针实测能力边界。目标渲染器版本是项目可调项（语言 / 黑话替换表的 tuning 在 prose-and-register）。文体规则本身是 `guidelines/writing/prose-and-register.md`（跨文档 / 注释共享 SoT），本 skill 加文档场景应用 + 图示；也是 `guidelines/workflow/documentation.md`（何时同步 / 怎么拆 / 怎么建索引）的执行面补充
 
 **ue/** —— UE 专用：

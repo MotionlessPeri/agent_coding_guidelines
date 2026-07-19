@@ -1,3 +1,8 @@
+---
+name: context-budget-audit
+description: Use when auditing or managing the always-loaded context budget of an agent-instruction corpus (AGENTS.md / CLAUDE.md @-imports, skill descriptions, hook-injected context) — when the @-import count is high, before adding a new @-import, when session startup is slow or prompt-cache hit-rate drops, after a batch of new guidelines/techniques, or when deciding whether a piece of content should be always-loaded vs lazy (skill trigger / INDEX navigation / path-scoped rule). Provides a 4-step audit (Inventory, Classify, Detect, Report+Actions), a three-tier loading-time model (always-loaded / path-triggered / on-call), and anti-patterns. Skip unless you maintain a guidelines / agent-instruction repository whose always-loaded footprint matters.
+---
+
 # Context Budget Audit
 
 ## 核心问题
@@ -5,13 +10,13 @@
 跨多 project 共享同一份全局 `AGENTS.md` + 大量 `@`-import + skill 自动 lazy-load 时，**always-loaded context** 会沉默膨胀。每加一条 guideline / 一份 technique 单独看都不大，累积下来：
 
 - agent 主对话 prompt 头部塞满 guideline，吃 input token
-- guideline 之间内容重叠（如"小函数原则"在 [`constraints.md`](../guidelines/code/constraints.md) / [`function-clarity.md`](../guidelines/code/function-clarity.md) 都讲），重复 cost 无收益
+- guideline 之间内容重叠（如"小函数原则"在 `guidelines/code/constraints.md` / `guidelines/code/function-clarity.md` 都讲），重复 cost 无收益
 - 跟当前项目无关的 guideline 也加载（React 项目里整套 UE guideline 占 12 份 @-import 全 eager load）
 - 每次 session 启动 cost 上升 + prompt cache 命中率下降
 
 本 technique 提供**定期 audit always-loaded 上下文占用** 的程序化做法。
 
-跟 [`guidelines/workflow/knowledge-promotion.md`](../guidelines/workflow/knowledge-promotion.md) 对称——那条管"什么时候把 project lesson 升级到 meta-corpus"（push 方向），本条管"meta-corpus 里 always-loaded 的部分该多大"（防止 push 方向无节制累积）。
+跟 `guidelines/workflow/knowledge-promotion.md` 对称——那条管"什么时候把 project lesson 升级到 meta-corpus"（push 方向），本条管"meta-corpus 里 always-loaded 的部分该多大"（防止 push 方向无节制累积）。
 
 ## 何时跑 audit
 
@@ -43,9 +48,9 @@
 
 | 桶 | 判据 |
 |---|---|
-| **Always needed** | 跨所有 project 都适用，且不冗余（如 [`commits.md`](../guidelines/workflow/commits.md) / [`agent-lifecycle.md`](../guidelines/workflow/agent-lifecycle.md)） |
+| **Always needed** | 跨所有 project 都适用，且不冗余（如 `guidelines/workflow/commits.md` / `guidelines/workflow/agent-lifecycle.md`） |
 | **Project-conditional** | 只对某类项目有用（UE / P4 / Windows CI 等），其他项目浪费 |
-| **Skill-lazy candidate** | 平时不用，遇到具体场景才用（如 [`ci-deploy-to-p4.md`](ci-deploy-to-p4.md)——部署时才 surface） |
+| **Skill-lazy candidate** | 平时不用，遇到具体场景才用（如 `techniques/ci-deploy-to-p4.md`——部署时才 surface） |
 | **Overlap candidate** | 内容跟另一份 guideline 显著重叠，可合并或用 `[[link]]` 替代 |
 | **Stale** | 写完没用过 / 用过一次就过时 |
 
@@ -126,9 +131,9 @@ context 膨胀的根因是「该按需加载的内容被 always-load 了」。Cl
 
 **执行（Report + Actions，按簇 lazy 化）**：
 
-- **Maya**（8 份）→ 停 `@`-import，用 [`guidelines/maya/INDEX.md`](../guidelines/maya/INDEX.md) 导航
-- **cpp**（8 份）→ 新建 [`guidelines/cpp/INDEX.md`](../guidelines/cpp/INDEX.md) 导航
-- **UE**：ultra-niche 簇 bundle 成懒加载 skill（procedural-numerical / ml-animation / custom-graph-editor），broad 14 份保留常驻，[`guidelines/ue/INDEX.md`](../guidelines/ue/INDEX.md) 做 broad + skill 双层导航
+- **Maya**（8 份）→ 停 `@`-import，用 `guidelines/maya/INDEX.md` 导航
+- **cpp**（8 份）→ 新建 `guidelines/cpp/INDEX.md` 导航
+- **UE**：ultra-niche 簇 bundle 成懒加载 skill（procedural-numerical / ml-animation / custom-graph-editor），broad 14 份保留常驻，`guidelines/ue/INDEX.md` 做 broad + skill 双层导航
 - **P4 / CI-Windows / Claude-Code**（含配套 techniques ci-deploy-to-p4 / claude-code-autonomous-permissions）→ 停 `@`-import，AGENTS.md 段末懒加载说明
 - 顺带把散在条件域文件里跟通用条重复的机制**去冗余**（保留 canonical、另一处缩指针）
 
@@ -147,6 +152,6 @@ radar 2026-07-18 从外部 best-practice 文章收的几个具体阈值，可作
 
 ## 相关 Guidelines / Techniques
 
-- [`guidelines/workflow/knowledge-promotion.md`](../guidelines/workflow/knowledge-promotion.md) —— 对称的"project → meta-corpus"方向；本 audit 防止 meta-corpus 端无节制膨胀
-- [`AGENTS.md`](../AGENTS.md) —— `@`-import 列表是本 audit 的主 input
+- `guidelines/workflow/knowledge-promotion.md` —— 对称的"project → meta-corpus"方向；本 audit 防止 meta-corpus 端无节制膨胀
+- `AGENTS.md` —— `@`-import 列表是本 audit 的主 input
 - ECC `context-budget` skill（[github](https://github.com/affaan-m/ECC/tree/master/skills/context-budget)）—— 本 technique 的灵感来源；ECC 还覆盖 MCP server schema 占用 / Agent description 占用，本 technique 暂没纳入（agent 形态在本 repo 还不重）
