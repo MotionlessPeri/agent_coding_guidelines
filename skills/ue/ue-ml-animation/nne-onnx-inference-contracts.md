@@ -42,4 +42,4 @@ UE 5.8 路径→动画生成预研插件（PathAnimGen）：先用 identity/echo
 
 - skill `ue-reference-engine-source` —— 本条全部锚点来自读 `NNERuntimeORT` / `NNEDenoiser` / `MLDeformer` 源码；接 NNE 前先读它们
 - [`animinstance-proxy-and-offline-eval.md`](animinstance-proxy-and-offline-eval.md) —— 同一预研的动画注入侧契约（姊妹篇）
-- [`../code/validation.md`](../code/validation.md) —— echo/identity 占位模型是 round-trip oracle 的实例（`techniques/adversarial-verification.md` 的"选可信 check"）
+- `guidelines/code/validation.md` —— echo/identity 占位模型是 round-trip oracle 的实例（`techniques/adversarial-verification.md` 的"选可信 check"）

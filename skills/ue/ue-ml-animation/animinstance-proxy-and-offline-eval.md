@@ -54,6 +54,6 @@ UE 5.8 路径→动画生成预研插件（PathAnimGen）：自定义 proxy 直�
 
 ## 相关 Guidelines
 
-- [`../code/diagnose-before-fixing.md`](../code/diagnose-before-fixing.md) —— 本条的诊断过程是范例：观测点设计成能区分竞争假设
+- `guidelines/code/diagnose-before-fixing.md` —— 本条的诊断过程是范例：观测点设计成能区分竞争假设
 - skill `ue-reference-engine-source` —— 离线评估配方来自 `FbxAnimationExport.cpp`；"离线驱动组件"这类需求先找引擎里谁在做同样的事
 - [`nne-onnx-inference-contracts.md`](nne-onnx-inference-contracts.md) —— 同一预研的推理侧契约（姊妹篇）
