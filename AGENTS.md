@@ -26,7 +26,7 @@ Guidelines are grouped by topic under `guidelines/`:
 | `guidelines/ci-windows/` | Windows CI (PowerShell / GitLab runner) 跑 native command 时的 pitfall 集——PowerShell ↔ native exe 之间的抽象漏洞 |
 | `guidelines/claude-code/` | Claude Code 自身（harness / hooks / settings.json）的 hidden contract——文档没明说但实测如此的行为 |
 | `guidelines/p4/` | Perforce 特有 hidden contracts——charset transcoding / typemap / 跟 git 不同的字节保留语义 |
-| `guidelines/ue/` | **当前最重的子目录**（~950 行 / 6 份 guidelines；另有 4 份内容已 promote 到 skill：`skills/ue/ue-module-architecture/` 2 份 + `skills/ue/ue-reference-engine-source/` + `skills/ue/ue-settings-persistence/`）。Unreal Engine framework hidden contracts + idiom 集中在此。**非 UE 项目可整段 skip**。完整索引 + 按场景导航见 [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md) |
+| `guidelines/ue/` | Unreal Engine framework hidden contracts + idiom，meta-corpus 最重的框架子目录。两层：**14 份常驻 broad guidelines**（常碰核心契约，仍 `@`-import）+ **8 个懒加载 UE skills**（ultra-niche / 按场景触发的簇，bundle 进 `skills/ue/`：module-architecture / reference-engine-source / settings-persistence / custom-graph-editor / procedural-numerical / ml-animation / unrealmcp-usage / official-mcp-usage）。**非 UE 项目可整段 skip**。完整索引（broad + skill 双层）+ 按场景导航见 [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md) |
 | `guidelines/maya/` | Maya C++ 插件（`MPx*` plugin / manip / context / 多 `.mll` 共享 base 层）的 framework hidden contracts——靠踩坑得到、Maya 文档没明说的约束。**非 Maya 项目可整段 skip**。索引 + 配套 skill 见 [`guidelines/maya/INDEX.md`](guidelines/maya/INDEX.md) |
 | `techniques/` | Procedural patterns and step-by-step operational guides |
 | `docs/plans/` | 已确认设计的实施前记录；用于保存跨文件改造的边界、接口与验收标准 |

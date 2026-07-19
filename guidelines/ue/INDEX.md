@@ -1,125 +1,99 @@
 # UE Guidelines 索引
 
-UE 是当前 meta-corpus 最重的子目录（约 950 行 / 6 份 guidelines + 1 份配套
-technique，另有 4 份内容已 promote 到 skill：`skills/ue/ue-module-architecture/` 2 份
-+ `skills/ue/ue-reference-engine-source/` + `skills/ue/ue-settings-persistence/`），
-集中存放 Unreal Engine framework 的 hidden contracts 和 idiom。
+UE 是 meta-corpus 最重的框架子目录——Unreal Engine framework 的 hidden contracts + idiom。
+分两层：
 
-**非 UE 项目可以整段 skip 本目录** —— 通用编程 / 工程组织规则在
-`guidelines/code/` / `guidelines/workflow/` / `guidelines/collaboration/`。
+- **常驻 broad guidelines**（14 份）——常碰的核心契约，仍 `@`-import 进 context，UE session 自动可用。
+- **懒加载 UE skills**（8 个）——ultra-niche / 按场景触发的簇，bundle 成 skill，只在匹配任务时加载。
 
-## 按使用场景分类
+**非 UE 项目可整段 skip 本目录。** 通用编程 / C++ / 工程组织规则在 `guidelines/code/` /
+`guidelines/cpp/`（见 [`../cpp/INDEX.md`](../cpp/INDEX.md)）/ `guidelines/workflow/`。
 
-### Prep work（开工前必看）
+## UE 专用 skills（懒加载，不 `@`-import）
 
-> 已 promote 到 skill：[`skills/ue/ue-reference-engine-source/SKILL.md`](../../skills/ue/ue-reference-engine-source/SKILL.md)（lazy-load，不再 eager-import）
-
-| Skill 内容 | 解决的问题 |
+| Skill | 何时触发 |
 |---|---|
-| [`reference-engine-source.md`](../../skills/ue/ue-reference-engine-source/reference-engine-source.md) | UE 功能（特别是 UI / Editor）开工前先找最相近的 engine source / official sample / 第三方 plugin reference impl；按 22 个 UE 子系统给 reference 清单 |
+| `ue-reference-engine-source` | 写**任何** UE 功能（尤其 UI / Editor / Asset Editor / Slate / Localization / Validator / Factory）**动手前**——先找最相近的 engine source reference impl 读一遍 |
+| `ue-module-architecture` | 设计 UE module / plugin 切分、写 / review 任何 `*.Build.cs`、决定新类 / test / setting 归哪个 module、诊断 cook / package 的 missing-module 错 |
+| `ue-settings-persistence` | 加 / 改 UE Project Settings / `UDeveloperSettings` / config UObject / per-asset metadata；settings 重启后丢 / 开发机 vs CI 不一致 |
+| `ue-custom-graph-editor` | 从零建一个自定义 `UEdGraph` 节点图编辑器（7 步流程 + graph 数据归属设计）|
+| `ue-procedural-numerical` | 程序化建 RigVM / ControlRig / Deformer 图 + 模块内数值 / GPU 求解 / CPU 并行 |
+| `ue-ml-animation` | 代码 / 神经网络直出 pose（自定义 `UAnimInstance` proxy + 离线评估）+ NNE ONNX 推理 |
+| `unrealmcp-usage` | 用 UnrealMCP **fork**（TCP 命令）做编辑器自动化 |
+| `official-mcp-usage` | 用 UE 5.8+ **官方** `ModelContextProtocol` MCP（HTTP）做编辑器自动化 |
 
-> 配对的项目内 prep work：[`../code/reuse-before-implementing.md`](../code/reuse-before-implementing.md)（survey 项目内已有 similar code）。两条 prep work 都属于"动手前先 survey"的对称概念。
+> MCP「用 fork 还是官方」的平台选型见下 broad guideline `mcp-platform-choice.md`（跟上面两条 usage skill 互补：那两条讲「怎么用」，选型讲「用哪个」）。
 
-### Graph Editor 子领域
+## 常驻 broad guidelines（按场景）
+
+### Graph Editor 硬约束
 
 | Guideline | 解决的问题 |
 |---|---|
-| [`graph-editor-constraints.md`](graph-editor-constraints.md) | NodeGuid 初始化 / Pin SetOwner / Custom SGraphNode Factory 注册 / Pin 自动连线 / Dynamic Pin Reconstruction / Reroute (Knot) 节点 4 件套 / Cold Rebuild over Live Coding / `RF_Transactional` / Undo Refresh / Dual-Layer Data 模型 / Copy-Paste DuplicateObject |
-| [`graph-data-ownership.md`](graph-data-ownership.md) | UEdGraph pin 是连接 SoT / runtime 数据是 derived / Compile Full Flush > incremental sync / Anti-Patterns（incremental sync / edge properties on runtime side） |
+| [`graph-editor-constraints.md`](graph-editor-constraints.md) | NodeGuid 初始化 / Pin `SetOwner` 一次 / Custom SGraphNode Factory 注册 / Pin 拖创后自动连线 / Dynamic Pin Reconstruction / Reroute (Knot) 4 件套 / Cold Rebuild over Live Coding / `RF_Transactional` / Undo Refresh widget / Dual-Layer Data 模型 undo / Copy-Paste DuplicateObject |
 
-### RigVM / Control Rig 程序化建图
+> 建一个**新的**自定义图编辑器的完整 7 步流程 + graph 数据归属（哪层拥有 node 属性 / 连接拓扑 / edge 属性）走 skill `ue-custom-graph-editor`；本条是它处处引用的硬约束底座。
 
-| Guideline | 解决的问题 |
-|---|---|
-| [`rigvm-bulk-data-as-metadata-not-pins.md`](rigvm-bulk-data-as-metadata-not-pins.md) | 程序化建 RigVM/CR 图时逐元素大批量数据(几百+ 项)走 `URigHierarchy` element metadata,别烤成节点 pin 默认值(每 sub-pin 一个 Slate widget → 打开图卡死 + 资产膨胀);metadata 序列化且经 `CopyHierarchy→CopyAllMetadataFromElement` 复制到运行时实例,RigUnit Execute 读得到 |
-| [`controlrig-sequencer-bulk-key-bake.md`](controlrig-sequencer-bulk-key-bake.md) | 批量烤 key 到 Sequencer 里的 Control Rig 别用逐 key 的 `SetLocalControlRig*`/`SetControlValue(bNotify=true,SetKey=Always)`(每 key 一次 Sequencer 通知+重求值,~35ms/key,几百控件→分钟级);直接批量写 `UMovieSceneControlRigParameterSection` 浮点通道(`Reset`+`AddCubicKey`+`AutoSetTangents`)+ 一次 `RefreshCurrentLevelSequence` + 一个 `FScopedTransaction`(含通道顺序表) |
-
-### 程序化动画注入 / 神经网络推理
+### Asset / Blueprint
 
 | Guideline | 解决的问题 |
 |---|---|
-| [`animinstance-proxy-and-offline-eval.md`](animinstance-proxy-and-offline-eval.md) | 纯 C++ `UAnimInstance` 子类 + 自定义 proxy `Evaluate` 零 AnimBP 资产直出 pose；proxy `Update(float)` 被 `GFrameCounter` 门控成每帧一次（累计放 `PreUpdate`）；`PreUpdate` 先于 `NativeUpdateAnimation`（instance 状态晚一拍）；离线评估配方 `TickAnimation → RefreshBoneTransforms → FinalizeBoneTransform`（漏最后一步永远读旧双缓冲） |
-| [`nne-onnx-inference-contracts.md`](nne-onnx-inference-contracts.md) | NNE 只吃 ONNX；`NNERuntimeORT` 默认关闭需消费插件 `.uplugin` 显式引用；坏模型报错点在 `CreateModelInstanceCPU`（CanCreate 不解析）；动态输出 shape 第一次 `RunSync` 后才可查且 buffer 不足时静默不拷数据（两跑协议）；内存态 `UNNEModelData::Init` 与资产导入等价（测试不依赖 Content） |
+| [`blueprint-auto-override-api.md`](blueprint-auto-override-api.md) | 程序化创建 BP Override：`AddFunctionGraph<UClass*>` vs `<UFunction*>` 模板参数 + `bIsUserCreated` 正交语义 |
+| [`asset-definition-can-duplicate-limit.md`](asset-definition-can-duplicate-limit.md) | `UAssetDefinition::CanDuplicate` 只拦 Content Browser Duplicate；Copy+Paste / Migrate / 程序化 DuplicateObject 全绕过 → 双层防御（+ `PostDuplicate` 兜底） |
 
-### 数学类型 / API marshalling
-
-| Guideline | 解决的问题 |
-|---|---|
-| [`fvector4-vector-equals-silent-fail.md`](fvector4-vector-equals-silent-fail.md) | `FMatrix::TransformVector`/`TransformPosition` 返 `FVector4`(W=0),直接跟 `FVector` 比 `.Equals` 因 W(0 vs 隐式 1)**静默失败**(XYZ 对、断言恒 false);用 `FVector(...)` 包裹丢 W 再比;生产侧赋给 `FVector` 变量自动安全,坑主要咬单测断言 |
-
-### Editor 全局单例 / 模块 wiring 生命周期
+### Details Customization / Property Editor
 
 | Guideline | 解决的问题 |
 |---|---|
-| [`leveleditor-modetools-lifetime.md`](leveleditor-modetools-lifetime.md) | `GLevelEditorModeTools()` 单例无效时不返回空、而是 ensure 失败 + **错误重建**;所有访问(尤其模块 startup 早期 / shutdown 期)必须 `GLevelEditorModeToolsIsValid()` 守卫;startup 端 registration gate 到 `FLevelEditorModule::OnLevelEditorCreated`;commandlet 不碰。订阅 edit mode 选择/控件状态的消费方参考 `AnimDetailsProxyManager` |
+| [`details-customization-prefer-reflection.md`](details-customization-prefer-reflection.md) | 能用 UPROPERTY 反射就别写 Customization；`FClassProperty::MetaClass` UHT 编译期固化、runtime 改不动 → 数据层分派生类而非 UI 层动态收窄 |
+| [`property-handle-strong-capture.md`](property-handle-strong-capture.md) | `IDetailCustomization` 里 `IPropertyHandle` 必须 strong-ref by-value capture 进持久 lambda（weak 会在 CustomizeDetails 返回后失效 → widget 永远显默认值） |
 
-### 版本升级 / 构建契约
-
-| Guideline | 解决的问题 |
-|---|---|
-| [`ue58-upgrade-gotchas.md`](ue58-upgrade-gotchas.md) | 升 UE 5.8 三个"5.8 才暴露"的硬契约:Target 必须 `BuildSettingsVersion.V7` + `IncludeOrderVersion.Unreal5_8`(否则 modifies-properties 编不过);`.uproject` 用 RapidJSON 读,JSON 字符串含裸控制字符 → 误导性的 `Invalid encoding in string`(dump 整文件 hex 找);运行 editor 需 VC++ redist `14.50.35719+`(编译过≠能运行)。配套 `leveleditor-modetools-lifetime.md`(5.8 删 API) |
-
-### Editor / Runtime 架构
-
-> 已 promote 到 skill：[`skills/ue/ue-module-architecture/SKILL.md`](../../skills/ue/ue-module-architecture/SKILL.md)（lazy-load，不再 eager-import）
-
-| Skill 内容 | 解决的问题 |
-|---|---|
-| [`editor-runtime-separation.md`](../../skills/ue/ue-module-architecture/editor-runtime-separation.md) | 三层模型（Runtime Ops / Editor Actions / UI）/ Undo Support（基础 + 嵌套 transaction）/ Editor Actions 自动化生成（ExecEditorOp 模板 + 可选 Python codegen） |
-| [`runtime-module-no-editor-dep.md`](../../skills/ue/ue-module-architecture/runtime-module-no-editor-dep.md) | 跨模块依赖方向硬约束：Runtime `*.Build.cs` 永远不能依赖 Editor module（含 conditional `if (Target.bBuildEditor)`）/ `WITH_EDITOR` 不能救你 / 常见诱因 + 正确解法（delegate / 把 test 移到 Editor module）/ build.cs review checklist |
-
-### Asset Lifecycle
+### Editor 生命周期 / 数学类型
 
 | Guideline | 解决的问题 |
 |---|---|
-| [`asset-definition-can-duplicate-limit.md`](asset-definition-can-duplicate-limit.md) | `UAssetDefinition::CanDuplicate` 只拦 Content Browser 命令；Copy+Paste / Migrate / 程序化 DuplicateObject 全部绕过；必须双层防御（CanDuplicate + PostDuplicate 兜底） |
-| [`blueprint-auto-override-api.md`](blueprint-auto-override-api.md) | 程序化创建 Blueprint Override 时 `AddFunctionGraph<UClass*>` vs `<UFunction*>` 模板参数选择；`bIsUserCreated` 跟模板参数的正交语义 |
+| [`leveleditor-modetools-lifetime.md`](leveleditor-modetools-lifetime.md) | `GLevelEditorModeTools()` 单例无效时 ensure 失败 + **错误重建**（非返回空）；startup gate 到 `FLevelEditorModule::OnLevelEditorCreated`、shutdown 守卫；5.8 起 `GLevelEditorModeToolsIsValid()` 删除、用 live-level-editor 代理 |
+| [`fvector4-vector-equals-silent-fail.md`](fvector4-vector-equals-silent-fail.md) | `FMatrix::TransformVector`/`TransformPosition` 返 `FVector4`(W=0)，直接跟 `FVector` 比 `.Equals` 因 W 静默失败（XYZ 对、断言恒 false）；用 `FVector(...)` 包裹丢 W |
 
-### Localization / Settings 持久化
-
-> Settings 持久化已 promote 到 skill：[`skills/ue/ue-settings-persistence/SKILL.md`](../../skills/ue/ue-settings-persistence/SKILL.md)（lazy-load，不再 eager-import）
-
-| Guideline / Skill 内容 | 解决的问题 |
-|---|---|
-| [`localization-pitfalls.md`](localization-pitfalls.md) | UE Localization API 6 条 trap：FromStringTable.ToString culture 漂 / Content/Localization 硬编码 exclude / PreBeginPIE 不能 veto / LocalizationTargetSet 非 UPROPERTY(config) / GatherText SCC noise / Culture BCP-47 validate |
-| [`settings-persistence.md`](../../skills/ue/ue-settings-persistence/settings-persistence.md) | UPROPERTY(config) flag + `TryUpdateDefaultConfigFile()` + AssetRegistrySearchable 三件套；SaveConfig 无参陷阱 + 排查 checklist + 嵌套 UObject 集合的 PostEditChangeProperty 双轨同步 pattern |
-
-### Tooling / Agent Integration（MCP 平台选择）
+### 版本升级 / 构建 / 打包 / CI
 
 | Guideline | 解决的问题 |
 |---|---|
-| [`mcp-platform-choice.md`](mcp-platform-choice.md) | UE 5.8 官方 ModelContextProtocol plugin vs 社区 fork UnrealMCP 的选型决策表；不要 backport / 不要抄重构的两个 anti-pattern；官方 `UToolsetDefinition` 扩展机制（Python Path A + C++ Path B + AICallable UFUNCTION 约束）；演进路径（短中长期） |
+| [`ue58-upgrade-gotchas.md`](ue58-upgrade-gotchas.md) | 升 UE 5.8 三硬契约：Target `BuildSettingsVersion.V7` + `IncludeOrderVersion.Unreal5_8` / `.uproject` RapidJSON 读裸控制字符报误导性 `Invalid encoding` / 运行 editor 需 VC++ redist `14.50.35719+` |
+| [`build-plugin-limitations.md`](build-plugin-limitations.md) | `RunUAT BuildPlugin` 四个 limitation：`Config/`+`Scripts/` 默认不进包（`FilterPlugin.ini`）/ UBT 剥 `PythonRequirements` / 交付包含非交付物（`Intermediate`/`.pdb`/RuntimeDependencies dll）/ installed distribution 只开放 Editor target（`-NoTargetPlatforms`） |
+| [`automation-test-from-ci.md`](automation-test-from-ci.md) | UE 在 CI 跑 Automation：必须 `UnrealEditor-Cmd.exe`（不是 GUI 版）/ 跑完不 graceful quit → 脚本监控 report + grace + force kill |
 
-> 配对的 fork 使用指南（"fork 怎么用"，跟"用哪个"互补不重叠）：[`skills/ue/unrealmcp-usage/SKILL.md`](../../skills/ue/unrealmcp-usage/SKILL.md)
+### 外部自动化 / MCP 写入 / LogicDriver / 本地化
 
-## 相关 Techniques
-
-[`../../techniques/ue-custom-graph-editor.md`](../../techniques/ue-custom-graph-editor.md) ——
-建一个 custom UE Graph Editor 的 step-by-step procedural guide。Prerequisites
-段强调"读最相近的 UE reference implementation"——是 skill
-[`ue-reference-engine-source`](../../skills/ue/ue-reference-engine-source/SKILL.md)
-在 Graph Editor 子领域的具体应用。
+| Guideline | 解决的问题 |
+|---|---|
+| [`external-automation-write-path.md`](external-automation-write-path.md) | 外部脚本（MCP / commandlet / Editor Utility Widget）写 UE 资产**必走** Editor 的 `PostEditChangeProperty` 同步路径，别只调底层 setter（否则只改表层、framework 隐式状态不刷 → 运行时炸；schema 编译 success ≠ asset OK） |
+| [`mcp-platform-choice.md`](mcp-platform-choice.md) | UE 5.8 官方 `ModelContextProtocol` vs 社区 fork UnrealMCP 的选型决策表 + 不要 backport / 不要抄重构；官方 `UToolsetDefinition` 扩展机制 |
+| [`logicdriver-state-class-rewires-boundgraph.md`](logicdriver-state-class-rewires-boundgraph.md) | LogicDriver state node 切自定义 `StateClass` 会自动**撕 BoundGraph wire**（注入节点 + 重定向 lifecycle 输出），切回 default 不撤销 → 只能 file-revert；设计上 self class 别 override BlueprintNativeEvent |
+| [`localization-pitfalls.md`](localization-pitfalls.md) | UE Localization 6 trap：`FromStringTable.ToString` culture 漂 / `Content/Localization` 硬编码 exclude / `PreBeginPIE` 不能 veto / `LocalizationTargetSet` 非 `UPROPERTY(config)` / GatherText SCC noise / Culture BCP-47 validate |
 
 ## 看哪几篇取决于你在做什么
 
-- **第一次接 UE custom graph editor** → 先 skill [`ue-reference-engine-source`](../../skills/ue/ue-reference-engine-source/SKILL.md) + [`../../techniques/ue-custom-graph-editor.md`](../../techniques/ue-custom-graph-editor.md)，按 procedural 步骤推进 + 每步翻 graph-editor-constraints.md / graph-data-ownership.md 对应章节
-- **写新 Asset Editor + UPROPERTY 持久化设置** → skill [`ue-settings-persistence`](../../skills/ue/ue-settings-persistence/SKILL.md) + [`asset-definition-can-duplicate-limit.md`](asset-definition-can-duplicate-limit.md)
-- **本地化 / 翻译 pipeline** → [`localization-pitfalls.md`](localization-pitfalls.md) + skill [`ue-settings-persistence`](../../skills/ue/ue-settings-persistence/SKILL.md)
-- **Runtime 跟 Editor 模块边界设计** → skill [`ue-module-architecture`](../../skills/ue/ue-module-architecture/SKILL.md)（含同 module 内三层模型 + 跨 module 依赖方向硬约束）
-- **程序化建 RigVM / Control Rig 图(生成 CR / 加 RigUnit)** → [`rigvm-bulk-data-as-metadata-not-pins.md`](rigvm-bulk-data-as-metadata-not-pins.md)(逐元素大批量数据走 metadata 不走 pin 默认值)
-- **批量烤动画 key 到 Sequencer 里的 Control Rig(import anim / bake clip)** → [`controlrig-sequencer-bulk-key-bake.md`](controlrig-sequencer-bulk-key-bake.md)(别逐 key `SetLocalControlRig*`,直接写 section 浮点通道 + 一次刷新)
-- **程序化 / 神经网络驱动骨骼动画（不走 AnimBP 状态机）** → [`animinstance-proxy-and-offline-eval.md`](animinstance-proxy-and-offline-eval.md)（pose 注入 + 离线评估）+ [`nne-onnx-inference-contracts.md`](nne-onnx-inference-contracts.md)（模型推理接入）
-- **给 SkeletalMesh 挂 Deformer Graph（Optimus）、法线在接缝/硬边/开放边界发虚或塌陷** → [`deformer-graph-keep-authored-normals.md`](deformer-graph-keep-authored-normals.md)（纯 `ComputeNormalsTangents` 丢 authored 法线 → 换引擎 `Keep{Imported,Input}Normals` 变体；Wireframe/Unlit 分离几何 vs 着色）
-- **接到一个 UE bug / weird behavior** → skill [`ue-reference-engine-source`](../../skills/ue/ue-reference-engine-source/SKILL.md) 的"按子系统分类的 reference 清单"找最相近 engine source 看怎么实现的
+- **写任何 UE 功能动手前** → skill `ue-reference-engine-source`（按 22 子系统找 engine reference）
+- **第一次建 UE custom graph editor** → skill `ue-custom-graph-editor`（7 步流程 + 数据归属）+ 每步翻 [`graph-editor-constraints.md`](graph-editor-constraints.md)
+- **写新 Asset Editor + 持久化设置** → skill `ue-settings-persistence` + [`asset-definition-can-duplicate-limit.md`](asset-definition-can-duplicate-limit.md)
+- **Details 面板定制** → 先 [`details-customization-prefer-reflection.md`](details-customization-prefer-reflection.md)（能反射别写 customization），要写就守 [`property-handle-strong-capture.md`](property-handle-strong-capture.md)
+- **Runtime / Editor 模块边界** → skill `ue-module-architecture`
+- **程序化建 RigVM / ControlRig / Deformer 图、模块内数值 / GPU / 并行** → skill `ue-procedural-numerical`
+- **代码 / 神经网络驱动动画（不走 AnimBP）** → skill `ue-ml-animation`
+- **外部脚本 / MCP 写 UE 资产** → [`external-automation-write-path.md`](external-automation-write-path.md)（必走 PostEditChangeProperty）+ 平台选型 [`mcp-platform-choice.md`](mcp-platform-choice.md) + usage skill `unrealmcp-usage` / `official-mcp-usage`
+- **本地化 / 翻译 pipeline** → [`localization-pitfalls.md`](localization-pitfalls.md) + skill `ue-settings-persistence`
+- **升级到 UE 5.8 / BuildPlugin 打包 / CI 跑 automation** → [`ue58-upgrade-gotchas.md`](ue58-upgrade-gotchas.md) / [`build-plugin-limitations.md`](build-plugin-limitations.md) / [`automation-test-from-ci.md`](automation-test-from-ci.md)
+- **接到一个 UE bug / weird behavior** → skill `ue-reference-engine-source` 的按子系统 reference 清单，找最相近 engine source 看怎么实现的
 
 ## 增长状态
 
-UE 子目录从 5 份扩到 8 份发生在 2026-04 → 2026-05 期间，主要来自
-DialogueSystemSample 插件 Phase 1-3 ship（Line ID + 本地化）的 retrospective
-promotion。2026-07 新增 2 份（AnimInstance proxy 契约 + NNE 消费契约），来自
-PathAnimGen 预研（路径→狗动画生成插件）M1–M3 的 framework hidden contract
-promotion。后续候选（two-strike rule 等第二次复发）：
+UE 子目录 2026-04 → 2026-07 从 5 份扩到 20+ 份，来自 DialogueSystemSample（Line ID + 本地化）、
+BattleDemo（LogicDriver / MCP 写入）、PathAnimGen（AnimInstance proxy + NNE）、curvenet 形变插件
+（RigVM / Deformer / RBF / GPU / 并行）等项目 ship 的 retrospective promotion。
 
-- UE Factory 共存不替换（`UDataAssetFactory` 跟自定义 Factory 同 SupportedClass 共存）
-- Validation Gate 三道闸（Save / PIE / Cook + `UEditorValidatorBase`）
-- 双源 schema parity test（C++ + Python / SQL + ORM 等）
+2026-07-19 context-budget audit S2 Tier D：ultra-niche 簇（procedural-numerical / ML-anim /
+custom-graph）bundle 成懒加载 skill；`graph-data-ownership` 的框架无关内核提升到常驻
+[`../code/dual-layer-data-ownership.md`](../code/dual-layer-data-ownership.md)；broad guidelines 保留常驻。
+
+后续候选（two-strike rule 第二次复发时补）：UE Factory 共存不替换 / Validation Gate 三道闸（Save / PIE / Cook）/ 双源 schema parity test。
