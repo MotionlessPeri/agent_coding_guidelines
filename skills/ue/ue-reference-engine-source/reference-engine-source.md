@@ -172,4 +172,4 @@ DialogueSystemSample 插件 3 个月开发期间，几乎所有 UE 功能都从 
 - `guidelines/ue/graph-editor-constraints.md` —— Graph Editor 子领域的具体 hidden contracts（NodeGuid / Pin Ownership / Reroute / 等）
 - `guidelines/ue/localization-pitfalls.md` —— Localization 子领域的 hidden contracts
 - `guidelines/ue/asset-definition-can-duplicate-limit.md` —— AssetDefinition 子领域的 hidden contracts
-- `techniques/ue-custom-graph-editor.md` —— Graph Editor 的 step-by-step procedural guide，"Prerequisites" 节是本条 guideline 的具体应用
+- skill `ue-custom-graph-editor` —— Graph Editor 的 step-by-step procedural guide，"Prerequisites" 节是本条 guideline 的具体应用

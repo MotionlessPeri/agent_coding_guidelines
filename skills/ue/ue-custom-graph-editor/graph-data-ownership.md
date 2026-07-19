@@ -1,13 +1,15 @@
-# Graph Data Ownership
+# Graph Data Ownership（UE UEdGraph 编辑器执行面）
+
+> Framework-agnostic 原则（按数据类型定 source-of-truth / 派生用 full-flush compile 不 incremental sync /
+> 两条流可反方向）见 `guidelines/code/dual-layer-data-ownership.md`。本文是它在 **UE 自定义 `UEdGraph`
+> 编辑器**（graph pin 层 + 独立 runtime 数据层）的执行面：UE 框架强加的约束 + 具体数据归属表 +
+> compile 时机 + UE 反 pattern 代码。
 
 ## Core Problem
 
 Custom graph editors that maintain a **separate runtime data model** alongside UE's
-`UEdGraph` pin layer must decide: which layer owns each type of data?
-
-Getting this wrong leads to fragile manual sync — every editing operation must
-explicitly synchronize both layers, and missing a single sync point causes
-silent data desync bugs.
+`UEdGraph` pin layer must decide: which layer owns each type of data? Getting this wrong
+leads to fragile manual sync — missing a single sync point causes silent data desync.
 
 ## Data Ownership by Type
 
@@ -42,11 +44,9 @@ User drags wire
   -> CompileTransitions() walks all pins, rebuilds all OutTransitions from scratch
 ```
 
-**Advantages:**
-- Sync logic exists in ONE place (the compile function)
-- Impossible to miss a sync point — every graph change triggers full rebuild
-- No incremental sync code needed in TryCreateConnection, BreakPinLinks,
-  BreakSinglePinLink, DeleteSelectedNodes, OnPinConnectionDoubleCicked, etc.
+**Advantages**（通用「single full-flush > incremental sync」的好处见 general 条）：UE 里的具体收益是
+`TryCreateConnection` / `BreakPinLinks` / `BreakSinglePinLink` / `DeleteSelectedNodes` /
+`OnPinConnectionDoubleCicked` 等 Schema 方法**全都不需要写** incremental sync 代码。
 
 **Prerequisites:**
 - All edge properties (conditions, priorities) must live on the graph-side edge
@@ -101,10 +101,7 @@ Connections:      Graph Pins      -->  Runtime OutTransitions
                   (source)              (derived via compile)
 ```
 
-These flows go in **opposite directions**. This is inherent to UE's graph
-framework — node properties are edited via the Details panel (which writes to
-the runtime object), while connections are edited via drag-and-drop (which writes
-to graph pins).
-
-Acknowledging this asymmetry — rather than trying to force a single data flow
-direction — leads to a cleaner architecture.
+These flows go in **opposite directions** — node properties are edited via the Details
+panel (writes to the runtime object), connections via drag-and-drop (writes to graph pins).
+This asymmetry is inherent to UE's graph framework; acknowledge it rather than forcing a
+single direction（通用「两条流可反方向」条同理）。

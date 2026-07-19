@@ -217,4 +217,4 @@ removes boilerplate, not responsibility.
 ## Related Guidelines
 
 - See `guidelines/ue/graph-editor-constraints.md` for graph-specific rules.
-- See `techniques/ue-custom-graph-editor.md` for the full graph editor setup procedure.
+- See skill `ue-custom-graph-editor` for the full graph editor setup procedure.

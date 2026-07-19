@@ -35,7 +35,7 @@ The full content lives in the bundled doc:
 
 - `guidelines/code/reuse-before-implementing.md` — symmetric prep-work for project-internal code survey (UE engine vs project repo are two different "what already exists" searches; do both before writing new code).
 - `skills/ue/ue-module-architecture/SKILL.md` — module / layer decisions often happen at the same prep stage as reference lookup.
-- `techniques/ue-custom-graph-editor.md` — procedural application for graph editor work; its "Prerequisites" section is this skill applied to one specific subsystem.
+- skill `ue-custom-graph-editor` — procedural application for graph editor work; its "Prerequisites" section is this skill applied to one specific subsystem.
 
 ## Anti-Pattern Summary
 

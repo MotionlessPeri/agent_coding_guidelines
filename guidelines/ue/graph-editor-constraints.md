@@ -198,4 +198,4 @@ back to existing objects, not copies).
 ## Related Guidelines
 
 - See `guidelines/code/validation.md` for general build and verification rules.
-- See `techniques/ue-custom-graph-editor.md` for the step-by-step graph editor setup procedure.
+- See skill `ue-custom-graph-editor` for the step-by-step graph editor setup procedure.

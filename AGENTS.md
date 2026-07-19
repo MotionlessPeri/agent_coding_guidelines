@@ -72,6 +72,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/code/gui-visual-machine-gating.md
 
+@guidelines/code/dual-layer-data-ownership.md
+
 @guidelines/writing/prose-and-register.md
 
 @guidelines/collaboration/multi-agent.md
@@ -79,8 +81,6 @@ Guidelines are grouped by topic under `guidelines/`:
 @guidelines/collaboration/private-docs-policy.md
 
 @guidelines/ue/graph-editor-constraints.md
-
-@guidelines/ue/graph-data-ownership.md
 
 @guidelines/ue/blueprint-auto-override-api.md
 
@@ -135,8 +135,6 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @techniques/context-budget-audit.md
 
-@techniques/ue-custom-graph-editor.md
-
 > 条件域 techniques 不 eager `@`-import——`techniques/ci-deploy-to-p4.md`（P4 + Windows CI 部署链）与 `techniques/claude-code-autonomous-permissions.md`（Claude Code permission list 配置）随对应 guidelines 子目录懒加载，触发场景见上 Guidelines 段末 P4 / CI / Claude-Code 说明。（2026-07-19 audit S2 Tier D）
 
 ---
@@ -171,6 +169,7 @@ Guidelines are grouped by topic under `guidelines/`:
 - [`skills/ue/official-mcp-usage/SKILL.md`](skills/ue/official-mcp-usage/SKILL.md) — 消费侧 agent 用 UE 5.8+ **官方** `ModelContextProtocol` MCP server（HTTP，默认 `127.0.0.1:8000/mcp`）做编辑器自动化。跟 `unrealmcp-usage`（fork）对称：那条 fork 怎么用，这条官方怎么用。覆盖 (1) setup 真相——`ModelContextProtocol` 只是 server 外壳，真正提供工具的是 `AllToolsets` 聚合器（只开 server 不开 AllToolsets → 连上也没工具），4 plugin 验证配置 + auto-start / 控制台命令 / `.mcp.json` HTTP 配置；(2) 9 条 usage hidden contract——`load_toolset` 跨 turn 才生效 / Reconnect 是 client tool list 刷新唯一入口 / 工具名点转单下划线 / session id 绑 server 生命周期 / schema 误标 / refPath 约定；(3) 失败纪律——官方报错停下问 user Reconnect，不要静默 fallback 换后端。平台选型见 `guidelines/ue/mcp-platform-choice.md`
 - [`skills/ue/ue-ml-animation/SKILL.md`](skills/ue/ue-ml-animation/SKILL.md) — UE 里「代码 / 神经网络直出 pose、不走 AnimBP 状态机」两组 hidden contract（来自 PathAnimGen 预研，原 `animinstance-proxy-and-offline-eval.md` + `nne-onnx-inference-contracts.md` 两份 guideline lazy 化 bundle 进本 skill）。**动画注入侧**：纯 C++ `UAnimInstance` + 自定义 `FAnimInstanceProxy` 零 AnimBP 直出 pose / `Update()` 被 `GFrameCounter` 门控（累计放 `PreUpdate`）/ 离线评估配方 `TickAnimation → RefreshBoneTransforms → FinalizeBoneTransform`（漏末步读旧双缓冲）。**模型推理侧**：NNE 只吃 ONNX / `NNERuntimeORT` 默认关闭需显式引用 / 坏模型报错点在 `CreateModelInstanceCPU` / 动态输出 shape 第一次 `RunSync` 后才可查且 buffer 不足静默不拷
 - [`skills/ue/ue-procedural-numerical/SKILL.md`](skills/ue/ue-procedural-numerical/SKILL.md) — UE 里「程序化建 RigVM/ControlRig/Deformer 图 + 模块内数值 / GPU / 并行」六组 ultra-niche hidden contract（多数踩自 curvenet 形变插件，原 6 份 UE guideline lazy 化 bundle 进本 skill）：RigVM 逐元素大批量数据走 `URigHierarchy` metadata 别烤 pin 默认值（否则图卡死）/ Sequencer 批量烤 key 写 section 浮点通道别逐 key `SetLocalControlRig*` / Optimus `ComputeNormalsTangents` 丢 authored 法线→换 `Keep{Imported,Input}Normals` / `FRBFSolver`·`TMemStack` 出 anim-eval 作用域需自建 `FMemMark` / UE 无官方 GPU 稀疏求解器→bring-your-own 运行时加载 + 安全回退 / UE 模块 OpenMP 装不了→`IntelTBB`·`ParallelFor` + 跨框架后端无关抽象
+- [`skills/ue/ue-custom-graph-editor/SKILL.md`](skills/ue/ue-custom-graph-editor/SKILL.md) — 从零建一个 UE 自定义 node-graph 编辑器（Blueprint / Material / Behavior Tree 式 `UEdGraph` 编辑器）。bundle 了原 `techniques/ue-custom-graph-editor.md`（7 步 build 流程，每步带坑 + 验证）+ 原 `guidelines/ue/graph-data-ownership.md` 的 UE 执行面（数据归属表 / `SGraphEditor` pin-first 约束 / compile full-flush > incremental sync）。**Ultra-niche**——只在做**新的**自定义图编辑器时触发。硬 per-API 约束（NodeGuid / pin SetOwner / `RF_Transactional` / undo refresh / copy-paste DuplicateObject）仍常驻在 `guidelines/ue/graph-editor-constraints.md`。数据归属的框架无关上位原则见新建的常驻 `guidelines/code/dual-layer-data-ownership.md`
 
 **maya/** —— Maya 插件专用：
 

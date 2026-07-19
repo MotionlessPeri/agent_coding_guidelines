@@ -35,4 +35,4 @@ The two rules operate at different scales but are typically applied together: wh
 
 - skill `ue-reference-engine-source` — engine modules' `Type` field is the authoritative reference for "is this module editor-only" (grep `<ModuleName>.Build.cs` in engine source)
 - `guidelines/ue/graph-editor-constraints.md` — graph-specific rules that often interact with the layering decision
-- `techniques/ue-custom-graph-editor.md` — procedural guide that applies the three-layer model in graph editor context
+- skill `ue-custom-graph-editor` — procedural guide that applies the three-layer model in graph editor context
