@@ -209,7 +209,7 @@ Guidelines are grouped by topic under `guidelines/`:
 
 **maya/** —— Maya 插件专用：
 
-- [`skills/maya/maya-tool-interaction/SKILL.md`](skills/maya/maya-tool-interaction/SKILL.md) — DCC 拖拽编辑工具（Maya manip/context，泛化到其他 3D 工具）的五个交互模式：press-time 完整重算（不累加 delta）/ press-time caching 防反馈闭环漂移 / 位移阈值防抖 / snapshot-diff undo（非 plug-level）/ undo 数据存业务对象而非 UI manip。配套 framework 契约见 `guidelines/maya/`。单项目验证、apply-and-refine
+- [`skills/maya/maya-tool-interaction/SKILL.md`](skills/maya/maya-tool-interaction/SKILL.md) — DCC 拖拽编辑工具（Maya manip/context，泛化到其他 3D 工具）的六个交互模式：press-time 完整重算（不累加 delta）/ press-time caching 防反馈闭环漂移 / 位移阈值防抖 / snapshot-diff undo（非 plug-level）/ undo 数据存业务对象而非 UI manip / 控制器叠在被驱动对象上（live attach + 两层）。配套 framework 契约见 `guidelines/maya/`。单项目验证、apply-and-refine
 - [`skills/maya/reverse-maya-closed-nodes/SKILL.md`](skills/maya/reverse-maya-closed-nodes/SKILL.md) — 复刻或诊断闭源 Maya 节点时的分层证据工作流：Ghidra 伪代码只生成假设，汇编/ABI 裁决参数，单变量 probe + 激发守卫，正交合成差分 oracle，最后用真实资产多 pose 收敛；同时区分 confirmed / strong inference / open。
 
 **architecture/** —— 框架无关架构 pattern：

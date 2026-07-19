@@ -86,3 +86,9 @@ map、导出、RTTI、字符串交叉定位，不要给未知地址编造函数�
 | 只看 UI thread | 看见等待，看不见谁持锁 | `~* k` 查所有线程 |
 | 无 PDB 就停止 | 第三方闭源模块无法推进 | module base + RVA 映射 Ghidra |
 | 单一停点就断言 race | 过度归因 | 多线程/对象/调度反证至少两类 |
+
+## 相关 Guidelines
+
+- [`../code/diagnose-before-fixing.md`](../code/diagnose-before-fixing.md) —— 先分类取证再归因，跟本篇"先分类结果、不先归因"同源
+- [`../code/validation.md`](../code/validation.md) —— 崩溃类结论要 dump / 证据，不靠"看着像崩了"
+- [`../../skills/maya/reverse-maya-closed-nodes/SKILL.md`](../../skills/maya/reverse-maya-closed-nodes/SKILL.md) —— 无 PDB 时 `module base + RVA` 映射 Ghidra 的分层证据工作流

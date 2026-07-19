@@ -66,3 +66,9 @@ for (unsigned polygon = 0; polygon < triangleCounts.length(); ++polygon) {
 | 只在平面网格验证 | 两种对角线差异被遮住 | 加非共面 quad/n-gon probe |
 | 最终均值接近就通过 | 阈值附近支持集合仍错 | 比较逐点距离和 FP/FN |
 | 改拓扑后沿用旧 binding | vertex id/frame 对错对象 | 明确重绑或版本迁移 |
+
+## 相关 Guidelines
+
+- [`../../skills/maya/reverse-maya-closed-nodes/SKILL.md`](../../skills/maya/reverse-maya-closed-nodes/SKILL.md) —— 复刻闭源 Maya 节点的差分 oracle / 多 pose 收敛，拓扑保真是其前提
+- [`../code/validation.md`](../code/validation.md) —— fixture 要保真（triangulation 一致），"均值接近"不算验证
+- [`gpu-deformer-gui-validation.md`](gpu-deformer-gui-validation.md) —— 姊妹篇：Maya 形变 / GPU 验证的 GUI 证据面

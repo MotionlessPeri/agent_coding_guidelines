@@ -82,3 +82,9 @@ GPU 数值一致后再测交互时序：
 | `maya.exe -command` 注入长 Python | 三层转义破坏语法 | `-script bootstrap.mel` + Python 模块 |
 | Maya 退出一律记 crash | licensing/脚本主动退出被误判 | report、marker、dump、licensing 联合分类 |
 | GPU 不支持输入仍继续算 | painted weight/membership 被静默忽略 | 返回 failure 交回 CPU |
+
+## 相关 Guidelines
+
+- [`../code/validation.md`](../code/validation.md) —— "headless / 单测绿 ≠ GUI 对"；GPU deformer 必须真 GUI 四重证据验
+- [`../cpp/windows-native-crash-hang-evidence.md`](../cpp/windows-native-crash-hang-evidence.md) —— GUI 崩溃 / hang 时的 dump 取证（本篇 GPU 通过判定的补充面）
+- [`../../skills/maya/reverse-maya-closed-nodes/SKILL.md`](../../skills/maya/reverse-maya-closed-nodes/SKILL.md) —— 诊断闭源 / GPU 节点行为的分层证据工作流

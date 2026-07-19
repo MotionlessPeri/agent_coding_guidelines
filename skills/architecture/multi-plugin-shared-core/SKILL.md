@@ -154,7 +154,7 @@ dead"、"临时隐藏"、"待重算"），而这个状态不属于权威几何�
 
 ## 组合关系
 
-五个模式不是孤立的，典型一起出现：core 实体 = ExtensionContainer（1）；配置经 feature-parser
+六个模式不是孤立的，典型一起出现：core 实体 = ExtensionContainer（1）；配置经 feature-parser
 注册（2）填出 Preset，沿三段式（3）下沉成 Instance；Instance 进非拥有 Registry（5）供命令查询；
 所有数据操作围绕 value-like Snapshot + Ops（4）。
 

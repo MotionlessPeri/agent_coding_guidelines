@@ -5,7 +5,7 @@ description: Use when building a Maya manip, selection context, or other DCC dra
 
 # DCC 拖拽编辑工具的交互模式
 
-拖一个 handle → 触发一次**昂贵的多元素重算**（IK / solver / 模型推理）的交互工具，有五个
+拖一个 handle → 触发一次**昂贵的多元素重算**（IK / solver / 模型推理）的交互工具，有六个
 可组合的模式。在 Maya manip/context 场景提炼，泛化到任意 3D viewport 工具。配套的 Maya 框架
 hidden contract 见 [`../../../guidelines/maya/manip-container-constraints.md`](../../../guidelines/maya/manip-container-constraints.md)
 + [`../../../guidelines/maya/selection-context-and-undo.md`](../../../guidelines/maya/selection-context-and-undo.md)。

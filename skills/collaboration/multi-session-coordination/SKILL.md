@@ -58,11 +58,11 @@ s["intent_summary"] = "Adding pattern-recognition-prep skill"
 ms.save_session(cwd, s)
 ```
 
-**Option B** — invoke the script as a CLI (preferred from a shell context):
+**Option B** — invoke the script as a CLI（**尚未实现**）：
 ```bash
 python ~/.claude/skills/multi-session-coordination/multi_session.py claim --paths "AGENTS.md,skills/foo/" --intent "..."
 ```
-(M6 will add this CLI surface.)
+⚠️ `multi_session.py` 的 `main()` 目前只 dispatch hook 名（见文件末 `HOOK_HANDLERS`），**没有 `claim` 子命令**——想走 CLI 得先给 `main()` 加子命令解析。当前用 **Option A**（Python import 直调，可用）。
 
 ### Path scope discipline
 
