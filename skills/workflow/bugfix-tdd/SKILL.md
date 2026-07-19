@@ -134,7 +134,7 @@ grep commit log 能找到这条 bug 的历史。
 - **fixture cost > 代码 cost 数倍**：1 行 hardcode 改成 4 行 if-else 的纯 dispatch fix，写 auto test 要构造真 DA / 真 widget / 真 BP 父类等
 - **外部服务 / 真实环境依赖**：需要真 P4 server / 真 SQLite 锁 / 真 editor 启动
 
-走 `superpowers:tdd-with-fixtures` 的 escape hatch + 本 skill "Manual path"
+走 `tdd-with-fixtures` 的 escape hatch + 本 skill "Manual path"
 子节：写 **manual reproduction case**（fixture + 操作步骤 + 期望表现 vs
 实际表现）当锚点，跟 fix 一起进 commit。原则不变："先 demonstrate bug 再
 fix"，只是 demonstrate 从自动化变成 user 人眼。
@@ -189,7 +189,7 @@ fall back 到 manual reproduction case + 跑前后对比数据。
   bug 修用本 skill。
 - **`superpowers:systematic-debugging`** —— debug 方法论 skill，管"怎么定位
   root cause"。本 skill 在它之后衔接：root cause 定位完进入修复阶段。
-- **`superpowers:tdd-with-fixtures`** —— TDD discipline + escape hatch skill。
+- **`tdd-with-fixtures`** —— TDD discipline + escape hatch skill。
   本 skill 的 "Bug 没法写自动化测试" edge case 走它的 fixture + manual case
   pattern。
 - **`guidelines/code/validation.md`** —— "evidence before assertions" 通则。
@@ -216,7 +216,7 @@ fall back 到 manual reproduction case + 跑前后对比数据。
 
 - `superpowers:test-driven-development` — feature TDD（基础 red-green-refactor cycle）
 - `superpowers:systematic-debugging` — debug 阶段方法论，本 skill 衔接其后
-- `superpowers:tdd-with-fixtures` — TDD + escape hatch，处理 auto-test 不可达的 bug
+- `tdd-with-fixtures` — TDD + escape hatch，处理 auto-test 不可达的 bug
 - `guidelines/code/validation.md` — "evidence before assertions" 通则
 - `guidelines/workflow/commits.md` — commit 粒度 + 单 theme 规则
 - `guidelines/workflow/agent-lifecycle.md` — Validation Before Completion 通则

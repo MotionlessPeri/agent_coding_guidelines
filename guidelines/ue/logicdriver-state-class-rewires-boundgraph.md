@@ -106,7 +106,7 @@ BattleDemo 项目 R2（2026-05-25）落地 OFCombatFramework：
 - 修复（短期）：加 MCP `connect_logicdriver_bound_graph_pin` 批量 bridge
 - 待办（R3）：考虑迁路径 A，让 `UCombatSkillState` 不 override lifecycle
 
-详 `H:\Perforce\XD_main\BattleDemo\Docs\sessions\` 下 R2 相关 session 记录。
+详 BattleDemo 项目内 R2 相关 session 记录（agent-private，不在本 repo；见 `collaboration/private-docs-policy.md`）。文中 `get_logicdriver_state_bound_graph_nodes` / `connect_logicdriver_bound_graph_pin` 是 BattleDemo 的 UnrealMCP fork 专有命令，非通用可用。
 
 ## 相关 Guidelines / Techniques
 

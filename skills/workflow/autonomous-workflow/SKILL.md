@@ -494,4 +494,4 @@ When composing these, **follow each composed skill's discipline fully**. Autonom
 - `guidelines/workflow/commits.md` — commit format
 - `techniques/claude-code-autonomous-permissions.md` — full rationale for commit permission lift; operational core is inlined above in Commit Permission Pre-Flight
 - `skills/tdd-with-fixtures/SKILL.md` — mandatory test discipline, the safety net
-- `skills/supervised-workflow/SKILL.md` — sibling workflow with gates; switch to this if user wants in-the-loop review
+- `skills/workflow/supervised-workflow/SKILL.md` — sibling workflow with gates; switch to this if user wants in-the-loop review

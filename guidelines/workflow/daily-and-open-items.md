@@ -98,8 +98,8 @@ When this becomes painful (3+ recurring cross-project items), revisit and consid
 ## Composition Notes
 
 - `guidelines/collaboration/private-docs-policy.md` — these files are agent artifacts, not project deliverables; never committed to project git
-- `skills/autonomous-workflow/SKILL.md` Phase 4 — the workflow's natural trigger to write daily + sync open-items
-- `skills/supervised-workflow/SKILL.md` Phase 4 — same
+- `skills/workflow/autonomous-workflow/SKILL.md` Phase 4 — the workflow's natural trigger to write daily + sync open-items
+- `skills/workflow/supervised-workflow/SKILL.md` Phase 4 — same
 - `guidelines/workflow/handoffs.md` — handoff documents are per-task artifacts; daily.md and open-items.md are cross-task / cross-project layers above that
 
 ## Agent Behavior Summary

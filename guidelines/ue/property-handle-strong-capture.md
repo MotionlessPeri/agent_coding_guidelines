@@ -132,4 +132,4 @@ DialogueSystem 插件 `FDialogueNodeLineIdCustomization::CustomizeDetails` 用 T
 
 - [`guidelines/ue/details-customization-prefer-reflection.md`](details-customization-prefer-reflection.md) — 决定是否 write customization 之前先用反射；本条管 customization 内部 capture 写法
 - [`guidelines/code/validation.md`](../code/validation.md) "Adversarial Mindset" — UI 显示问题不能只靠"代码看着对"，必须实测 widget runtime 状态（widget tick log）
-- [`skills/ue-reference-engine-source/SKILL.md`](../../skills/ue-reference-engine-source/SKILL.md) — UE engine source `PropertyEditor` module 是本 hidden contract 的源头；UE doc 没说，必须读源码 + 实测
+- [`skills/ue/ue-reference-engine-source/SKILL.md`](../../skills/ue/ue-reference-engine-source/SKILL.md) — UE engine source `PropertyEditor` module 是本 hidden contract 的源头；UE doc 没说，必须读源码 + 实测

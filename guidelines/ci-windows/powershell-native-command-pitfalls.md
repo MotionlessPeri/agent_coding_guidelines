@@ -241,5 +241,5 @@ UE 5.5 plugin 的 GitLab CI 调试期间踩穿三个坑：
 
 ## 相关 Guidelines / Techniques
 
-- `guidelines/workflow/validation.md` —— 强调"verify before claim done"，本文是 CI 验证的具体 pitfall 索引
+- `guidelines/code/validation.md` —— 强调"verify before claim done"，本文是 CI 验证的具体 pitfall 索引
 - `guidelines/workflow/agent-lifecycle.md` —— 列了 "Probably fine" 类自欺欺人；CI 出错时容易凭推测改，应该走"本地复现 → 实测 → 改"的严格流程

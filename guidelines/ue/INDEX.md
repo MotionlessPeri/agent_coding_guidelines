@@ -1,8 +1,8 @@
 # UE Guidelines 索引
 
 UE 是当前 meta-corpus 最重的子目录（约 950 行 / 6 份 guidelines + 1 份配套
-technique，另有 4 份内容已 promote 到 skill：`skills/ue-module-architecture/` 2 份
-+ `skills/ue-reference-engine-source/` + `skills/ue-settings-persistence/`），
+technique，另有 4 份内容已 promote 到 skill：`skills/ue/ue-module-architecture/` 2 份
++ `skills/ue/ue-reference-engine-source/` + `skills/ue/ue-settings-persistence/`），
 集中存放 Unreal Engine framework 的 hidden contracts 和 idiom。
 
 **非 UE 项目可以整段 skip 本目录** —— 通用编程 / 工程组织规则在
@@ -12,11 +12,11 @@ technique，另有 4 份内容已 promote 到 skill：`skills/ue-module-architec
 
 ### Prep work（开工前必看）
 
-> 已 promote 到 skill：[`skills/ue-reference-engine-source/SKILL.md`](../../skills/ue-reference-engine-source/SKILL.md)（lazy-load，不再 eager-import）
+> 已 promote 到 skill：[`skills/ue/ue-reference-engine-source/SKILL.md`](../../skills/ue/ue-reference-engine-source/SKILL.md)（lazy-load，不再 eager-import）
 
 | Skill 内容 | 解决的问题 |
 |---|---|
-| [`reference-engine-source.md`](../../skills/ue-reference-engine-source/reference-engine-source.md) | UE 功能（特别是 UI / Editor）开工前先找最相近的 engine source / official sample / 第三方 plugin reference impl；按 22 个 UE 子系统给 reference 清单 |
+| [`reference-engine-source.md`](../../skills/ue/ue-reference-engine-source/reference-engine-source.md) | UE 功能（特别是 UI / Editor）开工前先找最相近的 engine source / official sample / 第三方 plugin reference impl；按 22 个 UE 子系统给 reference 清单 |
 
 > 配对的项目内 prep work：[`../code/reuse-before-implementing.md`](../code/reuse-before-implementing.md)（survey 项目内已有 similar code）。两条 prep work 都属于"动手前先 survey"的对称概念。
 
@@ -61,12 +61,12 @@ technique，另有 4 份内容已 promote 到 skill：`skills/ue-module-architec
 
 ### Editor / Runtime 架构
 
-> 已 promote 到 skill：[`skills/ue-module-architecture/SKILL.md`](../../skills/ue-module-architecture/SKILL.md)（lazy-load，不再 eager-import）
+> 已 promote 到 skill：[`skills/ue/ue-module-architecture/SKILL.md`](../../skills/ue/ue-module-architecture/SKILL.md)（lazy-load，不再 eager-import）
 
 | Skill 内容 | 解决的问题 |
 |---|---|
-| [`editor-runtime-separation.md`](../../skills/ue-module-architecture/editor-runtime-separation.md) | 三层模型（Runtime Ops / Editor Actions / UI）/ Undo Support（基础 + 嵌套 transaction）/ Editor Actions 自动化生成（ExecEditorOp 模板 + 可选 Python codegen） |
-| [`runtime-module-no-editor-dep.md`](../../skills/ue-module-architecture/runtime-module-no-editor-dep.md) | 跨模块依赖方向硬约束：Runtime `*.Build.cs` 永远不能依赖 Editor module（含 conditional `if (Target.bBuildEditor)`）/ `WITH_EDITOR` 不能救你 / 常见诱因 + 正确解法（delegate / 把 test 移到 Editor module）/ build.cs review checklist |
+| [`editor-runtime-separation.md`](../../skills/ue/ue-module-architecture/editor-runtime-separation.md) | 三层模型（Runtime Ops / Editor Actions / UI）/ Undo Support（基础 + 嵌套 transaction）/ Editor Actions 自动化生成（ExecEditorOp 模板 + 可选 Python codegen） |
+| [`runtime-module-no-editor-dep.md`](../../skills/ue/ue-module-architecture/runtime-module-no-editor-dep.md) | 跨模块依赖方向硬约束：Runtime `*.Build.cs` 永远不能依赖 Editor module（含 conditional `if (Target.bBuildEditor)`）/ `WITH_EDITOR` 不能救你 / 常见诱因 + 正确解法（delegate / 把 test 移到 Editor module）/ build.cs review checklist |
 
 ### Asset Lifecycle
 
@@ -77,12 +77,12 @@ technique，另有 4 份内容已 promote 到 skill：`skills/ue-module-architec
 
 ### Localization / Settings 持久化
 
-> Settings 持久化已 promote 到 skill：[`skills/ue-settings-persistence/SKILL.md`](../../skills/ue-settings-persistence/SKILL.md)（lazy-load，不再 eager-import）
+> Settings 持久化已 promote 到 skill：[`skills/ue/ue-settings-persistence/SKILL.md`](../../skills/ue/ue-settings-persistence/SKILL.md)（lazy-load，不再 eager-import）
 
 | Guideline / Skill 内容 | 解决的问题 |
 |---|---|
 | [`localization-pitfalls.md`](localization-pitfalls.md) | UE Localization API 6 条 trap：FromStringTable.ToString culture 漂 / Content/Localization 硬编码 exclude / PreBeginPIE 不能 veto / LocalizationTargetSet 非 UPROPERTY(config) / GatherText SCC noise / Culture BCP-47 validate |
-| [`settings-persistence.md`](../../skills/ue-settings-persistence/settings-persistence.md) | UPROPERTY(config) flag + `TryUpdateDefaultConfigFile()` + AssetRegistrySearchable 三件套；SaveConfig 无参陷阱 + 排查 checklist + 嵌套 UObject 集合的 PostEditChangeProperty 双轨同步 pattern |
+| [`settings-persistence.md`](../../skills/ue/ue-settings-persistence/settings-persistence.md) | UPROPERTY(config) flag + `TryUpdateDefaultConfigFile()` + AssetRegistrySearchable 三件套；SaveConfig 无参陷阱 + 排查 checklist + 嵌套 UObject 集合的 PostEditChangeProperty 双轨同步 pattern |
 
 ### Tooling / Agent Integration（MCP 平台选择）
 
@@ -97,20 +97,20 @@ technique，另有 4 份内容已 promote 到 skill：`skills/ue-module-architec
 [`../../techniques/ue-custom-graph-editor.md`](../../techniques/ue-custom-graph-editor.md) ——
 建一个 custom UE Graph Editor 的 step-by-step procedural guide。Prerequisites
 段强调"读最相近的 UE reference implementation"——是 skill
-[`ue-reference-engine-source`](../../skills/ue-reference-engine-source/SKILL.md)
+[`ue-reference-engine-source`](../../skills/ue/ue-reference-engine-source/SKILL.md)
 在 Graph Editor 子领域的具体应用。
 
 ## 看哪几篇取决于你在做什么
 
-- **第一次接 UE custom graph editor** → 先 skill [`ue-reference-engine-source`](../../skills/ue-reference-engine-source/SKILL.md) + [`../../techniques/ue-custom-graph-editor.md`](../../techniques/ue-custom-graph-editor.md)，按 procedural 步骤推进 + 每步翻 graph-editor-constraints.md / graph-data-ownership.md 对应章节
-- **写新 Asset Editor + UPROPERTY 持久化设置** → skill [`ue-settings-persistence`](../../skills/ue-settings-persistence/SKILL.md) + [`asset-definition-can-duplicate-limit.md`](asset-definition-can-duplicate-limit.md)
-- **本地化 / 翻译 pipeline** → [`localization-pitfalls.md`](localization-pitfalls.md) + skill [`ue-settings-persistence`](../../skills/ue-settings-persistence/SKILL.md)
-- **Runtime 跟 Editor 模块边界设计** → skill [`ue-module-architecture`](../../skills/ue-module-architecture/SKILL.md)（含同 module 内三层模型 + 跨 module 依赖方向硬约束）
+- **第一次接 UE custom graph editor** → 先 skill [`ue-reference-engine-source`](../../skills/ue/ue-reference-engine-source/SKILL.md) + [`../../techniques/ue-custom-graph-editor.md`](../../techniques/ue-custom-graph-editor.md)，按 procedural 步骤推进 + 每步翻 graph-editor-constraints.md / graph-data-ownership.md 对应章节
+- **写新 Asset Editor + UPROPERTY 持久化设置** → skill [`ue-settings-persistence`](../../skills/ue/ue-settings-persistence/SKILL.md) + [`asset-definition-can-duplicate-limit.md`](asset-definition-can-duplicate-limit.md)
+- **本地化 / 翻译 pipeline** → [`localization-pitfalls.md`](localization-pitfalls.md) + skill [`ue-settings-persistence`](../../skills/ue/ue-settings-persistence/SKILL.md)
+- **Runtime 跟 Editor 模块边界设计** → skill [`ue-module-architecture`](../../skills/ue/ue-module-architecture/SKILL.md)（含同 module 内三层模型 + 跨 module 依赖方向硬约束）
 - **程序化建 RigVM / Control Rig 图(生成 CR / 加 RigUnit)** → [`rigvm-bulk-data-as-metadata-not-pins.md`](rigvm-bulk-data-as-metadata-not-pins.md)(逐元素大批量数据走 metadata 不走 pin 默认值)
 - **批量烤动画 key 到 Sequencer 里的 Control Rig(import anim / bake clip)** → [`controlrig-sequencer-bulk-key-bake.md`](controlrig-sequencer-bulk-key-bake.md)(别逐 key `SetLocalControlRig*`,直接写 section 浮点通道 + 一次刷新)
 - **程序化 / 神经网络驱动骨骼动画（不走 AnimBP 状态机）** → [`animinstance-proxy-and-offline-eval.md`](animinstance-proxy-and-offline-eval.md)（pose 注入 + 离线评估）+ [`nne-onnx-inference-contracts.md`](nne-onnx-inference-contracts.md)（模型推理接入）
 - **给 SkeletalMesh 挂 Deformer Graph（Optimus）、法线在接缝/硬边/开放边界发虚或塌陷** → [`deformer-graph-keep-authored-normals.md`](deformer-graph-keep-authored-normals.md)（纯 `ComputeNormalsTangents` 丢 authored 法线 → 换引擎 `Keep{Imported,Input}Normals` 变体；Wireframe/Unlit 分离几何 vs 着色）
-- **接到一个 UE bug / weird behavior** → skill [`ue-reference-engine-source`](../../skills/ue-reference-engine-source/SKILL.md) 的"按子系统分类的 reference 清单"找最相近 engine source 看怎么实现的
+- **接到一个 UE bug / weird behavior** → skill [`ue-reference-engine-source`](../../skills/ue/ue-reference-engine-source/SKILL.md) 的"按子系统分类的 reference 清单"找最相近 engine source 看怎么实现的
 
 ## 增长状态
 

@@ -167,4 +167,4 @@ DialogueSystem 项目（agent_coding_guidelines repo）的 multi-session-coordin
 
 - `guidelines/ci-windows/powershell-native-command-pitfalls.md` —— 同类形态 hidden contract（PS ↔ native exe 的展开陷阱），跟本文是兄弟篇
 - `techniques/claude-code-autonomous-permissions.md` —— 改 settings.json 的另一面（permissions ask/allow/deny 块，不是 hooks 块），三种 list 间的 precedence 规则
-- `skills/multi-session-coordination/SKILL.md` —— 本文规则的具体应用案例（用户级 skill 装 5 个 hook，绝对路径 bake，handler try-except return 0 防 self-deadlock，permissionDecision 用 deny 不用 block）
+- `skills/collaboration/multi-session-coordination/SKILL.md` —— 本文规则的具体应用案例（用户级 skill 装 5 个 hook，绝对路径 bake，handler try-except return 0 防 self-deadlock，permissionDecision 用 deny 不用 block）

@@ -264,4 +264,4 @@ type（即使 admin 没配 typemap）。
 ## 相关 Guidelines / Techniques
 
 - `techniques/ci-deploy-to-p4.md` —— CI 自动 submit 时的完整 reopen -t binary 流程
-- `guidelines/workflow/validation.md` —— "接收方视角验证"原则（多 charset client 是典型接收方场景）
+- `guidelines/code/validation.md` —— "接收方视角验证"原则（多 charset client 是典型接收方场景）

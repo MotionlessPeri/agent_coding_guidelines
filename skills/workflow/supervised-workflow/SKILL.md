@@ -186,4 +186,4 @@ When invoking each composed skill, **follow that skill's own discipline fully**.
 - `guidelines/workflow/handoffs.md` — different topology (multi-chat); not used by this workflow
 - `guidelines/code/validation.md` — verification required at each Milestone before declaring done
 - `skills/tdd-with-fixtures/SKILL.md` — test discipline invoked at each Milestone
-- `skills/autonomous-workflow/SKILL.md` — sibling workflow with only a plan gate (no per-milestone gates); switch to this when user wants the strategic checkpoint but not per-milestone review
+- `skills/workflow/autonomous-workflow/SKILL.md` — sibling workflow with only a plan gate (no per-milestone gates); switch to this when user wants the strategic checkpoint but not per-milestone review

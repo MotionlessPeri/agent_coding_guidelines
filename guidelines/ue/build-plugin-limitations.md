@@ -1,11 +1,13 @@
-# `RunUAT BuildPlugin` 的三个非显然 limitation
+# `RunUAT BuildPlugin` 的四个非显然 limitation
 
 UE 5.x（验证版本 5.5）通过 `RunUAT BuildPlugin -Rocket` 打 plugin binary artifact
 分发给 marketplace / 内部用户时，**默认产物不包含 plugin 自带的 `Config/` 和
 `Scripts/`**，**也不保留 `.uplugin` 里 `PythonRequirements` 这类 UE 5.x 扩展字段**。
 
-两个 bug **独立**，但联动让"接收方拿到 plugin 后跑不通"——CI 调试时容易当成同
-一个问题反复绕。
+这头两个（Config/Scripts 缺失 + PythonRequirements 被剥）**独立**，但联动让"接收方拿到
+plugin 后跑不通"——CI 调试时容易当成同一个问题反复绕。另有两个 `-Rocket` 打包 / target
+的 limitation（L3 交付包含非交付物 + RuntimeDependencies dll 位置、L4 installed build 只开放
+Editor target），见下 Limitation 3 / 4。
 
 ---
 
@@ -397,7 +399,7 @@ Limitation 1/2 的修法——加 `Config/FilterPlugin.ini` + CI package stage P
 
 ## 相关 Guidelines
 
-- skill `ue-reference-engine-source` （`skills/ue-reference-engine-source/reference-engine-source.md`）—— 强调"写 UE 功能前先找 reference"。这三个 limitation 都是从 engine source / 产物实测看出来的，符合"读 source 比读 doc 准"原则
+- skill `ue-reference-engine-source` （`skills/ue/ue-reference-engine-source/SKILL.md`）—— 强调"写 UE 功能前先找 reference"。这三个 limitation 都是从 engine source / 产物实测看出来的，符合"读 source 比读 doc 准"原则
 - `guidelines/ue/ue58-upgrade-gotchas.md` —— 同属 UE 构建/打包 hidden contract 族(5.8 升级期的 Target/RapidJSON/redist 契约)
 - `guidelines/ue/localization-pitfalls.md` —— UE 框架 hidden contracts 集
 - `guidelines/ci-windows/powershell-native-command-pitfalls.md` —— CI 后处理用 PowerShell 时撞的相关 pitfall

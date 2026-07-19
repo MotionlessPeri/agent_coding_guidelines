@@ -151,10 +151,10 @@ the custom editor. Right-click → Create works.
 - **Validate against a real test asset** — compile success alone does not confirm
   correct graph behavior. See `guidelines/code/validation.md` — Graph/Blueprint Commands.
 - When adding editing operations, follow the editor/runtime separation principles
-  in skill `ue-module-architecture` (`skills/ue-module-architecture/editor-runtime-separation.md`).
+  in skill `ue-module-architecture` (`skills/ue/ue-module-architecture/SKILL.md`).
 
 ## Related Guidelines
 
 - `guidelines/ue/graph-editor-constraints.md` — hard constraints referenced throughout.
-- skill `ue-module-architecture` — operation layering for undo support (`skills/ue-module-architecture/editor-runtime-separation.md`).
+- skill `ue-module-architecture` — operation layering for undo support (`skills/ue/ue-module-architecture/SKILL.md`).
 - `guidelines/code/validation.md` — general validation principles.

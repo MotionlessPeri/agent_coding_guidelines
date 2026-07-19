@@ -63,11 +63,10 @@ Keep out of the shared repo:
    names with category examples. "In DialogueSystemSample we saw X" becomes
    "UE graph editor plugins must do X".
 
-3. **Pick the right subdirectory** under `guidelines/`:
-   - `workflow/` — commits, docs, agent lifecycle, code review
-   - `code/` — correctness and validation constraints
-   - `collaboration/` — multi-agent setup, artifact placement
-   - `ue/` — Unreal Engine specific
+3. **Pick the right subdirectory** under `guidelines/` (full, non-drifting list:
+   the "How This Repository Is Organized" table in `AGENTS.md` is the SoT).
+   Current categories: `workflow/` `code/` `writing/` `collaboration/` `cpp/`
+   `ci-windows/` `claude-code/` `p4/` `ue/` `maya/`.
    - Create a new subdirectory only if the lesson does not fit any existing
      category and at least one more lesson is expected in that category.
 
