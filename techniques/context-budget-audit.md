@@ -120,37 +120,28 @@ context 膨胀的根因是「该按需加载的内容被 always-load 了」。Cl
 
 ## 项目实例参考
 
-`agent_coding_guidelines` repo 当前状态（下表 2026-05-26 快照**已漂**——现值请 live-query `grep -c '^@' AGENTS.md`，别信下表定值）：
+`agent_coding_guidelines` repo 自身走过一轮完整 audit（2026-07-18 起识别、2026-07-19 Tier D 执行），是本 technique 四步法的真实产出：
 
-| 类别 | `@`-import 数 | 备注 |
-|---|---|---|
-| workflow | 7 | 跨项目 always needed |
-| code | 5 | 跨项目 always needed |
-| collaboration | 2 | always needed |
-| ci-windows | 1 | conditional（只 Windows CI 项目用） |
-| claude-code | 1 | always needed（hook 写作约定） |
-| p4 | 1 | conditional（只 P4 项目用） |
-| ue | 12 | conditional（**非 UE 项目可整段 skip**，AGENTS.md 自己写明） |
-| techniques | 6 | 混合：adversarial / coordination / worker = always；ue-custom-graph / ci-deploy-to-p4 = conditional |
+**识别（Inventory + Classify + Detect）**：AGENTS.md 曾常驻 **70 个 `@`-import / ~8886 行**，~70% 是条件域（UE / Maya / cpp / P4 / Windows CI / Claude-Code / 部分 techniques）——只对特定项目类型相关却每个 session 常驻。最大浪费是「机制已建未启用」：Maya / UE 的 INDEX hub 早建好、却仍全 `@`-import，等于零收益 overhead。
 
-总 `@`-import: ~35（**2026-07-18 audit 实测已到 70，常驻 ~8886 行**——用 `grep -c '^@' AGENTS.md` + `find guidelines techniques -name '*.md' | xargs wc -l` 现查）。其中 UE + Maya + P4 + Windows CI + C++ + Claude-Code + 部分 techniques ≈ 70% 是 conditional——非匹配项目里都是浪费。
+**执行（Report + Actions，按簇 lazy 化）**：
 
-**潜在优化方向**（不立刻执行，作为本 audit 的产出示例）：
+- **Maya**（8 份）→ 停 `@`-import，用 [`guidelines/maya/INDEX.md`](../guidelines/maya/INDEX.md) 导航
+- **cpp**（8 份）→ 新建 [`guidelines/cpp/INDEX.md`](../guidelines/cpp/INDEX.md) 导航
+- **UE**：ultra-niche 簇 bundle 成懒加载 skill（procedural-numerical / ml-animation / custom-graph-editor），broad 14 份保留常驻，[`guidelines/ue/INDEX.md`](../guidelines/ue/INDEX.md) 做 broad + skill 双层导航
+- **P4 / CI-Windows / Claude-Code**（含配套 techniques ci-deploy-to-p4 / claude-code-autonomous-permissions）→ 停 `@`-import，AGENTS.md 段末懒加载说明
+- 顺带把散在条件域文件里跟通用条重复的机制**去冗余**（保留 canonical、另一处缩指针）
 
-- **UE 12 份**：用 [`guidelines/ue/INDEX.md`](../guidelines/ue/INDEX.md) 替代 always-import；INDEX 提供 navigation，具体 file 走 skill description trigger 或 project-conditional load
-- **P4 + CI Windows**：同样按项目 surface
-- **techniques 里 conditional 的**（`ue-custom-graph-editor.md` / `ci-deploy-to-p4.md`）：promote 到 skill 或 project-conditional
+**结果**：`@`-import **70 → 38**（现值 live-query `grep -c '^@' AGENTS.md`，别信定值）。条件域内容全部转 skill trigger / INDEX 导航，非匹配项目 session 不再常驻它们；broad-UE + 通用 guidelines 保留常驻。这轮坐实了本 technique 的判断：机制已建未启用是最大浪费，且拆分时要「保留 canonical、去重不丢信息」。
 
-估算 always-loaded token 节省：~40–60%。Cost 本身不大但 cache 命中率 + 启动延迟会改善。
-
-⚠️ **本 technique 自身也是一份 always-loaded** —— 如果跟着前面 audit 思路严格走，应该考虑把本 file 也 lazy-load（只 audit 时才需要）。一种折中：留 navigation stub 在 AGENTS.md，本 file body 走 skill 触发式 load。本 commit 暂时按惯例 always-import，等下一轮 audit 跟其他 conditional 一起评估。
+⚠️ **本 technique 自身也是一份 always-loaded** —— 它是条件域（只 audit 时需要）的候选，可跟其他 lazy 内容一样转 skill 触发式；暂按惯例保留 `@`-import（navigation stub 留 AGENTS.md 是折中），等下一轮再评估。
 
 ## 外部数值锚（参考，落地前须实测——别照搬）
 
 radar 2026-07-18 从外部 best-practice 文章收的几个具体阈值，可作本 audit 的参考锚，但**数字互相矛盾、blog-only，用前先实测自己的 repo**：
 
 - **always-loaded 索引文件（AGENTS.md / CLAUDE.md）有"甜区"**：一说 ~200 行内每轮全读、过 ~500 行开始 skim 信号密度崩；另一说 ~40 / ~400——**两个数字打架**。本 repo 的 AGENTS.md 本身 ~235 行、走 `@`-import 展开（真正常驻的是被 import 的 ~8900 行，不是 AGENTS.md 自己）。判据不是抄行数，是**实测**你的索引多长时 harness 开始 skim（可推探针验）。
-- **skill 库 sprawl 上限 ~20 + 周期性退休**：外部经验是攒到 40-50 个但 top 5 占 ~90% 调用、长尾为零 → 硬上限 ~20 + 定期删低调用的。本 repo 当前 15 个 skill，在线内。**只取"设个上限 + 到点复查退休"的纪律**——团队维度的量化指标（人均调用率 / owner 字段 / PR 强制）不纳入（属组织政策，见 `knowledge-promotion.md` 排除项）。
+- **skill 库 sprawl 上限 ~20 + 周期性退休**：外部经验是攒到 40-50 个但 top 5 占 ~90% 调用、长尾为零 → 硬上限 ~20 + 定期删低调用的。本 repo 当前 18 个 skill（Tier D 新增 3 个 UE lazy skill 后），仍在 ~20 内。**只取"设个上限 + 到点复查退休"的纪律**——团队维度的量化指标（人均调用率 / owner 字段 / PR 强制）不纳入（属组织政策，见 `knowledge-promotion.md` 排除项）。
 
 来源：radar `_radar/2026-07-18.md` 候选 #4（digitalapplied / ai.rundatarun，未经对抗核验）。
 

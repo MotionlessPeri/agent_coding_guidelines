@@ -5,7 +5,7 @@ description: Use when designing, extracting, or reviewing a system where multipl
 
 # Multi-Plugin Shared-Core Architecture
 
-五个**可组合**的架构模式，解决同一个问题：**多个插件/功能共享一个 core 实体，又不想让 core
+六个**可组合**的架构模式，解决同一个问题：**多个插件/功能共享一个 core 实体，又不想让 core
 知道每个插件的细节、也不想继承爆炸**。框架无关（在 Maya 多 `.mll` 场景提炼，但内核与 Maya
 / 动画无关，UE module / 通用 plugin 系统同样适用）。
 
