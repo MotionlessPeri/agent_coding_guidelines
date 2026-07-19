@@ -180,6 +180,9 @@ fall back 到 manual reproduction case + 跑前后对比数据。
 | 跑绿测只看 exit code 不看输出 | 某些 framework 配错会 silently pass；fix 没生效但显示绿 | 看实际 fail/pass message + 看测试断言确实命中 |
 | 为测试硬抽 helper / 中间层 | 测了人造抽象 ≠ 测了 root cause；regression 不真锁；YAGNI（helper 没第二 caller） | Step 0 后选合适路径：production 函数能直接测就直接测 + 接受副作用清理；否则走 manual。**不要为测试覆盖率人造抽象** |
 | "这个 bug 太小不值得走流程" | 小 bug 复发概率更高（没人记得）；走完流程成本不高（manual 也是流程） | 任何 bug fix 都走红→绿（auto **或** manual），不跳过 demonstrate；评估见 Step 0 |
+| 红测断言不精准（只测表面症状） | test 通过但 bug 在某些 case 仍触发 | 红测断言命中 root cause，不只测表面症状 |
+| Fix 涉及多文件、红测只覆盖一部分 | 部分 case 修了部分没修 | 红测覆盖所有 manifest case，或拆多个红测 |
+| commit message 没说修了什么 bug（`fix: bug fix`） | 以后定位"哪个 commit 修的"难 | 写清 bug 症状 + root cause + 怎么发现 |
 
 ## Composition
 
@@ -199,18 +202,6 @@ fall back 到 manual reproduction case + 跑前后对比数据。
   Completion" 通则的具体落地。verification 形式 = 红测变绿测 + 回归全过。
 - **`guidelines/workflow/commits.md`** —— "one commit = one theme" 规则。
   本 skill 强化为"一个 bug fix = test + fix 一个 commit"。
-
-## Failure Modes
-
-| Failure | Looks like | Correct action |
-|---|---|---|
-| 跳过红测 | "我看了代码，bug 应该在 X 行，改一下" | 停下，先写红测跑确认 FAIL |
-| 红测不跑就动 production | "test 写好了，开始改 fix" | 红测先跑确认 FAIL，再动 production |
-| 红测断言不精准 | test 通过但 bug 仍在某些 case 触发 | 让红测断言命中 root cause，不只测表面症状 |
-| Fix 涉及多文件、红测只覆盖一部分 | 部分 case 修了部分没修 | 红测要覆盖所有 manifest case，或拆多个红测 |
-| Regression 失败 silently skip | `@skip` / 注释掉 | 当场查、当场修；test 错就改 test 跟 fix 同 commit |
-| Test + fix 分开 commit | "test 先 commit，fix 下个 commit" | merge 成一个 commit |
-| Commit message 没说修了什么 bug | `fix: bug fix` | 写清楚 bug 症状 + root cause + 怎么发现 |
 
 ## Related
 

@@ -93,12 +93,10 @@ each line below is "below" the one above it, with different mechanisms / contrac
 | Framework reflection contract | UHT-generated metadata, `FProperty::MetaClass`, decorators, annotations |
 | Domain logic / business rules | Where conditions / constraints / semantics live |
 
-**Anti-pattern (real case)**: First version uses `SClassPropertyEntryBox::OnSetClass`
-+ `SetValue(UClass*)` → fails → switches to `SetInstanceMetaData("MetaClass", ...)`
-→ fails → switches to `HideProperty + AddCustomRow + SetValueFromFormattedString`
-→ fails. All three versions are in the UI / property-handle layer. None is a real
-approach change — three failures in a single layer counts as **one** failed approach,
-not three.
+**Anti-pattern (real case)**: three consecutive attempts that all stay in the *same
+layer* (e.g. three different UI / property-handle APIs for one task) count as **one**
+failed approach, not three — swapping APIs within a layer is not a real approach change.
+Worked UE example (with the actual API sequence): `guidelines/ue/details-customization-prefer-reflection.md`.
 
 **Correct escalation**: After 2 same-layer attempts fail, ask "is the problem
 actually in this layer?" If not, switch to a deeper layer (data model, type system,
