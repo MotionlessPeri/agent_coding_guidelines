@@ -251,6 +251,17 @@ UnrealMCP_Docs/
 - **fork 每个功能单独 commit**，不要积累；开新功能前先 commit 当前未提交内容
 - 消费侧 `Plugins/UnrealMCP/` 是 sync 产物，**不要直接改**——改 fork 然后 sync
 
+### 工具设计原则（给 fork 加命令时，套 Anthropic「给 agent 写工具」的量化经验）
+
+加新命令 = 给下游 agent 加一个工具。Anthropic 一手工程博客的可操作规则，直接适用：
+
+- **少而合并的高层命令 > 1:1 照搬引擎 API**。别把"列 X / 建 X / 连 X"拆成三个命令让 agent 挨个调；做一个"完成某编辑意图"的命令、内部把多步做完。命令越碎，agent 越容易用错、越吃 context。
+- **给命令定义塞 1-5 个具体调用样例**（JSON Schema 表达不清的用法）——Anthropic 实测复杂参数准确率 72%→90%。放 Python tool 层的 docstring / description 里。
+- **按需加载工具定义，别一股脑全塞**——同 [`techniques/context-budget-audit.md`](../../../techniques/context-budget-audit.md) 三档加载（那管 guideline/skill，这管工具定义）。命令多了考虑分组/catalog 暴露而非全量。
+- **eval-first 打磨命令**：让命令跑一批真实任务 → 把 transcript 喂回 Claude Code 找糙点 refactor → held-out 复测防过拟合。
+
+> 纯 Claude API feature（Programmatic Tool Calling / Tool Search `defer_loading` 参数）对 Claude Code MCP 消费者是 **awareness 非可配置项**，别当规则照搬。来源：Anthropic writing-tools-for-agents / advanced-tool-use / code-execution-with-mcp（radar `_radar/2026-07-18.md` #3）。
+
 ### ★ 写命令必走 Editor write-through path（PostEditChangeProperty）
 
 新 MCP 命令改 UE 资产 property 时，**默认不能只调底层 setter**——必须模拟 Editor UI 改 property 时走的"写入即同步"路径。底层 setter 只改最表面的 UPROPERTY 字段，跳过 framework（LogicDriver / BP / AnimBP / Material / Niagara / DataTable 等）维护的 template / property graph / construction script 输出 / cache。结果：schema 编译能过，运行时炸。

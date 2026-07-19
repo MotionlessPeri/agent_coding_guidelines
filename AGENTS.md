@@ -100,6 +100,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/claude-code/hook-conventions.md
 
+@guidelines/claude-code/subagent-contracts.md
+
 @guidelines/claude-code/autonomous-loop-scheduling.md
 
 @guidelines/p4/charset-pitfalls.md

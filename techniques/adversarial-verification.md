@@ -91,6 +91,16 @@ Independence 不等于"永远要另找一个人 / agent review"。真正的分�
 
 > 来源：pmarreck，[MFIC — Mechanically-Falsifiable Independent Control](https://gist.github.com/pmarreck/b30aa3ca69cb70a5526f8a63ab8c8d7e)。把企业内控（COSO / SOX：职责分离 / 预防-检测-纠正控制 / 控制测试）搬到"LLM 是不可信方"的语境。TDD 只提供四要素里的 Falsifiable（红相证明测试能咬），其余三个要另外补。
 
+## 否定式约束是 LLM review 的结构性盲区 → 配确定性 check
+
+LLM **系统性地弱于否定**：处理否定语句（"不要 X" / negated constraint）显著差于肯定语句。所以让 LLM 当审查员核"合不合规"时，**写成 `DO NOT ...` 的约束是它最容易 false-negative 的地方**——代码违反了否定约束，LLM review 读着读着把"不要"忽略了，照样判"通过"。
+
+推论：**否定式约束不能只靠 LLM review 兜，必须配一个确定性检查**（grep / lint / 断言 / [`enumerate-then-adjudicate.md`](enumerate-then-adjudicate.md) 的机械枚举）。这跟上面的 oracle/mechanical-check 阶梯是一体的——否定约束正是"手写期望值不可靠、要上 mechanical oracle"的高发点；也跟 [`fact-forcing-gate.md`](fact-forcing-gate.md) 的 advisory vs hard 对齐：否定约束是"advisory review 兜不住、需要 hard gate"的典型。
+
+- **既定事实**（可引）：LLM 弱于否定 —— Truong, Baldwin, Verspoor & Cohn (2023),《Language models are not naysayers: An analysis of language models on negation benchmarks》(\*SEM 2023, https://aclanthology.org/2023.starsem-1.10/)：直接对比肯定 vs 否定，记录否定 benchmark 上低于随机 + inverse scaling。
+- **约束翻转机制**（可引）：Elkins & Chun (2026),《Auditing Negation Sensitivity in Moral Dilemmas》(https://arxiv.org/abs/2601.21433)：模型在同一提案被措辞成"禁止"时会翻转合规判断。
+- **诚实边界**："LLM review 对 DO-NOT 约束 false-negative"这一步是**合理推论**——上述研究未直接 benchmark "LLM 审代码/spec 的 DO-NOT 合规"这个确切任务。正因为是推论而非实测，才更该上确定性检查兜底。
+
 ## Adversarial Probes
 
 Choose probes relevant to the change:

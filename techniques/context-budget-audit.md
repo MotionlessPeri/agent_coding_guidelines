@@ -120,7 +120,7 @@ context 膨胀的根因是「该按需加载的内容被 always-load 了」。Cl
 
 ## 项目实例参考
 
-`agent_coding_guidelines` repo 当前状态（2026-05-26 快照）：
+`agent_coding_guidelines` repo 当前状态（下表 2026-05-26 快照**已漂**——现值请 live-query `grep -c '^@' AGENTS.md`，别信下表定值）：
 
 | 类别 | `@`-import 数 | 备注 |
 |---|---|---|
@@ -133,7 +133,7 @@ context 膨胀的根因是「该按需加载的内容被 always-load 了」。Cl
 | ue | 12 | conditional（**非 UE 项目可整段 skip**，AGENTS.md 自己写明） |
 | techniques | 6 | 混合：adversarial / coordination / worker = always；ue-custom-graph / ci-deploy-to-p4 = conditional |
 
-总 `@`-import: ~35。其中 UE + P4 + Windows CI + 部分 techniques = ~16 个 conditional——非 UE 项目里都是浪费。
+总 `@`-import: ~35（**2026-07-18 audit 实测已到 70，常驻 ~8886 行**——用 `grep -c '^@' AGENTS.md` + `find guidelines techniques -name '*.md' | xargs wc -l` 现查）。其中 UE + Maya + P4 + Windows CI + C++ + Claude-Code + 部分 techniques ≈ 70% 是 conditional——非匹配项目里都是浪费。
 
 **潜在优化方向**（不立刻执行，作为本 audit 的产出示例）：
 
@@ -144,6 +144,15 @@ context 膨胀的根因是「该按需加载的内容被 always-load 了」。Cl
 估算 always-loaded token 节省：~40–60%。Cost 本身不大但 cache 命中率 + 启动延迟会改善。
 
 ⚠️ **本 technique 自身也是一份 always-loaded** —— 如果跟着前面 audit 思路严格走，应该考虑把本 file 也 lazy-load（只 audit 时才需要）。一种折中：留 navigation stub 在 AGENTS.md，本 file body 走 skill 触发式 load。本 commit 暂时按惯例 always-import，等下一轮 audit 跟其他 conditional 一起评估。
+
+## 外部数值锚（参考，落地前须实测——别照搬）
+
+radar 2026-07-18 从外部 best-practice 文章收的几个具体阈值，可作本 audit 的参考锚，但**数字互相矛盾、blog-only，用前先实测自己的 repo**：
+
+- **always-loaded 索引文件（AGENTS.md / CLAUDE.md）有"甜区"**：一说 ~200 行内每轮全读、过 ~500 行开始 skim 信号密度崩；另一说 ~40 / ~400——**两个数字打架**。本 repo 的 AGENTS.md 本身 ~235 行、走 `@`-import 展开（真正常驻的是被 import 的 ~8900 行，不是 AGENTS.md 自己）。判据不是抄行数，是**实测**你的索引多长时 harness 开始 skim（可推探针验）。
+- **skill 库 sprawl 上限 ~20 + 周期性退休**：外部经验是攒到 40-50 个但 top 5 占 ~90% 调用、长尾为零 → 硬上限 ~20 + 定期删低调用的。本 repo 当前 15 个 skill，在线内。**只取"设个上限 + 到点复查退休"的纪律**——团队维度的量化指标（人均调用率 / owner 字段 / PR 强制）不纳入（属组织政策，见 `knowledge-promotion.md` 排除项）。
+
+来源：radar `_radar/2026-07-18.md` 候选 #4（digitalapplied / ai.rundatarun，未经对抗核验）。
 
 ## 相关 Guidelines / Techniques
 
