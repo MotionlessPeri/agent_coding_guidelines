@@ -76,7 +76,7 @@ void parFor(int n, Fn fn) {
 别加了并行看没提速就以为「并行没用」——很可能是没用池。
 
 框架相关的后端选择（UE 里 OpenMP 装不了、用 IntelTBB；跨框架共享库做后端无关抽象）见
-[`../ue/ue-module-parallelism.md`](../ue/ue-module-parallelism.md)。
+`skills/ue/ue-procedural-numerical/ue-module-parallelism.md`。
 
 ---
 
@@ -97,10 +97,10 @@ void parFor(int n, Fn fn) {
 - `CharacterSnapshot`（逐帧逐骨骼，MB 级）的传递从 `&&` 误改 `const&` 导致拖拽路径明显变慢；profiler 确认 `memcpy` 后改回 move 语义
 - type-keyed 扩展容器 `getExtensionAs<T>()` 在逐帧循环里反复调，profiler 见 `dynamic_cast` 开销；改为循环外 `requireBezierExtra()` 取一次引用
 
-UE 5.8 curvenet 形变插件（逐帧 solve 的稀疏×稠密乘并行）：初版用 per-call `std::thread` spawn（每帧 ~6 段 × 每段 ~15 线程），每帧 40ms → **423ms（慢 10×）**，单段光 spawn ~73ms；换持久池（UE 用 TBB / Maya 用 OpenMP，见 `../ue/ue-module-parallelism.md`）后每帧 40→~30ms。
+UE 5.8 curvenet 形变插件（逐帧 solve 的稀疏×稠密乘并行）：初版用 per-call `std::thread` spawn（每帧 ~6 段 × 每段 ~15 线程），每帧 40ms → **423ms（慢 10×）**，单段光 spawn ~73ms；换持久池（UE 用 TBB / Maya 用 OpenMP，见 `skills/ue/ue-procedural-numerical/ue-module-parallelism.md`）后每帧 40→~30ms。
 
 ## 相关 Guidelines
 
 - [`../../skills/architecture/multi-plugin-shared-core/SKILL.md`](../../skills/architecture/multi-plugin-shared-core/SKILL.md) — type-keyed 扩展容器的设计（`requireX()` 缓存接口在此展开）
 - [`../code/validation.md`](../code/validation.md) — 性能结论要 profiler 证据，不靠推断
-- [`../ue/ue-module-parallelism.md`](../ue/ue-module-parallelism.md) — 规则 3 的框架相关面（UE 用 IntelTBB、OpenMP 装不了；跨框架共享库的后端无关抽象 + 行分块 bit-identical）
+- `skills/ue/ue-procedural-numerical/ue-module-parallelism.md` — 规则 3 的框架相关面（UE 用 IntelTBB、OpenMP 装不了；跨框架共享库的后端无关抽象 + 行分块 bit-identical）

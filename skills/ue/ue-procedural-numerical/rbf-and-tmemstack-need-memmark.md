@@ -75,7 +75,7 @@ MakeUpperKernel 的 `TMemStackAllocator`)定位到缺 `FMemMark`;`FMemMark Mark(
 
 - skill `ue-reference-engine-source` —— 本条全靠读 engine source(RBFSolver.cpp / RBFInterpolator.h /
   AnimNode_PoseDriver.cpp)定位;UE doc 完全没提这个 mem-mark 前提。
-- [`../code/diagnose-before-fixing.md`](../code/diagnose-before-fixing.md) —— 本条的定位过程是范例:AV 后不猜「RBF 数据错」,
+- `guidelines/code/diagnose-before-fixing.md` —— 本条的定位过程是范例:AV 后不猜「RBF 数据错」,
   逐层读崩溃栈涉及的 engine 实现,把「数据错 vs 缺执行上下文」两个竞争假设区分开。
-- [`../code/validation.md`](../code/validation.md) —— 「headless / 独立调用」跟「引擎正常评估里调用」的执行上下文不同;
+- `guidelines/code/validation.md` —— 「headless / 独立调用」跟「引擎正常评估里调用」的执行上下文不同;
   一个能跑不代表另一个能跑,必须在目标语境实测(本条正是「PoseDriver 里能跑 ≠ 独立调用能跑」)。

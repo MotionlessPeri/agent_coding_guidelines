@@ -32,7 +32,7 @@
 - **staging + 显式加载**:`RuntimeDependencies.Add("$(BinaryOutputDir)/x.dll", …)` stage 到插件
   `Binaries/Win64`;`StartupModule` 里 `IPluginManager::FindPlugin(...)->GetBaseDir()` +
   `FPlatformProcess::GetDllHandle` **显式加载**(插件 Binaries 不在默认 DLL 搜索路径)。详
-  [`build-plugin-limitations.md`](build-plugin-limitations.md) Limitation 3(`BuildPlugin -Rocket` 交付包
+  `guidelines/ue/build-plugin-limitations.md` Limitation 3(`BuildPlugin -Rocket` 交付包
   的 DLL 处理 + 瘦身)。
 - **CRT 共享**:若靠环境变量(`_putenv_s`↔`getenv`)在插件启动处配置后端,设值方与读值方(core)须**同一
   CRT 实例**——core 源码编进 UE 模块时天然满足(同 `/MD`);core 若是独立 DLL 且 CRT 不同则跨不过去。
@@ -43,7 +43,7 @@
 ## ⚠️ 先 profile 再上 GPU:求解未必是瓶颈
 
 **GPU 加速「求解」前,先 profile 确认求解真是热点**——否则加速比被非求解段稀释。这是
-[`../code/diagnose-before-fixing.md`](../code/diagnose-before-fixing.md) 在 GPU 求解场景的实例:
+`guidelines/code/diagnose-before-fixing.md` 在 GPU 求解场景的实例:
 
 - 先分段计时,别假设「慢在解方程」。curvenet 实测:per-frame 的瓶颈是 **RHS 侧的稀疏×稠密矩阵乘**
   (~18ms),不是线性 solve(GPU 回代本身只占几 ms)→ GPU 加速 solve 端到端只 ~1.2×,真正的大头要靠
@@ -75,7 +75,7 @@ UE 5.8 curvenet 形变插件接 NVIDIA cuDSS(GPU 稀疏回代)到 curvenet 求�
 
 ## 相关 Guidelines
 
-- [`build-plugin-limitations.md`](build-plugin-limitations.md) —— vendored 运行时 DLL 进交付包的处理(Limitation 3)。
+- `guidelines/ue/build-plugin-limitations.md` —— vendored 运行时 DLL 进交付包的处理(Limitation 3)。
 - [`ue-module-parallelism.md`](ue-module-parallelism.md) —— 真正的 per-frame 大头(矩阵乘)靠并行,不是靠 GPU solve。
-- [`../code/diagnose-before-fixing.md`](../code/diagnose-before-fixing.md) —— 「先 profile 再优化」;本条的 fp32 死路是其实例。
+- `guidelines/code/diagnose-before-fixing.md` —— 「先 profile 再优化」;本条的 fp32 死路是其实例。
 - skill `ue-reference-engine-source` —— 「UE 有没有官方 X」「引擎加载哪些 CUDA DLL」都是读 engine source 得到的。

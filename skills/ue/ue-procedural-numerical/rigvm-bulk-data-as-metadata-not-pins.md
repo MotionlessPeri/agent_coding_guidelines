@@ -63,9 +63,9 @@ RigUnit `Execute` 遍历 control 读各自 metadata → 资产 **0.53MB**、**�
 
 ## 相关 Guidelines
 
-- [`guidelines/code/validation.md`](../code/validation.md) —— "看代码对 ≠ 验证";本坑只在**打开图**(GUI)
+- `guidelines/code/validation.md` —— "看代码对 ≠ 验证";本坑只在**打开图**(GUI)
   才暴露,headless 编译 + 生成都 OK,必须编辑器内实开确认。
 - skill `ue-reference-engine-source` —— metadata API 是读 `RigHierarchy.h` engine source 找到的;
   "RigUnit 怎么拿生成期数据"这类问题先翻 ControlRig 源码,别假设只能开 input pin。
-- [`guidelines/ue/external-automation-write-path.md`](external-automation-write-path.md) —— 同属"程序化
+- `guidelines/ue/external-automation-write-path.md` —— 同属"程序化
   写 UE 资产的 hidden contract"族;那条管走 `PostEditChangeProperty` 同步,本条管 RigVM 数据投递通道。

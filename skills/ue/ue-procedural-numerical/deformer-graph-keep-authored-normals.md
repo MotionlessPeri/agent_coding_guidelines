@@ -95,9 +95,9 @@ MyKernel Out / corrective 走 LinearBlendSkin Out)、Original Position=`Read Ski
 
 ## 相关 Guidelines
 
-- [`../code/diagnose-before-fixing.md`](../code/diagnose-before-fixing.md) —— 本条的定位是范例:不猜"几何/精度",
+- `guidelines/code/diagnose-before-fixing.md` —— 本条的定位是范例:不猜"几何/精度",
   用 Wireframe/Unlit 设计成能区分"几何 vs 着色"两个竞争假设。
-- [`../code/validation.md`](../code/validation.md) —— reference 位置对不对 rest 测不出、必须形变态实测,是"一个能跑 ≠
+- `guidelines/code/validation.md` —— reference 位置对不对 rest 测不出、必须形变态实测,是"一个能跑 ≠
   另一个能跑"的实例。
 - skill `ue-reference-engine-source` —— `Keep{Imported,Input}Normals` 变体 + 两个 SkinnedMesh DI 的 Position buffer
   差异全靠读 engine source(DeformerFunctions 资产 + `OptimusDataInterfaceSkinnedMesh*.cpp`);UE doc 没写官方 usage。

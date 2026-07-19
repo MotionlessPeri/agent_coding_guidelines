@@ -12,7 +12,7 @@
    with UnrealEditor`)。想并行用 **`IntelTBB`(引擎自带)或 `ParallelFor`(UE task system)**,不要 OpenMP。
 2. **per-call `std::thread` spawn 别用**——逐帧调用的热路径里每次新建/join 线程,spawn 开销吊打
    收益(实测比串行慢一个量级)。用**持久池**(TBB / UE task system 都是池化)。详
-   [`../cpp/hot-path-cpp.md`](../cpp/hot-path-cpp.md)。
+   `guidelines/cpp/hot-path-cpp.md`。
 3. **跨框架共享库**(同一份 core 被 UE + 别的 host 如 Maya 各自编译)做并行:用**编译期后端无关
    抽象**(`#if CA_USE_TBB / #elif CA_USE_OMP / #else 串行 fallback`)。core **不硬依赖任何并行库**;
    每个 host 编译期选自己的池 + 提供依赖(UE=IntelTBB;Maya/CMake=OpenMP `find_package(OpenMP)`;
@@ -27,7 +27,7 @@
   之类字段(只有 target 级 `TargetRules.AdditionalCompilerArguments` → 全局 `GlobalCompileEnvironment`)。
 - **installed engine 拒全局 flag**:源码构建 / launcher 的 installed distribution,项目 target 跟预编译
   `UnrealEditor` **共享构建产物**,改任何全局编译属性(`/openmp`)→ UBT 报错拒编(同
-  [`ue58-upgrade-gotchas.md`](ue58-upgrade-gotchas.md) 的 Target 属性一致性约束族)。
+  `guidelines/ue/ue58-upgrade-gotchas.md` 的 Target 属性一致性约束族)。
 - **Epic 自己回避 OpenMP**:引擎带 OpenMP 的第三方库(如 FAISS)不开 `/openmp`,而是**提供一个 stub
   `omp.h`**(`omp_get_max_threads()` 恒返回 1、锁全 no-op)让它**编成串行**,注释原话
   *"All parallelism is managed by UE's task system instead, avoiding extra thread pools in the editor."*
@@ -96,8 +96,7 @@ per-halfedge 循环内部并行。
 
 - **UE=TBB**:`IntelTBB` per-module 依赖,每帧 40→29.5ms;OpenMP 试过——installed engine(OF_UE_58)
   target 级 `/openmp` 直接拒编,坐实规则 1。
-- **naive `std::thread`** 版(每帧 ~6 段各 spawn ~15 线程):40→**423ms(慢 10×)**,单段光 spawn ~73ms
-  → 回退、换池化。
+- **naive `std::thread`** 版(每帧 ~6 段各 spawn ~15 线程)实测慢一个量级 → 回退换池化(spawn 主导的完整数字 + 通用机制见 `guidelines/cpp/hot-path-cpp.md` 项目实例)。
 - **Maya=OpenMP**(方案:只在 Maya CMake 给 core lib 加 `CA_USE_OMP` + 链 OpenMP,core 一行没改):
   每帧 42→34.7ms(OMP=8);OMP 默认 36 核 0.88×(过度订阅),cap 到 8 才 1.22×。TBB 默认 36 线程开箱 ~1.19×。
 - **行分块并行 bit-identical**:serial / OMP / TBB / 任意线程数,输出 `max|Δ|=0.000e+00`(唯一 scatter-add 的
@@ -105,8 +104,8 @@ per-halfedge 循环内部并行。
 
 ## 相关 Guidelines
 
-- [`../cpp/hot-path-cpp.md`](../cpp/hot-path-cpp.md) —— per-call `std::thread` spawn 慢(规则 2 的通用面)。
-- [`ue58-upgrade-gotchas.md`](ue58-upgrade-gotchas.md) —— installed engine 的 Target 属性一致性约束(拒
+- `guidelines/cpp/hot-path-cpp.md` —— per-call `std::thread` spawn 慢(规则 2 的通用面)。
+- `guidelines/ue/ue58-upgrade-gotchas.md` —— installed engine 的 Target 属性一致性约束(拒
   `/openmp` 同源);那条管 5.8 升级,本条管并行后端。
 - [`gpu-numerical-lib-consumption.md`](gpu-numerical-lib-consumption.md) —— 同项目另一条:UE 没有官方 GPU
   数值求解器、bring-your-own 运行时库的消费 pattern。

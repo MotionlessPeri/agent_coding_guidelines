@@ -125,9 +125,9 @@ Control Rig 的 cp 控件。7-cp/140-key 的小 clip 就要 ~5s;profile 显示 `
 - [`rigvm-bulk-data-as-metadata-not-pins.md`](rigvm-bulk-data-as-metadata-not-pins.md) —— 同族
   「程序化写 RigVM/ControlRig 大批量数据的 hidden contract」:那条管"拓扑/绑定数据投递通道"
   (走 hierarchy metadata 不走 pin),本条管"动画 key 投递通道"(走 section 通道不走逐 key autokey)。
-- [`external-automation-write-path.md`](external-automation-write-path.md) —— 外部脚本写 UE 资产走
+- `guidelines/ue/external-automation-write-path.md` —— 外部脚本写 UE 资产走
   正规同步路径;本条是其在「Sequencer key 批量写」上的特例(逐 key API 正确但性能不可用)。
-- [`../code/diagnose-before-fixing.md`](../code/diagnose-before-fixing.md) / [`../code/validation.md`](../code/validation.md)
+- `guidelines/code/diagnose-before-fixing.md` / `guidelines/code/validation.md`
   —— 先分段 profile 定位热点(本案头号嫌疑被证伪、真热点在另一条路径),性能结论靠计时数据。
 - skill `ue-reference-engine-source` —— `FControlRigSequencerHelpers` / 通道顺序 / `SetControlValueImpl`
   的逐 key broadcast 都是读 engine source 得到的;UE doc 没写。

@@ -102,23 +102,11 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/ue/logicdriver-state-class-rewires-boundgraph.md
 
-@guidelines/ue/rigvm-bulk-data-as-metadata-not-pins.md
-
-@guidelines/ue/controlrig-sequencer-bulk-key-bake.md
-
 @guidelines/ue/fvector4-vector-equals-silent-fail.md
 
 @guidelines/ue/leveleditor-modetools-lifetime.md
 
 @guidelines/ue/ue58-upgrade-gotchas.md
-
-@guidelines/ue/rbf-and-tmemstack-need-memmark.md
-
-@guidelines/ue/deformer-graph-keep-authored-normals.md
-
-@guidelines/ue/ue-module-parallelism.md
-
-@guidelines/ue/gpu-numerical-lib-consumption.md
 
 > Maya guidelines（8 份）**不 eager `@`-import**——lazy-load via [`guidelines/maya/INDEX.md`](guidelines/maya/INDEX.md)（已在上方组织表链接、且 INDEX 完整覆盖全 8 份）。非 Maya 项目省 ~900 行常驻；接 Maya 插件任务时读 INDEX 导航到具体文件 / 触发 maya skill。Codex 本就按目录表 on-demand 打开 maya/，不受影响。（2026-07-18 context-budget audit S2）
 
@@ -182,6 +170,7 @@ Guidelines are grouped by topic under `guidelines/`:
 - [`skills/ue/unrealmcp-usage/SKILL.md`](skills/ue/unrealmcp-usage/SKILL.md) — 消费侧 agent 用 UnrealMCP 插件（TCP 命令到 UE editor）做编辑器自动化（spawn / 改 property / call subsystem / save-exit 等）。bundle 了 canonical TCP 客户端 `ue_cmd.py`，消费项目不再需要自己拷贝。覆盖 detection / TCP invoke pattern / capability gap policy（MCP 不够用先问 user 要不要扩 fork） / top 5 inline gotchas / onboarding 新项目接入步骤 / extending fork 时两侧同步规则。Fork 是 `E:\xd_projects\unreal-mcp`，完整命令参考 + known-issues 在项目里 sync 后的 `UnrealMCP_Docs/`
 - [`skills/ue/official-mcp-usage/SKILL.md`](skills/ue/official-mcp-usage/SKILL.md) — 消费侧 agent 用 UE 5.8+ **官方** `ModelContextProtocol` MCP server（HTTP，默认 `127.0.0.1:8000/mcp`）做编辑器自动化。跟 `unrealmcp-usage`（fork）对称：那条 fork 怎么用，这条官方怎么用。覆盖 (1) setup 真相——`ModelContextProtocol` 只是 server 外壳，真正提供工具的是 `AllToolsets` 聚合器（只开 server 不开 AllToolsets → 连上也没工具），4 plugin 验证配置 + auto-start / 控制台命令 / `.mcp.json` HTTP 配置；(2) 9 条 usage hidden contract——`load_toolset` 跨 turn 才生效 / Reconnect 是 client tool list 刷新唯一入口 / 工具名点转单下划线 / session id 绑 server 生命周期 / schema 误标 / refPath 约定；(3) 失败纪律——官方报错停下问 user Reconnect，不要静默 fallback 换后端。平台选型见 `guidelines/ue/mcp-platform-choice.md`
 - [`skills/ue/ue-ml-animation/SKILL.md`](skills/ue/ue-ml-animation/SKILL.md) — UE 里「代码 / 神经网络直出 pose、不走 AnimBP 状态机」两组 hidden contract（来自 PathAnimGen 预研，原 `animinstance-proxy-and-offline-eval.md` + `nne-onnx-inference-contracts.md` 两份 guideline lazy 化 bundle 进本 skill）。**动画注入侧**：纯 C++ `UAnimInstance` + 自定义 `FAnimInstanceProxy` 零 AnimBP 直出 pose / `Update()` 被 `GFrameCounter` 门控（累计放 `PreUpdate`）/ 离线评估配方 `TickAnimation → RefreshBoneTransforms → FinalizeBoneTransform`（漏末步读旧双缓冲）。**模型推理侧**：NNE 只吃 ONNX / `NNERuntimeORT` 默认关闭需显式引用 / 坏模型报错点在 `CreateModelInstanceCPU` / 动态输出 shape 第一次 `RunSync` 后才可查且 buffer 不足静默不拷
+- [`skills/ue/ue-procedural-numerical/SKILL.md`](skills/ue/ue-procedural-numerical/SKILL.md) — UE 里「程序化建 RigVM/ControlRig/Deformer 图 + 模块内数值 / GPU / 并行」六组 ultra-niche hidden contract（多数踩自 curvenet 形变插件，原 6 份 UE guideline lazy 化 bundle 进本 skill）：RigVM 逐元素大批量数据走 `URigHierarchy` metadata 别烤 pin 默认值（否则图卡死）/ Sequencer 批量烤 key 写 section 浮点通道别逐 key `SetLocalControlRig*` / Optimus `ComputeNormalsTangents` 丢 authored 法线→换 `Keep{Imported,Input}Normals` / `FRBFSolver`·`TMemStack` 出 anim-eval 作用域需自建 `FMemMark` / UE 无官方 GPU 稀疏求解器→bring-your-own 运行时加载 + 安全回退 / UE 模块 OpenMP 装不了→`IntelTBB`·`ParallelFor` + 跨框架后端无关抽象
 
 **maya/** —— Maya 插件专用：
 
