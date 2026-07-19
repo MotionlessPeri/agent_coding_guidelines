@@ -9,11 +9,8 @@
 
 1. **切开「渲染无关逻辑」与「渲染本身」**。渲染无关的部分——数据变换(pose → 绘制数组)、状态机
    (播放/帧游标、开关)、marshalling(UI 配置 → 底层调用)、几何计算——**抽成纯函数/纯类,不碰 widget/GL**,
-   用**独立 oracle** 机器 gate:
-   - 跨实现交叉校验(新绘制数组 reshape 后 == 旧实现的几何)、
-   - round-trip(存/载、编码/解码逆运算)、
-   - 不变量(计数、拓扑、bit-identical 确定性)、
-   - mutation(扰动必让测试变红,证明 gate 有牙)。
+   用**独立 oracle** 机器 gate（跨实现交叉校验 / round-trip / 不变量 / mutation-有牙——可信 check 的四要素 +
+   完整 oracle 阶梯见 [`techniques/adversarial-verification.md`](../../techniques/adversarial-verification.md)，本条只留 GUI 特有的「gate 压纯函数、画面交人工」framing）。
 2. **渲染层只做冒烟**:「能构建 widget + 渲一帧、像素非空(std > 阈值)、不崩、不挂(硬超时)」。**不**把
    「画面视觉正确」塞进机器 gate。
 3. **画面视觉正确 = 人工**:每个里程碑列**启动命令 + 观察点(TC)**;agent 可以**读一张渲出的 PNG 自检**
