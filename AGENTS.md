@@ -7,7 +7,7 @@ This is the canonical instruction file for both Claude and Codex agents.
 ## Platform Loading Rules
 
 - Claude Code treats the `@path` lines below as imports and loads their contents.
-- Codex discovers this `AGENTS.md`, but does not expand Claude Code `@path` imports. Before acting, Codex must open the applicable referenced files itself: start with the relevant files under `guidelines/workflow/`, `guidelines/code/`, and `guidelines/writing/`; load framework or tool directories such as `cpp/`, `ue/`, `maya/`, `p4/`, and `ci-windows/` only when the task matches; load a `techniques/` file when its procedure applies.
+- Codex discovers this `AGENTS.md`, but does not expand Claude Code `@path` imports. Before acting, Codex must open the applicable referenced files itself: start with the relevant files under `guidelines/workflow/`, `guidelines/code/`, and `guidelines/writing/`; load framework or tool directories such as `cpp/`, `ue/`, `maya/`, `p4/`, `ci-windows/`, and `claude-code/` only when the task matches; load a `techniques/` file when its procedure applies.
 - Both platforms discover installed skills lazily from their own skill directories. Do not eager-import `SKILL.md` files here.
 
 ---
@@ -78,18 +78,6 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/collaboration/private-docs-policy.md
 
-@guidelines/ci-windows/powershell-native-command-pitfalls.md
-
-@guidelines/ci-windows/gitlab-runner-service-and-powershell-pitfalls.md
-
-@guidelines/claude-code/hook-conventions.md
-
-@guidelines/claude-code/subagent-contracts.md
-
-@guidelines/claude-code/autonomous-loop-scheduling.md
-
-@guidelines/p4/charset-pitfalls.md
-
 @guidelines/ue/graph-editor-constraints.md
 
 @guidelines/ue/graph-data-ownership.md
@@ -140,6 +128,13 @@ Guidelines are grouped by topic under `guidelines/`:
 
 > C++ 工程底座 guidelines（8 份）**不 eager `@`-import**——lazy-load via [`guidelines/cpp/INDEX.md`](guidelines/cpp/INDEX.md)。C++ 项目（含 UE / Maya 插件）接触多 DLL / 符号导出 / cmake / toolchain / 热路径 / crash 取证坑时读 INDEX 导航到具体文件。省 ~655 行常驻；Codex 按目录表 on-demand 打开 cpp/。（2026-07-19 context-budget audit S2 Tier D）
 
+> 条件域 guidelines（P4 / Windows CI / Claude Code harness）**不 eager `@`-import**——只对特定项目类型相关，接对应任务时按上方组织表 / 本说明按需读（省 ~945 行常驻）：
+> - `guidelines/p4/charset-pitfalls.md` —— Perforce unicode server 的 charset transcode 坑（含 typemap / binary 强制）。配套 technique `techniques/ci-deploy-to-p4.md`（CI 自动 submit 到 P4 的完整流程）。
+> - `guidelines/ci-windows/`（2 份：`powershell-native-command-pitfalls.md` / `gitlab-runner-service-and-powershell-pitfalls.md`）—— Windows PowerShell / GitLab runner 跑 native command 的 pitfall。
+> - `guidelines/claude-code/`（3 份：`hook-conventions.md` / `subagent-contracts.md` / `autonomous-loop-scheduling.md`）—— Claude Code harness / hooks / subagent / 自主 loop 的 hidden contract（连 Codex 都不相关）。配套 technique `techniques/claude-code-autonomous-permissions.md`（permission list 配置）。
+>
+> （2026-07-19 context-budget audit S2 Tier D）
+
 ---
 
 ## Techniques
@@ -158,9 +153,7 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @techniques/ue-custom-graph-editor.md
 
-@techniques/claude-code-autonomous-permissions.md
-
-@techniques/ci-deploy-to-p4.md
+> 条件域 techniques 不 eager `@`-import——`techniques/ci-deploy-to-p4.md`（P4 + Windows CI 部署链）与 `techniques/claude-code-autonomous-permissions.md`（Claude Code permission list 配置）随对应 guidelines 子目录懒加载，触发场景见上 Guidelines 段末 P4 / CI / Claude-Code 说明。（2026-07-19 audit S2 Tier D）
 
 ---
 
