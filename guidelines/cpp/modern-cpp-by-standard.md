@@ -21,10 +21,9 @@
 
 ## 「配置 C++20」≠「C++20 生效」——两个真实的坑
 
-- **SDK / 框架钳制标准**：如 Maya DevKit 的 `devkit.cmake` 在未设 `MAYA_WANT_CPP_17` 时把 `CMAKE_CXX_STANDARD`
-  **强制回 14**——顶层设了 `CMAKE_CXX_STANDARD 20` 也被盖掉。必须 **target 级**显式 `set_target_properties(t PROPERTIES CXX_STANDARD 20)`
-  + MSVC 再补 `/std:c++20`（取最后一个 `/std:` 生效）才真的是 C++20。所以「项目意图 C++20」要靠**显式覆盖 + 验证生效**
-  （grep 有效 flag / 看编译行 / 试编一个 C++20-only 语法），不能想当然。
+- **SDK / 框架钳制标准**：如 Maya DevKit 的 `devkit.cmake` 未设 `MAYA_WANT_CPP_17` 时把顶层 `CMAKE_CXX_STANDARD`
+  **强制回 14**——必须 **target 级**显式 `set_target_properties(t PROPERTIES CXX_STANDARD 20)` + MSVC 补 `/std:c++20`
+  （取最后一个 `/std:` 生效）才真的是 C++20（钳制机制的 canonical 详解见 [`../maya/plugin-build-and-scripting-contracts.md`](../maya/plugin-build-and-scripting-contracts.md) §1）。所以「项目意图 C++20」要靠**显式覆盖 + 验证生效**（grep 有效 flag / 试编一个 C++20-only 语法），不能想当然。
 - **本地 vs CI toolchain 版本差异**：标准 **LEVEL**（C++20）和 toolchain **VERSION** 是两回事。一个特性要同时满足
   (a) 标准开启 + (b) 编译器 / STL 版本够新才可用。本地旧 toolchain 编过 ≠ CI 新 toolchain 编过（反向也成立：新 STL
   收紧 API 让旧写法 FAIL，见 [`make-format-args-lvalue.md`](make-format-args-lvalue.md)）。
@@ -57,13 +56,13 @@
 ## 项目实例参考
 
 Maya C++ 插件（curve_articulation_maya）是 C++20——`maya/CMakeLists.txt` 用 target 级 `CXX_STANDARD 20` +
-`/std:c++20` **显式盖过 Maya DevKit 的 C++14 钳制**（DevKit 的 `devkit.cmake` 未设 `MAYA_WANT_CPP_17` 时把
-`CMAKE_CXX_STANDARD` 强制回 14）。即便如此，deformer 的 `buildWeightCSR` 仍写着 `std::sort(row.begin(), row.end())`——
-C++20 下应 `std::ranges::sort(row)`。review 中被发现，提醒：**新标准项目要真的用上新特性，而不是配置写了 C++20、代码却停在旧方言**。
+`/std:c++20` **显式盖过 Maya DevKit 的 C++14 钳制**。即便如此，deformer 的 `buildWeightCSR` 仍写着
+`std::sort(row.begin(), row.end())`——C++20 下应 `std::ranges::sort(row)`。review 中被发现，提醒：**新标准项目要真的用上新特性，而不是配置写了 C++20、代码却停在旧方言**。
 
 ## 相关 Guidelines
 
 - [`make-format-args-lvalue.md`](make-format-args-lvalue.md) — 标准 / STL 版本间 API 契约收紧（本地旧 toolset 编过、CI 新 toolset FAIL）；本条「验证目标 toolchain 支持」与之同源
 - [`build-incremental-and-cmake.md`](build-incremental-and-cmake.md) — toolchain / 构建差异族
+- [`../maya/plugin-build-and-scripting-contracts.md`](../maya/plugin-build-and-scripting-contracts.md) §1 — Maya DevKit 把 `CMAKE_CXX_STANDARD` 钳回 14 的 canonical 详解（本条 SDK 钳制例的完整机制）
 - [`../code/constraints.md`](../code/constraints.md) "Edit Scope Discipline" — 别 drive-by 现代化 churn
 - [`../code/function-clarity.md`](../code/function-clarity.md) — 可读性优先，现代化不等于晦涩

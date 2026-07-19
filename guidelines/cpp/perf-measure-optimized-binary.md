@@ -23,13 +23,12 @@ C++ + MSVC/cmake + IDE、尤其**多 build 目录 / host 插件（DCC / 编辑�
 
 ## 2. 为什么「关优化」会粘住
 
-- **cmake cache 变量是持久的**:自定义的「降优化」开关（如某个 `*_NOOPT` BOOL）、`CMAKE_BUILD_TYPE=Debug`
-  一旦写进 `CMakeCache.txt` 就**一直生效**,之后 reconfigure / 重新 generate / rebuild 都读旧值,不会自己变回。
-- **IDE 操作不清 cache**:VS 的 `Clean`（只删产物）、`ZERO_CHECK`（cmake 生成的重配 target,读旧 cache 不重置）、
-  普通 Rebuild **都不改 cache 值**。对 `cmake -G "Visual Studio"` **生成**的 `.sln`,VS 也没有「清 cache」按钮
-  （那个只对「以文件夹方式打开的 CMake 原生项目」有效）。
-- **改法**（三选一）:reconfigure 传 `-D<FLAG>=<正确值>` 覆盖;直接改 `CMakeCache.txt` 那一行;删整个 build
-  目录重 generate（VS generator 下只删 `CMakeCache.txt` 易留 stale `.vcxproj`,要删就删整个目录,见
+- **cmake cache 变量是持久的**:自定义「降优化」开关（`*_NOOPT` BOOL）、`CMAKE_BUILD_TYPE=Debug` 一旦写进
+  `CMakeCache.txt` 就**一直生效**——VS 的 `Clean`（只删产物）/ `ZERO_CHECK`（读旧 cache 不重置）/ 普通 Rebuild
+  **都不改 cache 值**,`cmake -G "Visual Studio"` 生成的 `.sln` 也没「清 cache」按钮（那个只对「以文件夹方式打开的
+  CMake 原生项目」有效）。
+- **改法**（三选一）:reconfigure 传 `-D<FLAG>=<正确值>` 覆盖;直接改 `CMakeCache.txt` 那一行;删**整个** build
+  目录重 generate（只删 `CMakeCache.txt` 易留 stale `.vcxproj`——同族的「删整个 build 目录 / stale `.vcxproj`」机制见
   [`build-incremental-and-cmake.md`](build-incremental-and-cmake.md)）。
 
 ## 3. 「我加载的是哪份二进制」——启动打印

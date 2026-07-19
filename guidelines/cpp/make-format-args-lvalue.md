@@ -11,8 +11,7 @@
 
 1. **`std::make_format_args` 传具名形参 `args...`，不要 `std::forward<Args>(args)...`**——具名
    forwarding-reference 形参「按名字用」就是左值，新旧 STL 都能绑（`Args&` / `const Args&`）。
-2. **「本地编得过」≠「所有工具链编得过」**——STL / 编译器在版本间会**收紧** API 契约；本地工具链
-   旧于 CI 时，本地绿 ≠ CI 绿。构建类结论以 CI（或与 CI 同版本工具链）为准，不以开发机编过为准。
+2. **「本地编得过」≠「所有工具链编得过」**——本地旧工具链编过 ≠ CI 新工具链编过，构建类结论以 CI（或同版本工具链）为准。本条是通用「标准 LEVEL vs toolchain VERSION」框架的具体实例（新 STL 收紧 API 让旧写法 FAIL），general 框架见 [`modern-cpp-by-standard.md`](modern-cpp-by-standard.md)。
 
 ## 机制
 
@@ -68,6 +67,7 @@ headless 单测 51/51 全绿；打 tag 触发 CI（runner MSVC **14.44.35207**�
 
 ## 相关 Guidelines
 
+- [`modern-cpp-by-standard.md`](modern-cpp-by-standard.md) — 通用的「标准 LEVEL vs toolchain VERSION、本地旧 toolset ≠ CI 新 toolset」框架（general 家）；本条是其「新 STL 收紧 API 契约让旧写法 FAIL」的具体实例。
 - [`build-incremental-and-cmake.md`](build-incremental-and-cmake.md) — 同属「构建环境 / 工具链差异导致的编译问题」族；那条管增量漏重编 / stale `.vcxproj`，本条管**工具链版本间 STL API 契约收紧**。
 - [`../code/validation.md`](../code/validation.md) — 「看代码 / 本地编过 ≠ 验证」；构建类结论必须在目标工具链（CI）实测。本条是其在「local 旧 toolset vs CI 新 toolset」上的具体实例。
 - [`../code/diagnose-before-fixing.md`](../code/diagnose-before-fixing.md) — 撞 `C2664` 别猜：先读报错 API 的签名（`make_format_args` 要左值）+ 比对本地/CI 工具链版本，区分「代码错」还是「工具链版本差异」两个竞争假设。

@@ -7,7 +7,7 @@ This is the canonical instruction file for both Claude and Codex agents.
 ## Platform Loading Rules
 
 - Claude Code treats the `@path` lines below as imports and loads their contents.
-- Codex discovers this `AGENTS.md`, but does not expand Claude Code `@path` imports. Before acting, Codex must open the applicable referenced files itself: start with the relevant files under `guidelines/workflow/`, `guidelines/code/`, and `guidelines/writing/`; load framework or tool directories such as `ue/`, `maya/`, `p4/`, and `ci-windows/` only when the task matches; load a `techniques/` file when its procedure applies.
+- Codex discovers this `AGENTS.md`, but does not expand Claude Code `@path` imports. Before acting, Codex must open the applicable referenced files itself: start with the relevant files under `guidelines/workflow/`, `guidelines/code/`, and `guidelines/writing/`; load framework or tool directories such as `cpp/`, `ue/`, `maya/`, `p4/`, and `ci-windows/` only when the task matches; load a `techniques/` file when its procedure applies.
 - Both platforms discover installed skills lazily from their own skill directories. Do not eager-import `SKILL.md` files here.
 
 ---
@@ -21,7 +21,7 @@ Guidelines are grouped by topic under `guidelines/`:
 | `guidelines/workflow/` | Commit rules, documentation rules, agent lifecycle, handoff workflow |
 | `guidelines/code/` | Code constraints, validation requirements |
 | `guidelines/writing/` | 面向人读的散文（文档 / 代码注释 / 交付文字）通用文体规则——工作语言写散文 + 标识符保留原文 / 不说黑话 / 简洁⇔不丢信息 / 不翻译腔。跨「文档 + 注释」共享的 SoT，由 `skills/workflow/doc-writing-style`（+图示 discipline）与 `skills/workflow/conversation-walkthrough` Phase 3（+注释 stability / Doxygen 契约头）两个 skill 承接执行面 |
-| `guidelines/cpp/` | C++ / Windows DLL / cmake / MSVC 工程底座的 hidden contract——跨 DLL 单例内联陷阱 / 符号导出 / 增量编译 ABI 不一致 / stale `.vcxproj` / 热路径 move 与 dynamic_cast / `std::make_format_args` 左值契约 / perf 测量误测未优化二进制 / 现代 C++ 标准钳制 / Windows native crash-hang dump 取证。框架无关，多 DLL 插件（含 Maya `.mll`）高频命中。**非 C++ 项目可 skip** |
+| `guidelines/cpp/` | C++ / Windows DLL / cmake / MSVC 工程底座的 hidden contract——跨 DLL 单例内联陷阱 / 符号导出 / native 绑定可达面 / 增量编译 ABI 不一致 / stale `.vcxproj` / 热路径 move 与 dynamic_cast / `std::make_format_args` 左值契约 / perf 测量误测未优化二进制 / 现代 C++ 标准钳制 / Windows native crash-hang dump 取证。框架无关，多 DLL 插件（含 UE `.dll` / Maya `.mll`）高频命中。**非 C++ 项目可整段 skip**。索引 + 按场景导航见 [`guidelines/cpp/INDEX.md`](guidelines/cpp/INDEX.md) |
 | `guidelines/collaboration/` | Multi-agent setup, private docs policy |
 | `guidelines/ci-windows/` | Windows CI (PowerShell / GitLab runner) 跑 native command 时的 pitfall 集——PowerShell ↔ native exe 之间的抽象漏洞 |
 | `guidelines/claude-code/` | Claude Code 自身（harness / hooks / settings.json）的 hidden contract——文档没明说但实测如此的行为 |
@@ -73,22 +73,6 @@ Guidelines are grouped by topic under `guidelines/`:
 @guidelines/code/gui-visual-machine-gating.md
 
 @guidelines/writing/prose-and-register.md
-
-@guidelines/cpp/multi-dll-plugin.md
-
-@guidelines/cpp/build-incremental-and-cmake.md
-
-@guidelines/cpp/perf-measure-optimized-binary.md
-
-@guidelines/cpp/hot-path-cpp.md
-
-@guidelines/cpp/make-format-args-lvalue.md
-
-@guidelines/cpp/modern-cpp-by-standard.md
-
-@guidelines/cpp/windows-native-crash-hang-evidence.md
-
-@guidelines/cpp/native-binding-surface.md
 
 @guidelines/collaboration/multi-agent.md
 
@@ -153,6 +137,8 @@ Guidelines are grouped by topic under `guidelines/`:
 @guidelines/ue/gpu-numerical-lib-consumption.md
 
 > Maya guidelines（8 份）**不 eager `@`-import**——lazy-load via [`guidelines/maya/INDEX.md`](guidelines/maya/INDEX.md)（已在上方组织表链接、且 INDEX 完整覆盖全 8 份）。非 Maya 项目省 ~900 行常驻；接 Maya 插件任务时读 INDEX 导航到具体文件 / 触发 maya skill。Codex 本就按目录表 on-demand 打开 maya/，不受影响。（2026-07-18 context-budget audit S2）
+
+> C++ 工程底座 guidelines（8 份）**不 eager `@`-import**——lazy-load via [`guidelines/cpp/INDEX.md`](guidelines/cpp/INDEX.md)。C++ 项目（含 UE / Maya 插件）接触多 DLL / 符号导出 / cmake / toolchain / 热路径 / crash 取证坑时读 INDEX 导航到具体文件。省 ~655 行常驻；Codex 按目录表 on-demand 打开 cpp/。（2026-07-19 context-budget audit S2 Tier D）
 
 ---
 
