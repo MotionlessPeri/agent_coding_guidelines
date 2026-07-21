@@ -23,6 +23,8 @@ C++ / Windows DLL / cmake / MSVC 工程底座的 hidden contract——文档没�
 | [`build-incremental-and-cmake.md`](build-incremental-and-cmake.md) | 改跨 DLL 公共头后增量编译漏重编 → ABI 布局不一致崩（容器/虚函数），`--clean-first` 全量重编;`git mv` / 改 CMakeLists 目录树后 VS IDE 用 stale `.vcxproj`（命令行能编、IDE 报 `cmake_pch.cxx not found`）→ 删**整个** build 目录重 cmake |
 | [`make-format-args-lvalue.md`](make-format-args-lvalue.md) | 新版 MSVC STL（VS 2022 17.10+ / toolset 14.40+）的 `std::make_format_args` 只接受左值，`std::forward<Args>(args)...` 触发 `C2664`/`C2672`——传具名形参 `args...` 即可;**本地旧工具链编过、CI 新工具链 FAIL** 的高迷惑构建 bug |
 | [`modern-cpp-by-standard.md`](modern-cpp-by-standard.md) | 用项目配置的标准（C++17/20/23）的现代特性，别停在更旧方言;但「配置写 C++20」≠「C++20 生效」——SDK/DevKit 钳制标准 + 本地 vs CI toolchain 版本差异都要确认;别为现代化 drive-by churn 旧代码（edit-scope） |
+| [`cmake-multi-subdir-pitfalls.md`](cmake-multi-subdir-pitfalls.md) | 多子目录 CMake 三个顺序/作用域坑:子目录 `set` 的变量父作用域求值为空（显式传值、别依赖渗透）;`if(TARGET x)` 依 `add_subdirectory` 顺序为假（改用 `target_link_libraries` forward-reference）;可复用库测试 target 要 `PROJECT_IS_TOP_LEVEL`/`option` 门控别拖累消费方 |
+| [`d3d12-agility-sdk-runtime-match.md`](d3d12-agility-sdk-runtime-match.md) | 链用新 D3D12 特性（enhanced barriers / DXR 新 flag）的框架（NVRHI/Donut/自研 RHI）:**编译期 Agility 特性版本必须匹配运行时 `D3D12Core`**——系统自带旧 runtime 不支持 → 一串「神秘」hang/segfault（`CreateCommittedResource3` 返 E_INVALIDARG → null 解引用）;修 = vendor + 显式部署 Agility SDK runtime;一根因多表象、别当多问题 |
 
 ### 热路径 / 性能测量
 

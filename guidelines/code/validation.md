@@ -9,6 +9,10 @@
   Build.bat <Project>Editor Win64 Development -Project="<uproject>" -WaitMutex -FromMSBuild
   ```
 - If the build fails, fix the errors before proceeding. Do not report success.
+- **A failed build can leave a stale test binary**, and a test runner (ctest, etc.) may
+  then run the OLD binary and report false green. Check the build output for compile/link
+  errors — do not read only the test result — or run the binary directly and confirm it is
+  the rebuilt one. Running the test suite is not the same as running the new code.
 
 ## Smoke Testing
 

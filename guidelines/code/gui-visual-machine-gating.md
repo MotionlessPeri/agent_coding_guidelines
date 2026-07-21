@@ -30,6 +30,10 @@
 - 通用教训:**先 spike 探测「目标环境到底能不能渲/怎么截图」**,再决定冒烟怎么写;别假设离屏可用。不同栈
   (EGL/OSMesa、headless Chromium、引擎 nullrhi)各有各的坑。
 
+## 附:实时 GPU 画面工具的 UI 框架选型
+
+本条主讲**测试**;附一条同域的**选型** hidden constraint——做渲染器 / DCC / 编辑器这类「主输出 = 实时 GPU 画面」的工具时,选 UI 框架的决定性因素不是控件多不多、好不好看,而是 **viewport 怎么拿到渲染结果**。选能跟渲染器**共享同一 GPU 设备**的:如 Dear ImGui 的 `ImTextureID` 可以直接是渲染器的纹理句柄,`ImGui::Image` 插上就显,免掉每帧把帧缓冲跨设备/跨上下文拷进 widget(Qt `QOpenGLWidget` 要跨上下文共享,复杂 + 拷贝成本)。且**集成 seam 用 RHI 中立类型**(契约面写 `TextureHandle` 不写 `ImTextureID`),别把具体框架类型泄漏进跨层契约——换框架 / 换呈现方式时契约不必重谈。
+
 ## Anti-Patterns
 
 | 反 pattern | 后果 | 修法 |

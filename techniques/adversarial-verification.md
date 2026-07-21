@@ -89,6 +89,8 @@ Independence 不等于"永远要另找一个人 / agent review"。真正的分�
 
 核心原则：**优先用作者没写的 oracle。** 手写的"期望值"本身可能就是 bug；round-trip / reference / 不变量不会，因为它们都不依赖"作者当初想对了"。
 
+> **round-trip 陷阱**：序列化器若做**自动版本迁移 / 规范化**（如 MaterialX 默认 `upgradeVersion`、格式化器重排属性 / 丢注释空白），`f⁻¹(f(x))` 会**故意非 identity** → round-trip oracle 误报。修：pin 版本 + 关自动迁移；且**比语义不比字节**（注释 / 空白 / 属性顺序与语义无关）。
+
 > 来源：pmarreck，[MFIC — Mechanically-Falsifiable Independent Control](https://gist.github.com/pmarreck/b30aa3ca69cb70a5526f8a63ab8c8d7e)。把企业内控（COSO / SOX：职责分离 / 预防-检测-纠正控制 / 控制测试）搬到"LLM 是不可信方"的语境。TDD 只提供四要素里的 Falsifiable（红相证明测试能咬），其余三个要另外补。
 
 ## 否定式约束是 LLM review 的结构性盲区 → 配确定性 check
