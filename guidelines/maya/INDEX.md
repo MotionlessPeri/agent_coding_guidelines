@@ -27,7 +27,7 @@ hidden contracts。靠踩坑得到、Maya 官方文档没明说的客观约束�
 
 | Guideline | 解决的问题 |
 |---|---|
-| [`gpu-deformer-gui-validation.md`](gpu-deformer-gui-validation.md) | `mayapy` 不能证明 GPU Override 真执行；GPU Active + 每节点新 success marker + 非零形变 + CPU 对照四重 Gate / `deformerEvaluator` 加载顺序 / CPU 读回污染 / `maya.exe -script bootstrap.mel` + Qt timer / licensing 与 crash 分类 / auxiliary mesh buffer 与显式 CPU fallback |
+| [`gpu-deformer-gui-validation.md`](gpu-deformer-gui-validation.md) | `mayapy` 不能证明 GPU Override 真执行；GPU Active + 每节点新 success marker + 非零形变 + CPU 对照四重 Gate / `deformerEvaluator` 加载顺序 / CPU 读回污染 / `maya.exe -script bootstrap.mel` + Qt timer / licensing 与 crash 分类 / auxiliary mesh buffer 与显式 CPU fallback / 半初始化节点先由 validate 拒绝、conditional generation 最后提交 |
 
 ### Mesh 拓扑 / 数值复现
 
@@ -39,7 +39,7 @@ hidden contracts。靠踩坑得到、Maya 官方文档没明说的客观约束�
 
 | Guideline | 解决的问题 |
 |---|---|
-| [`plugin-build-and-scripting-contracts.md`](plugin-build-and-scripting-contracts.md) | DevKit cmake 把 C++ 标准压回 14（`MAYA_WANT_CPP_17` / target 级 override）/ 加载中的 `.mll` 不能覆盖（重建前 unloadPlugin）/ `MGlobal::displayInfo` 非 ASCII 在本地化 Windows 乱码 / `cmds.setAttr type=pointArray` 格式不可靠 → OpenMaya `MFn*Data`+`setMObject` |
+| [`plugin-build-and-scripting-contracts.md`](plugin-build-and-scripting-contracts.md) | DevKit cmake 把 C++ 标准压回 14（`MAYA_WANT_CPP_17` / target 级 override）/ 加载中的 `.mll` 不能覆盖（重建前 unloadPlugin）/ `MGlobal::displayInfo` 非 ASCII 在本地化 Windows 乱码 / `cmds.setAttr type=pointArray` 格式不可靠 → OpenMaya `MFn*Data`+`setMObject` / attribute long name 在节点全局唯一（含 compound child） |
 
 ### 配套 skill（设计阶段触发，不 eager-import）
 
@@ -55,7 +55,7 @@ Maya C++ 插件是典型的多 `.mll`（多 DLL）+ cmake/VS 场景，下列底�
 - [`../cpp/multi-dll-plugin.md`](../cpp/multi-dll-plugin.md) — 跨 DLL 单例 / 符号导出 / 初始化顺序
 - [`../cpp/build-incremental-and-cmake.md`](../cpp/build-incremental-and-cmake.md) — 增量编译 ABI 不一致 / cmake 重构后 stale .vcxproj
 - [`../cpp/hot-path-cpp.md`](../cpp/hot-path-cpp.md) — 大对象传递 move/copy / dynamic_cast 热路径
-- [`../cpp/windows-native-crash-hang-evidence.md`](../cpp/windows-native-crash-hang-evidence.md) — Windows native crash/hang 分类 / Break All 全线程 / normal dump→按需 full heap / WinDbg RVA 映射 / race 结论门槛
+- [`../cpp/windows-native-crash-hang-evidence.md`](../cpp/windows-native-crash-hang-evidence.md) — Windows native crash/hang 分类 / 二进制 path+size+mtime+SHA-256 身份 / 只重试 fixture 启动前失败 / timeout 先取证再 kill / Break All 全线程 / normal dump→按需 full heap / WinDbg RVA 映射 / race 结论门槛
 
 ---
 

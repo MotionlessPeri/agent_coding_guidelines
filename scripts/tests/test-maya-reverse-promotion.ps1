@@ -44,8 +44,25 @@ Invoke-Test "reverse skill keeps the full evidence gate" {
 
 Invoke-Test "GPU guideline requires real GUI execution evidence" {
     $Text = Read-RepoFile "guidelines/maya/gpu-deformer-gui-validation.md"
-    foreach ($Pattern in @('GPU Active', 'success marker', '非零形变', 'CPU 输出', 'bootstrap\.mel', 'licensing')) {
+    foreach ($Pattern in @(
+        'GPU Active',
+        'success marker',
+        '非零形变',
+        'CPU 输出',
+        'bootstrap\.mel',
+        'licensing',
+        'validateNodeInGraph',
+        'addConditionalAttribute',
+        '最后写'
+    )) {
         Assert-Matches $Text $Pattern "GPU guideline lacks gate: $Pattern"
+    }
+}
+
+Invoke-Test "Maya node attributes use a node-wide long-name namespace" {
+    $Text = Read-RepoFile "guidelines/maya/plugin-build-and-scripting-contracts.md"
+    foreach ($Pattern in @('compound child', 'long name', '节点全局', '重复')) {
+        Assert-Matches $Text $Pattern "Maya attribute guideline lacks: $Pattern"
     }
 }
 
@@ -58,22 +75,37 @@ Invoke-Test "mesh guideline preserves Maya triangulation" {
 
 Invoke-Test "native dump guideline distinguishes hang and crash" {
     $Text = Read-RepoFile "guidelines/cpp/windows-native-crash-hang-evidence.md"
-    foreach ($Pattern in @('Break All', '不带 heap', 'full-memory', '~\* k', 'RVA =', 'licensing')) {
+    foreach ($Pattern in @(
+        'Break All',
+        '不带 heap',
+        'full-memory',
+        '~\* k',
+        'RVA =',
+        'licensing',
+        'SHA-256',
+        'fixture 已启动',
+        'capture.*kill'
+    )) {
         Assert-Matches $Text $Pattern "native dump guideline lacks: $Pattern"
     }
 }
 
-Invoke-Test "new documents are imported and indexed" {
+Invoke-Test "lazy-loaded documents are discoverable through indexes" {
     $Agents = Read-RepoFile "AGENTS.md"
-    $Index = Read-RepoFile "guidelines/maya/INDEX.md"
-    foreach ($Path in @(
-        'guidelines/cpp/windows-native-crash-hang-evidence.md',
-        'guidelines/maya/gpu-deformer-gui-validation.md',
-        'guidelines/maya/mesh-topology-fidelity.md'
-    )) {
-        Assert-Matches $Agents ([regex]::Escape("@$Path")) "AGENTS does not import $Path"
+    $MayaIndex = Read-RepoFile "guidelines/maya/INDEX.md"
+    $CppIndex = Read-RepoFile "guidelines/cpp/INDEX.md"
+    foreach ($Path in @('guidelines/maya/INDEX.md', 'guidelines/cpp/INDEX.md')) {
+        Assert-Matches $Agents ([regex]::Escape($Path)) "AGENTS does not route to $Path"
     }
-    Assert-Matches $Index 'reverse-maya-closed-nodes' "Maya index lacks the reverse skill"
+    foreach ($Name in @(
+        'gpu-deformer-gui-validation.md',
+        'mesh-topology-fidelity.md',
+        'reverse-maya-closed-nodes'
+    )) {
+        Assert-Matches $MayaIndex ([regex]::Escape($Name)) "Maya index lacks $Name"
+    }
+    Assert-Matches $CppIndex 'windows-native-crash-hang-evidence.md' `
+        "C++ index lacks windows native crash/hang evidence"
 }
 
 Write-Host ""

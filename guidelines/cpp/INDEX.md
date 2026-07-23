@@ -37,7 +37,7 @@ C++ / Windows DLL / cmake / MSVC 工程底座的 hidden contract——文档没�
 
 | Guideline | 解决的问题 |
 |---|---|
-| [`windows-native-crash-hang-evidence.md`](windows-native-crash-hang-evidence.md) | 先分类（crash / hang / 主动退出 / 超时终止 / licensing 启动失败）再归因，不凭「窗口消失」断言崩溃;hang 先 Break All 抓全线程栈再 kill;默认 normal dump、按需升 full-heap;WinDbg 最小分析集 + 无 PDB 时 `module base + RVA` 映射 Ghidra;race/refcount 结论至少两类证据 |
+| [`windows-native-crash-hang-evidence.md`](windows-native-crash-hang-evidence.md) | 先分类（crash / hang / 主动退出 / 超时终止 / licensing 启动失败）再归因，不凭「窗口消失」断言崩溃；记录 host/plugin 的 path+size+mtime+SHA-256；只重试 fixture 启动前失败，timeout 先取证再 kill；hang 先 Break All 抓全线程栈；默认 normal dump、按需升 full-heap；WinDbg 最小分析集 + 无 PDB 时 `module base + RVA` 映射 Ghidra；race/refcount 结论至少两类证据 |
 
 ## 相关目录
 

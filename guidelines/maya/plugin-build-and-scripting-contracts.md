@@ -8,6 +8,7 @@
 2. **加载中的 `.mll` 在 Windows 上不能被覆盖**——重建前先 `unloadPlugin`（或关 Maya），否则 POST_BUILD 拷贝 / 重链接报 `Permission denied`。
 3. **`MGlobal::displayInfo` 等面向 Maya 输出的 `MString` 里别放非 ASCII 字面量**——本地化 Windows 的 Script Editor 按本地 codepage 解释 UTF-8 字节 → 乱码。诊断日志用 ASCII。
 4. **`cmds.setAttr(..., type="pointArray"/"vectorArray"/…)` 的参数格式不可靠**——撞 `Error reading data element` 时退到 OpenMaya `MFn*Data` + `plug.setMObject()`。
+5. **attribute 的 long name 在节点全局唯一**——顶层 attribute 与 `compound child` 不属于不同命名空间；重复名称必须在注册前拦截。
 
 ---
 
@@ -78,6 +79,19 @@ fn_plug.setMObject(om.MFnPointArrayData().create(arr))
 
 **通用化**：任何"经 `cmds` 设复杂 typed / array 属性"撞格式坑，优先退到 OpenMaya `MFn*Data` + `plug.setMObject()` / `setMPxData()`。
 
+## 5. Attribute long name 是节点全局命名空间
+
+`MFnNumericAttribute::create()` 等函数创建的 long name 必须在整个节点类型内唯一。`compound child`、顶层 attribute
+以及其它 compound 下的 child 共用同一个节点全局命名空间；compound 层级不能用来隔离重名。
+
+重复名称可能先表现为 attribute 创建失败或返回无效对象，随后才在 `addAttribute()`、连接或节点求值阶段暴露为空指针、
+注册失败或宿主崩溃。不要只在失败点补空值判断，应从定义源消除重名，并增加机械检查：
+
+- 枚举该节点所有 `MFn*Attribute::create()` 的 long name；
+- 在测试中断言集合大小等于定义数量；
+- 对生成式 attribute 定义，在生成阶段维护同一份名称集合；
+- 改 compound 布局或从单输入扩展到 multi 输入时重新运行检查。
+
 ---
 
 ## Anti-Patterns
@@ -90,6 +104,7 @@ fn_plug.setMObject(om.MFnPointArrayData().create(arr))
 | 把构建当"代码错"反复查 | 根因是文件锁 / cmake，不是逻辑 | 看哪个 `.mll` 路径时间戳没更新 |
 | `displayInfo("中文...")` | 本地化 Windows Script Editor 乱码 | 面向 Maya 输出用 ASCII；中文留注释 |
 | `cmds.setAttr(..., type="pointArray")` 凑格式 | `Error reading data element` | OpenMaya `MFn*Data` + `setMObject` |
+| compound child 沿用顶层 long name | 属性创建失败，后续可能空指针或崩溃 | 节点级扫描所有 long name，注册前断言无重复 |
 
 ## 项目实例参考
 

@@ -17,6 +17,30 @@ Maya `MPxGPUDeformer` / GPU Override 的正确性和稳定性必须在真实 `ma
    `kDeformerFailure`，不要忽略输入继续发布错误 GPU 输出。
 6. **GPU `evaluate()` 不查询 live scene 几何。** 共享 driver 通过 evaluator 管理的输入或 auxiliary mesh buffer 进入；
    不在并行 GPU 求值中用场景查询同步拉取正在被其它 deformer 写入的 mesh。
+7. **分多步创建的节点先完成初始化，再进入 GPU。** `validateNodeInGraph()` 和
+   `validateNodeValues()` 必须拒绝 binding、输入连接或其它必需状态尚未就绪的节点。选择一个 generation
+   属性注册到 `addConditionalAttribute()`，并在创建命令的最后写入它，让 evaluator 重新验证完整节点。
+
+## 分多步创建节点的 GPU 生命周期
+
+Maya 命令常先创建 deformer，再连接 driver、写 binding 和参数。GPU evaluator 可以在命令尚未完成时观察到这个节点；
+若注册信息无条件返回 `true`，半初始化节点会进入 `evaluate()`，形成 `GPU evaluation failure`，严重时还会放大并行
+求值或 GPU graph 重建中的生命周期问题。
+
+```mermaid
+flowchart TD
+    A["创建节点；generation 保持未初始化值"] --> B["validateNodeInGraph / validateNodeValues 拒绝 GPU"]
+    B --> C["写 binding、输入连接和其它必需数据"]
+    C --> D["最后写 generation"]
+    D --> E["addConditionalAttribute 触发重新验证"]
+    E --> F["验证通过后进入 GPU Active"]
+```
+
+generation 不是普通的数据版本号，而是初始化事务的提交标记。创建命令必须最后写它；如果后续修改会改变 GPU 可支持性，
+同一属性也必须随之变化。回归测试至少断言两种状态：
+
+- 半初始化节点没有 GPU `evaluate()` marker，状态也不是 `GPU evaluation failure`；
+- 完整节点重新验证后是 `GPU Active`，并产生本轮新的 success marker。
 
 ## 证明 GPU 真执行的最小 Gate
 
@@ -82,6 +106,7 @@ GPU 数值一致后再测交互时序：
 | `maya.exe -command` 注入长 Python | 三层转义破坏语法 | `-script bootstrap.mel` + Python 模块 |
 | Maya 退出一律记 crash | licensing/脚本主动退出被误判 | report、marker、dump、licensing 联合分类 |
 | GPU 不支持输入仍继续算 | painted weight/membership 被静默忽略 | 返回 failure 交回 CPU |
+| 节点刚创建就无条件接受 GPU | 半初始化数据进入 `evaluate()`，产生失败或生命周期风险 | 验证完整状态，最后写 conditional generation |
 
 ## 相关 Guidelines
 

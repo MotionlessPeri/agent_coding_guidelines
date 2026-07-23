@@ -16,7 +16,28 @@
 先保存 PID、命令行、模块版本/实际路径、场景/输入、时间线操作和最后一个成功 marker。重复复现要使用同一操作序列并给每轮证据
 独立时间戳，禁止沿用旧 dump/report。
 
-## 2. Hang：先抓全线程，不急着 kill
+## 2. Runner 记录二进制身份，并限制重试边界
+
+诊断“修复是否生效”时，路径和版本字符串不足以证明实际加载的是新二进制。launcher report 应在启动前记录 host 与每个目标
+插件的 resolved path、文件大小、纳秒级修改时间和 SHA-256。报告、dump 与性能数据都必须绑定这组身份；打包目录与 build
+目录存在同名 DLL 时尤其如此。
+
+自动重试只用于 fixture 尚未启动的外部启动失败，例如没有业务 report、marker 或 dump，且 licensing 日志显示启动失败。
+fixture 已启动后产生的显式失败或 timeout 是本次测试的真实结果，不能用下一轮成功覆盖。timeout 时按
+`capture → kill owned process` 的顺序保存现场，只终止 runner 自己启动的 PID。
+
+```mermaid
+flowchart TD
+    A["进程结束或超时"] --> B{"fixture 已启动？"}
+    B -->|"否"| C{"有 licensing 等外部启动失败证据？"}
+    C -->|"是"| D["记录本轮身份与原因后重试"]
+    C -->|"否"| E["保留为未分类启动失败"]
+    B -->|"是，显式失败"| F["保留失败；不重试覆盖"]
+    B -->|"是，超时"| G["先 capture 全线程与 dump"]
+    G --> H["再 kill runner 自己启动的 PID"]
+```
+
+## 3. Hang：先抓全线程，不急着 kill
 
 在 Visual Studio 或 WinDbg 对仍存活进程 Break All：
 
@@ -29,7 +50,7 @@
 只有主线程栈不能证明死锁或竞争；必须看持锁/被等候的其它线程。单次栈只能定位停点，race 结论通常还需要重复 dump、相关线程
 和对象生命周期证据。
 
-## 3. Dump 选择
+## 4. Dump 选择
 
 默认先保存**不带 heap 的普通 dump**：文件小，足够恢复线程、寄存器、模块和大部分调用栈，适合快速分享和多轮比较。
 
@@ -43,7 +64,7 @@
 full dump 可能达到数 GB，并包含场景数据、路径、凭证或其它敏感内存。保存、传输和归档前先确认空间与数据边界；不要把它当默认
 附件。
 
-## 4. WinDbg 最小分析集
+## 5. WinDbg 最小分析集
 
 ```text
 !analyze -v          ; crash 的异常摘要
@@ -64,7 +85,7 @@ Ghidra_address = Ghidra_image_base + RVA
 记录模块版本/hash；不同构建的同一 RVA 不一定是同一函数。系统模块缺符号时先配置 Microsoft symbol server，插件自身无符号则用
 map、导出、RTTI、字符串交叉定位，不要给未知地址编造函数名。
 
-## 5. 竞争与生命周期结论的门槛
+## 6. 竞争与生命周期结论的门槛
 
 声称 race/refcount/use-after-free 前至少满足两类证据：
 
@@ -86,6 +107,8 @@ map、导出、RTTI、字符串交叉定位，不要给未知地址编造函数�
 | 只看 UI thread | 看见等待，看不见谁持锁 | `~* k` 查所有线程 |
 | 无 PDB 就停止 | 第三方闭源模块无法推进 | module base + RVA 映射 Ghidra |
 | 单一停点就断言 race | 过度归因 | 多线程/对象/调度反证至少两类 |
+| 只记插件路径，不记文件身份 | 实际加载旧副本却误判修复无效 | report 记录 resolved path、size、mtime 与 SHA-256 |
+| fixture 已失败仍自动重试 | 后续成功掩盖真实故障 | 只重试 fixture 启动前的外部失败 |
 
 ## 相关 Guidelines
 
