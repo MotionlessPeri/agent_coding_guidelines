@@ -66,6 +66,14 @@ function Get-SkillMetadata {
 
     $SkillFile = Join-Path $SkillDirectory.FullName "SKILL.md"
     $Content = Get-Content -Raw -LiteralPath $SkillFile
+    if ($null -ne $Content) {
+        # Normalize CRLF -> LF so frontmatter parsing is line-ending-agnostic. A CRLF
+        # checkout (Windows core.autocrlf=true) otherwise breaks the `[^\r\n]*$` scalar
+        # regex: `[^\r\n]*` stops before \r, but .NET multiline `$` sits before \n
+        # (after \r), so name/description parse empty and every skill fails "name is
+        # missing". (Get-Content -Raw already strips a UTF-8 BOM, so no BOM handling here.)
+        $Content = $Content -replace "`r", ""
+    }
     $Frontmatter = [regex]::Match(
         $Content,
         '(?s)\A---[ \t]*\r?\n(?<yaml>.*?)\r?\n---[ \t]*(?:\r?\n|\z)'
