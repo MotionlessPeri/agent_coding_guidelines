@@ -17,6 +17,15 @@ Every worker prompt should include:
 - "I need this to plan implementation — report file paths, line numbers, and type signatures."
 - "This is a pre-merge quick check — verify the happy path only."
 
+### Self-contained ≠ correct
+
+A prompt can be **complete** (has everything the worker needs) yet **assert wrong facts**. Completeness is not correctness — separate what you *know* from what you *assume*:
+
+- Tag each technical claim as **verified** (and ship the evidence — the oracle output / dump / test result) or **assumption** ("I think X — unverified, confirm before relying on it").
+- **Ship the oracle/evidence with the task, not just your conclusion.** If you hold a ground-truth dump the worker must diagnose against, hand it over. A worker debugging against your (possibly wrong) second-hand conclusion costs a full round-trip every time you were wrong.
+
+Learned from a multi-conversation cross-repo run (see skill `role-lane-coordination`): a coordinator twice baked confidently-wrong ground-truth into self-contained briefs; each error was a full round-trip, caught only by the dev lane's adversarial verification — not by the human.
+
 ## Anti-Patterns
 
 | Bad | Why | Good |
