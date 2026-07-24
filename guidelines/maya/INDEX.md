@@ -23,11 +23,12 @@ hidden contracts。靠踩坑得到、Maya 官方文档没明说的客观约束�
 |---|---|
 | [`draw-override-and-command-invocation.md`](draw-override-and-command-invocation.md) | 从 C++ `executeCommand` 发带 object 的命令：MEL 字符串 flag 必须在 object 前（cmds-Python 自动排序、MEL 不会）/ `MPxDrawOverride::prepareForDraw` 复用 `oldData` → `buildDrawData` 每帧必须重置 transient flag（否则"状态清了但高亮不消失"）/ 屏幕空间恒定 UI 用 `points()`+`setPointSize`（像素），别用 `rect()/circle()` 世界尺寸×相机距离近似 |
 
-### GPU deformer / GUI 自动化
+### GPU deformer / GUI 自动化 / 性能取证
 
 | Guideline | 解决的问题 |
 |---|---|
 | [`gpu-deformer-gui-validation.md`](gpu-deformer-gui-validation.md) | `mayapy` 不能证明 GPU Override 真执行；GPU Active + 每节点新 success marker + 非零形变 + CPU 对照四重 Gate / `deformerEvaluator` 加载顺序 / CPU 读回污染 / `maya.exe -script bootstrap.mel` + Qt timer / licensing 与 crash 分类 / auxiliary mesh buffer 与显式 CPU fallback / 半初始化节点先由 validate 拒绝、conditional generation 最后提交 |
+| [`parallel-deformer-performance-profiling.md`](parallel-deformer-performance-profiling.md) | Parallel Evaluation 下区分 wall time、interval union 和 per-frame work sum / nested scope 与单节点 outer duration 不直接归因 / ready 与非零激发 Gate / bypass-frozen 消融测 wall 收益上限 / P50-P95 与长尾复测 |
 
 ### Mesh 拓扑 / 数值复现
 

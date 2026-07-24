@@ -55,6 +55,23 @@ generation 不是普通的数据版本号，而是初始化事务的提交标记
 切换 evaluator 后要跳帧或显式 dirty/refresh，确保当前帧重新求值。采集前删除旧 marker；marker 至少写节点标识、
 轮次/时间戳、success/failure 和失败原因。
 
+## GPU 路由按交互类型分别验证
+
+`GPU Active` 表示节点具备 GPU 路由资格，不证明所有交互都会调用
+`MPxGPUDeformer::evaluate()`。直接编辑 controller/locator、时间变化、Cached Playback
+和显式 mesh 读取可能走不同的 Evaluation Manager 路径。
+
+每种需要承诺的交互都必须单独激发和记录：
+
+- 直接属性或 manip 拖动；
+- 相隔足够远的真实时间 key；
+- timeline scrub 和播放；
+- Cached Playback 填充、cache hit、插入新 key 后的 fresh replay。
+
+若直接编辑没有 GPU marker，不能因为静态状态为 `GPU Active` 就把 CPU 交互耗时称为
+GPU 性能；应明确报告该交互由 Maya 路由到 CPU。时间线 GPU 验证仍需逐节点 fresh
+evaluate/success marker、非零形变和 CPU/GPU 数值对照。
+
 ## GUI 启动方式
 
 不要把多行 Python 直接塞进 `maya.exe -command`。它会经过 PowerShell、MEL 和 Python 三层引号解析，常把
@@ -111,5 +128,7 @@ GPU 数值一致后再测交互时序：
 ## 相关 Guidelines
 
 - [`../code/validation.md`](../code/validation.md) —— "headless / 单测绿 ≠ GUI 对"；GPU deformer 必须真 GUI 四重证据验
+- [`parallel-deformer-performance-profiling.md`](parallel-deformer-performance-profiling.md) —— 区分 wall、
+  interval union、work sum，并用旁路消融判断真实 wall 收益上限
 - [`../cpp/windows-native-crash-hang-evidence.md`](../cpp/windows-native-crash-hang-evidence.md) —— GUI 崩溃 / hang 时的 dump 取证（本篇 GPU 通过判定的补充面）
 - [`../../skills/maya/reverse-maya-closed-nodes/SKILL.md`](../../skills/maya/reverse-maya-closed-nodes/SKILL.md) —— 诊断闭源 / GPU 节点行为的分层证据工作流
