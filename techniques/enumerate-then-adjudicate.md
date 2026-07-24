@@ -83,6 +83,8 @@ flowchart LR
 
 本 pattern 提炼自 pmarreck 的 [MFIC — Mechanically-Falsifiable Independent Control](https://gist.github.com/pmarreck/b30aa3ca69cb70a5526f8a63ab8c8d7e)（Section 2 例 2），essay 里给的真实世界例子是 *eyecite*（法律引文先按已知形态匹配再判定）。**尚未在本机项目里跑过一轮验证**——落地时按 [`guidelines/workflow/knowledge-promotion.md`](../guidelines/workflow/knowledge-promotion.md) 的态度，先在一个真实"找全 X"任务上用一次，确认 prefilter 的召回可测、逐条裁决确实堵住了静默漏，再当成定规。
 
+一个**相关但非完整**的本机落地（2026-07，某 C++ 渲染器项目 CRAP 评测）：top-N 高危函数的「机械枚举候选 → 逐条 accept/reject 留痕」正是本 pattern 的形态——但那里的枚举本身是完整的（lizard 全量列出所有函数），没触及本 pattern 最难的「漏掉不可见」那一面，所以只算部分印证「逐条裁决防静默跳过」，**不算**验证「prefilter 召回封顶」。详见 [`../guidelines/code/complexity-coverage-metrics.md`](../guidelines/code/complexity-coverage-metrics.md)。
+
 ## 相关 Guidelines / Techniques
 
 - [`techniques/adversarial-verification.md`](adversarial-verification.md) —— "选可信 check：四要素 + oracle 判据"，本 pattern 是其一个具体落地
