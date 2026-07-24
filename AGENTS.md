@@ -70,6 +70,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/code/validation.md
 
+@guidelines/code/test-purpose.md
+
 @guidelines/code/gui-visual-machine-gating.md
 
 @guidelines/code/dual-layer-data-ownership.md
