@@ -26,7 +26,7 @@ Guidelines are grouped by topic under `guidelines/`:
 | `guidelines/ci-windows/` | Windows CI (PowerShell / GitLab runner) 跑 native command 时的 pitfall 集——PowerShell ↔ native exe 之间的抽象漏洞 |
 | `guidelines/claude-code/` | Claude Code 自身（harness / hooks / settings.json）的 hidden contract——文档没明说但实测如此的行为 |
 | `guidelines/p4/` | Perforce 特有 hidden contracts——charset transcoding / typemap / 跟 git 不同的字节保留语义 |
-| `guidelines/ue/` | Unreal Engine framework hidden contracts + idiom，meta-corpus 最重的框架子目录。两层：**14 份常驻 broad guidelines**（常碰核心契约，仍 `@`-import）+ **8 个懒加载 UE skills**（ultra-niche / 按场景触发的簇，bundle 进 `skills/ue/`：module-architecture / reference-engine-source / settings-persistence / custom-graph-editor / procedural-numerical / ml-animation / unrealmcp-usage / official-mcp-usage）。**非 UE 项目可整段 skip**。完整索引（broad + skill 双层）+ 按场景导航见 [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md) |
+| `guidelines/ue/` | Unreal Engine framework hidden contracts + idiom，meta-corpus 最重的框架子目录。两层：**14 份 broad guidelines**（常碰核心契约，**懒加载 via INDEX**、非 UE session 不常驻）+ **8 个懒加载 UE skills**（ultra-niche / 按场景触发的簇，bundle 进 `skills/ue/`：module-architecture / reference-engine-source / settings-persistence / custom-graph-editor / procedural-numerical / ml-animation / unrealmcp-usage / official-mcp-usage）。**非 UE 项目可整段 skip**。完整索引（broad + skill 双层）+ 按场景导航见 [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md) |
 | `guidelines/maya/` | Maya C++ 插件（`MPx*` plugin / manip / context / 多 `.mll` 共享 base 层）的 framework hidden contracts——靠踩坑得到、Maya 文档没明说的约束。**非 Maya 项目可整段 skip**。索引 + 配套 skill 见 [`guidelines/maya/INDEX.md`](guidelines/maya/INDEX.md) |
 | `techniques/` | Procedural patterns and step-by-step operational guides |
 | `docs/plans/` | 已确认设计的实施前记录；用于保存跨文件改造的边界、接口与验收标准 |
@@ -84,33 +84,7 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/collaboration/private-docs-policy.md
 
-@guidelines/ue/graph-editor-constraints.md
-
-@guidelines/ue/blueprint-auto-override-api.md
-
-@guidelines/ue/asset-definition-can-duplicate-limit.md
-
-@guidelines/ue/localization-pitfalls.md
-
-@guidelines/ue/build-plugin-limitations.md
-
-@guidelines/ue/automation-test-from-ci.md
-
-@guidelines/ue/details-customization-prefer-reflection.md
-
-@guidelines/ue/property-handle-strong-capture.md
-
-@guidelines/ue/external-automation-write-path.md
-
-@guidelines/ue/mcp-platform-choice.md
-
-@guidelines/ue/logicdriver-state-class-rewires-boundgraph.md
-
-@guidelines/ue/fvector4-vector-equals-silent-fail.md
-
-@guidelines/ue/leveleditor-modetools-lifetime.md
-
-@guidelines/ue/ue58-upgrade-gotchas.md
+> UE broad guidelines（14 份）**不 eager `@`-import**——lazy-load via [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md)（已在上方组织表链接、且 INDEX 完整覆盖全 14 份 broad + 8 个 UE skill 双层导航）。省 ~2500 行常驻——非 UE 项目 / 非 UE session 不再吃这块。接 UE 任务时读 INDEX 导航到具体文件 / 触发 ue-* skill；**重度 UE 项目可在项目自己的 `AGENTS.md` 里 `@`-import 需要的子集把它们拉回常驻**（见 `collaboration/multi-agent.md` Option 2）。Codex 本就按目录表 on-demand 打开 ue/，不受影响。（2026-07-28 context-budget audit：broad-UE 从常驻转懒加载，收尾 Tier D 最后一块 eager 域集群）
 
 > Maya guidelines（9 份）**不 eager `@`-import**——lazy-load via [`guidelines/maya/INDEX.md`](guidelines/maya/INDEX.md)（已在上方组织表链接、且 INDEX 完整覆盖全 9 份）。非 Maya 项目省去这部分常驻内容；接 Maya 插件任务时读 INDEX 导航到具体文件 / 触发 maya skill。Codex 本就按目录表 on-demand 打开 maya/，不受影响。（2026-07-18 context-budget audit S2；2026-07-24 新增并行性能取证）
 

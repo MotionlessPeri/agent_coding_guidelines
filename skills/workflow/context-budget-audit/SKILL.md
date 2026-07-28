@@ -162,11 +162,13 @@ context 膨胀的根因是「该按需加载的内容被 always-load 了」。Cl
 
 - **Maya**（8 份）→ 停 `@`-import，用 `guidelines/maya/INDEX.md` 导航
 - **cpp**（8 份）→ 新建 `guidelines/cpp/INDEX.md` 导航
-- **UE**：ultra-niche 簇 bundle 成懒加载 skill（procedural-numerical / ml-animation / custom-graph-editor），broad 14 份保留常驻，`guidelines/ue/INDEX.md` 做 broad + skill 双层导航
+- **UE**：ultra-niche 簇 bundle 成懒加载 skill（procedural-numerical / ml-animation / custom-graph-editor），broad 14 份**当轮保留常驻**（→ 2026-07-28 收尾复审后也转懒加载，见下），`guidelines/ue/INDEX.md` 做 broad + skill 双层导航
 - **P4 / CI-Windows / Claude-Code**（含配套 techniques ci-deploy-to-p4 / claude-code-autonomous-permissions）→ 停 `@`-import，AGENTS.md 段末懒加载说明
 - 顺带把散在条件域文件里跟通用条重复的机制**去冗余**（保留 canonical、另一处缩指针）
 
-**结果**：`@`-import **70 → 38**（现值 live-query `grep -c '^@' AGENTS.md`，别信定值）。条件域内容全部转 skill trigger / INDEX 导航，非匹配项目 session 不再常驻它们；broad-UE + 通用 guidelines 保留常驻。这轮坐实了本 technique 的判断：机制已建未启用是最大浪费，且拆分时要「保留 canonical、去重不丢信息」。
+**结果**：`@`-import **70 → 38**（现值 live-query `grep -c '^@' AGENTS.md`，别信定值）。条件域内容全部转 skill trigger / INDEX 导航，非匹配项目 session 不再常驻它们；broad-UE + 通用 guidelines 当轮保留常驻。这轮坐实了本 technique 的判断：机制已建未启用是最大浪费，且拆分时要「保留 canonical、去重不丢信息」。
+
+**2026-07-28 收尾（broad-UE → lazy）**：07-19 当轮 broad-UE 14 份保留常驻，判据只到「加载成本」轴。用本次新增的「约束必要性」第二轴 + Claude 5-gen 博文的渐进披露原则复审——这 14 份 ~2500 行在**每个** session 常驻（约占当时 eager footprint 一半），连非 UE 项目也吃，而 `guidelines/ue/INDEX.md` 早已双层覆盖 broad + skill → 停 `@`-import 转 INDEX 懒加载，重度 UE 项目在项目侧 `AGENTS.md` `@`-import 需要的子集拉回（multi-agent Option 2）。`@`-import 进一步降到 **25**（现值 live-query `grep -c '^@' AGENTS.md`，别信定值）。教训：07-19 漏动它不是因为它不浪费，是因为当时判据只看「加载成本 + 常相关」，没问「非 UE session 相不相关」——正是第二轴要补的盲区。
 
 ⚠️ **本 technique 自身也是一份 always-loaded** —— 它是条件域（只 audit 时需要）的候选，可跟其他 lazy 内容一样转 skill 触发式；暂按惯例保留 `@`-import（navigation stub 留 AGENTS.md 是折中），等下一轮再评估。
 

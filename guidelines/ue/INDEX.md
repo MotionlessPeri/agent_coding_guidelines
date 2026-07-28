@@ -3,7 +3,7 @@
 UE 是 meta-corpus 最重的框架子目录——Unreal Engine framework 的 hidden contracts + idiom。
 分两层：
 
-- **常驻 broad guidelines**（14 份）——常碰的核心契约，仍 `@`-import 进 context，UE session 自动可用。
+- **broad guidelines**（14 份）——常碰的核心契约，**懒加载**：接 UE 任务时读本 INDEX 导航到具体文件（2026-07-28 起不再 `@`-import 常驻；重度 UE 项目可在项目侧 `AGENTS.md` `@`-import 需要的子集拉回）。
 - **懒加载 UE skills**（8 个）——ultra-niche / 按场景触发的簇，bundle 成 skill，只在匹配任务时加载。
 
 **非 UE 项目可整段 skip 本目录。** 通用编程 / C++ / 工程组织规则在 `guidelines/code/` /
@@ -24,7 +24,7 @@ UE 是 meta-corpus 最重的框架子目录——Unreal Engine framework 的 hid
 
 > MCP「用 fork 还是官方」的平台选型见下 broad guideline `mcp-platform-choice.md`（跟上面两条 usage skill 互补：那两条讲「怎么用」，选型讲「用哪个」）。
 
-## 常驻 broad guidelines（按场景）
+## broad guidelines（按场景）
 
 ### Graph Editor 硬约束
 
@@ -94,6 +94,8 @@ BattleDemo（LogicDriver / MCP 写入）、PathAnimGen（AnimInstance proxy + NN
 
 2026-07-19 context-budget audit S2 Tier D：ultra-niche 簇（procedural-numerical / ML-anim /
 custom-graph）bundle 成懒加载 skill；`graph-data-ownership` 的框架无关内核提升到常驻
-[`../code/dual-layer-data-ownership.md`](../code/dual-layer-data-ownership.md)；broad guidelines 保留常驻。
+[`../code/dual-layer-data-ownership.md`](../code/dual-layer-data-ownership.md)；broad guidelines 当轮保留常驻。
+
+2026-07-28 context-budget audit：broad-UE 14 份也从常驻转懒加载，本 INDEX 承接导航，省 ~2500 行常驻（非 UE session 不再吃这块）；重度 UE 项目在项目侧 `AGENTS.md` `@`-import 需要的子集拉回（`../collaboration/multi-agent.md` Option 2）。触发本条的判据来自 `skills/workflow/context-budget-audit` 新增的「约束必要性」第二轴 + Claude 5-gen 博文的渐进披露原则。
 
 后续候选（two-strike rule 第二次复发时补）：UE Factory 共存不替换 / Validation Gate 三道闸（Save / PIE / Cook）/ 双源 schema parity test。
