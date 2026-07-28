@@ -28,6 +28,7 @@ Guidelines are grouped by topic under `guidelines/`:
 | `guidelines/p4/` | Perforce 特有 hidden contracts——charset transcoding / typemap / 跟 git 不同的字节保留语义 |
 | `guidelines/ue/` | Unreal Engine framework hidden contracts + idiom，meta-corpus 最重的框架子目录。两层：**14 份 broad guidelines**（常碰核心契约，**懒加载 via INDEX**、非 UE session 不常驻）+ **8 个懒加载 UE skills**（ultra-niche / 按场景触发的簇，bundle 进 `skills/ue/`：module-architecture / reference-engine-source / settings-persistence / custom-graph-editor / procedural-numerical / ml-animation / unrealmcp-usage / official-mcp-usage）。**非 UE 项目可整段 skip**。完整索引（broad + skill 双层）+ 按场景导航见 [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md) |
 | `guidelines/maya/` | Maya C++ 插件（`MPx*` plugin / manip / context / 多 `.mll` 共享 base 层）的 framework hidden contracts——靠踩坑得到、Maya 文档没明说的约束。**非 Maya 项目可整段 skip**。索引 + 配套 skill 见 [`guidelines/maya/INDEX.md`](guidelines/maya/INDEX.md) |
+| `guidelines/fbx/` | Autodesk FBX SDK 隐藏契约——**往既有 DCC rig 写动画**时的 PreRotation 补偿 / 旋转限位吸收（文档没写、只在写既有 rig 而非从零裸骨架时出现）。**非 FBX / 非「写既有 rig」项目可整段 skip**。当前 1 份 [`guidelines/fbx/write-animation-to-existing-rig.md`](guidelines/fbx/write-animation-to-existing-rig.md) |
 | `techniques/` | Procedural patterns and step-by-step operational guides |
 | `docs/plans/` | 已确认设计的实施前记录；用于保存跨文件改造的边界、接口与验收标准 |
 | `skills/` | Shared Agent Skills, organized under `skills/<category>/<name>/SKILL.md`. `scripts/sync-skills.ps1` installs them flat to Claude Code's `.claude/skills/<name>/` and Codex's `.agents/skills/<name>/` discovery directories |
@@ -89,6 +90,8 @@ Guidelines are grouped by topic under `guidelines/`:
 > Maya guidelines（9 份）**不 eager `@`-import**——lazy-load via [`guidelines/maya/INDEX.md`](guidelines/maya/INDEX.md)（已在上方组织表链接、且 INDEX 完整覆盖全 9 份）。非 Maya 项目省去这部分常驻内容；接 Maya 插件任务时读 INDEX 导航到具体文件 / 触发 maya skill。Codex 本就按目录表 on-demand 打开 maya/，不受影响。（2026-07-18 context-budget audit S2；2026-07-24 新增并行性能取证）
 
 > C++ 工程底座 guidelines（8 份）**不 eager `@`-import**——lazy-load via [`guidelines/cpp/INDEX.md`](guidelines/cpp/INDEX.md)。C++ 项目（含 UE / Maya 插件）接触多 DLL / 符号导出 / cmake / toolchain / 热路径 / crash 取证坑时读 INDEX 导航到具体文件。省 ~655 行常驻；Codex 按目录表 on-demand 打开 cpp/。（2026-07-19 context-budget audit S2 Tier D）
+
+> FBX SDK guidelines（1 份）**不 eager `@`-import**——非 FBX 项目省去；接「用 FBX SDK 往既有 DCC rig 写动画（retarget 成品导出 / 动画迁移 / mocap cleanup 回写）」任务时读 [`guidelines/fbx/write-animation-to-existing-rig.md`](guidelines/fbx/write-animation-to-existing-rig.md)。Codex 按目录表 on-demand 打开 fbx/。（2026-07-28 从 RetargetStudy retarget 导出预研提升：PreRotation 漏补偿末端差 79cm / 旋转限位改不掉需吸收）
 
 > 条件域 guidelines（P4 / Windows CI / Claude Code harness）**不 eager `@`-import**——只对特定项目类型相关，接对应任务时按上方组织表 / 本说明按需读（省 ~945 行常驻）：
 > - `guidelines/p4/charset-pitfalls.md` —— Perforce unicode server 的 charset transcode 坑（含 typemap / binary 强制）。配套 technique `techniques/ci-deploy-to-p4.md`（CI 自动 submit 到 P4 的完整流程）。
