@@ -1,6 +1,6 @@
 ---
 name: context-budget-audit
-description: Use when auditing or managing the always-loaded context budget of an agent-instruction corpus (AGENTS.md / CLAUDE.md @-imports, skill descriptions, hook-injected context) — when the @-import count is high, before adding a new @-import, when session startup is slow or prompt-cache hit-rate drops, after a batch of new guidelines/techniques, or when deciding whether a piece of content should be always-loaded vs lazy (skill trigger / INDEX navigation / path-scoped rule). Provides a 4-step audit (Inventory, Classify, Detect, Report+Actions), a three-tier loading-time model (always-loaded / path-triggered / on-call), and anti-patterns. Skip unless you maintain a guidelines / agent-instruction repository whose always-loaded footprint matters.
+description: Use when auditing or managing the always-loaded context budget of an agent-instruction corpus (AGENTS.md / CLAUDE.md @-imports, skill descriptions, hook-injected context) — when the @-import count is high, before adding a new @-import, when session startup is slow or prompt-cache hit-rate drops, after a batch of new guidelines/techniques, or when deciding whether a piece of content should be always-loaded vs lazy (skill trigger / INDEX navigation / path-scoped rule). Provides a 4-step audit (Inventory, Classify, Detect, Report+Actions), a three-tier loading-time model (always-loaded / path-triggered / on-call), a second adjudication axis (constraint-necessity — is a rule a needed guardrail or over-specification a capable model would handle by judgment), and anti-patterns. Skip unless you maintain a guidelines / agent-instruction repository whose always-loaded footprint matters.
 ---
 
 # Context Budget Audit
@@ -17,6 +17,8 @@ description: Use when auditing or managing the always-loaded context budget of a
 本 technique 提供**定期 audit always-loaded 上下文占用** 的程序化做法。
 
 跟 `guidelines/workflow/knowledge-promotion.md` 对称——那条管"什么时候把 project lesson 升级到 meta-corpus"（push 方向），本条管"meta-corpus 里 always-loaded 的部分该多大"（防止 push 方向无节制累积）。
+
+**两条正交的判据轴。** 本 technique 原本只量**加载成本**——token / cache / 常驻体量，问"这条该不该常驻"。还有一条正交的轴:**约束必要性**——问"即便免费常驻、又永远相关，当代模型还需不需要它当护栏"。加载成本轴贯穿下面四步；约束必要性轴单列一节(见「第二判据轴：约束必要性」)，在 Step 2 判断每条内容时一并过。
 
 ## 何时跑 audit
 
@@ -83,14 +85,40 @@ AGENTS.md 自己介绍每个 imported guideline + 然后 `@`-import 把 guidelin
 
 ### Step 4: Report + Actions
 
-固定 4 种 action：
+固定 5 种 action(前 4 种针对加载成本轴，第 5 种针对约束必要性轴)：
 
 1. **Remove**——彻底删（stale / 几乎没用）
 2. **Lazy-load**——从 `@`-import 改成 skill 触发式 / INDEX hub 形态
 3. **Merge**——内容跟别的合并，用 `[[link]]` 替代
 4. **Trim**——只保留前部"决策表 / 核心规则"，details 移到 separate ref，主文件 always-load，ref 文件按需 load
 
-按 `token saving × confidence` 排 top-N，落实施 commit。
+5. **Relax**(轴 2)——不删内容，把"写死的规则"改成"交给判断力"的表述；判据见下「第二判据轴」。跟 Remove 区分：Remove 因为"没用 / 没人碰"，Relax 因为"模型不需要被这样管"
+
+按 `token saving × confidence`(轴 1) / `over-constraint × confidence`(轴 2)排 top-N，落实施 commit。
+
+## 第二判据轴：约束必要性(跟加载成本正交)
+
+四步法量的是**加载成本**——"这条该不该常驻"。约束必要性是**正交**的另一问：**即便这条免费常驻、又永远相关，当代模型(尤其 Claude 5 代)还需要它当护栏，还是本可交给判断力?** 一条规则可以加载不要钱、又永远相关，却仍是**过度规约**——把模型本会做对的事写死，反而压制它按上下文判断。
+
+一句话判据：**这条规则编码的是模型推不出来的事实，还是模型本就会做的品味?**
+
+| KEEP(必要护栏，别碰) | RELAX / 删(过度规约候选) |
+|---|---|
+| framework hidden contract(UE `PostEditChangeProperty` 同步 / LogicDriver 撕 wire / BuildPlugin 剥字段)——模型无法从代码推出 | 品味 / 风格类规则，能干活的模型本就会做("函数别太长""注释写清楚") |
+| 硬 API 契约 / 版本 gotcha(签名、`FVector4` 的 W 分量、5.8 redist 版本) | 形如 "never do trivial-X" 的机械禁令，把常识写成规则 |
+| 破坏性操作护栏(见 `guidelines/workflow/agent-lifecycle.md` 确认清单) | 靠罗列举例来约束行为(博文 Rule 2：好接口 / 参数设计 > 举例) |
+| 项目专属决策 / 不可从环境推导的事实 | 同一条常识在多份 guideline 重申(既是 overlap 又是 over-constraint) |
+
+对应的落地动作是 Step 4 的第 5 种 **Relax**(博文 Rule 1：用 "match surrounding code" 取代 "never write multi-paragraph docstrings")。
+
+⚠️ **本 repo 用这条轴必须保守**，两个原因：
+
+- **模型代际**：博文只谈 Claude 5 代(Opus 5 / Fable 5)；本 repo 现跑 **Opus 4.x**，吃显式指导比 5 代多，"删规则"力度要降。
+- **Codex 端**：双端单源(见 `guidelines/collaboration/multi-agent.md`)，Codex **不展开 `@`-import、按目录手动开文件**，判断力路径跟 Claude 不同、更依赖显式规则。给 Claude 减的约束不等于给 Codex 也能减。
+
+所以轴 2 的默认姿态是**挑少数品味类规则保守 Relax**，不是大刀删。本 repo 语料绝大多数是 hidden contract / 硬约束(全属 KEEP)，真正的 over-constraint 候选很少——但**每加一条新 guideline 时过一遍这个判据**，防止把常识写成规则，是最高性价比的用法。
+
+> 一手 framing：Anthropic [The new rules of context engineering for Claude 5-generation models](https://claude.com/blog/the-new-rules-of-context-engineering-for-claude-5-generation-models) —— "unhobbling"：删掉 Claude Code 系统提示 80% 而"无可测量损失"；judgment-over-rules / interface-over-examples / lean-descriptions。**blog-only、且明确不覆盖旧模型 / 混合 fleet；本轴尚未在真实 audit 里跑过一轮**——按 `_radar/README.md` 政策落地前实测，别照搬。
 
 ## 加载时机三档模型（决定每条内容该放哪档）
 
@@ -122,6 +150,7 @@ context 膨胀的根因是「该按需加载的内容被 always-load 了」。Cl
 | Domain-specific 集群 always-import | 跨项目用全局 config 时整段浪费 |
 | Audit 完不真做 trim | report 不写 action item 等于没 audit |
 | Skill description 写整段说明 | description 是 trigger 用的，不是文档；保留 2-3 句关键判据 + 把详情留 SKILL.md body |
+| 把常识写成规则 / 靠举例约束行为 | 对当代模型是过度规约、压制判断力(约束必要性轴，见「第二判据轴」)；跟"加载成本"无关，免费常驻也该 Relax |
 
 ## 项目实例参考
 
