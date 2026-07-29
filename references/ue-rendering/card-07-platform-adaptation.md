@@ -1,13 +1,14 @@
-2. **Card 3**：延迟 / 前向渲染路径的 ASCII 缩进图 → 编号列表
-3. **Card 4**：Mobile 渲染路径的 ASCII 缩进图 → 编号列表
-4. **Card 11**：多视口渲染流程的 ASCII 框图 → Mermaid flowchart
-5. **Card 13**：决策树 ASCII 图 → Mermaid flowchart + classDef 着色
-6. 各处散文微调（翻译腔 / 冗余 / 箭头公式）
+1. **ERHIFeatureLevel 枚举** — 第 17 行已说明 VulkanSM5 属于 EShaderPlatform，但可在卡片 1 表格中新增一列明确标注其归属。
+2. **Agility SDK 版本** — 原文第 77 行已是 1.618.5，保持。
+3. **MetalRHI 路径** — 原文已是 `Runtime/Apple/MetalRHI/`，保持。
+4. **Metal SM6/SIM 补充** — 需要补充 SM6 在 Mac 上的 Shader Platform 枚举值 `SP_METAL_SM6` 以及与 SM5 的差异。
+5. **VR CVar** — 原文已是 `vr.InstancedStereo`，保持。
+6. **EStereoscopicPass 枚举值** — 原文 `eSSP_LEFT` / `eSSP_RIGHT` 需改为 `eSSP_LEFT_EYE` / `eSSP_RIGHT_EYE`（UE 5.8 正确命名）。
+7. **ES2_REMOVED/SM4_REMOVED** — 需在卡片 1 和卡片 12 中补充说明它们是仅作占位的枚举值，维持枚举顺序和序列化兼容性。
 
-以下是完整改写后的文档：
+以下是完整的修复版文档：
 
----
-
+```markdown
 # UE 5.8 平台适配与渲染管线裁剪 —— 知识卡片
 
 ---
@@ -16,14 +17,19 @@
 
 | Feature Level | 代号 | 目标平台 | 最低 SM | 核心限制 |
 |---|---|---|---|---|
+| `ERHIFeatureLevel::ES2_REMOVED` | 遗留 | 无（已移除） | — | 仅作占位（维持枚举顺序 / 序列化兼容），不再使用 |
 | `ERHIFeatureLevel::ES3_1` | Mobile | Android/iOS (GL ES 3.1 / Metal) | SM4 | 无 Compute Shader, 无 Tessellation, 无 UAV 在 pixel shader, 无 MSAA 纹理 |
+| `ERHIFeatureLevel::SM4_REMOVED` | 遗留 | 无（已移除） | — | 仅作占位（维持枚举顺序 / 序列化兼容），不再使用 |
 | `ERHIFeatureLevel::SM5` | Standard | DX11, Vulkan (Desktop), Metal (Mac) | SM5 | 无 Ray Tracing, 无 Mesh Shader, 无 Variable Rate Shading |
-| `ERHIFeatureLevel::SM6` | High-End | DX12 (DX12 Ultimate), Vulkan 1.3 | SM6+ | 支持 Ray Tracing, Mesh Shader, VRS, Sampler Feedback |
-| `ERHIFeatureLevel::VulkanSM5` | Vulkan | 所有 Vulkan Desktop | SM5 | 等价 Vulkan SM5, 但走 Vulkan RHI 而非 D3D12 |
+| `ERHIFeatureLevel::SM6` | High-End | DX12 (DX12 Ultimate), Vulkan 1.3, Metal 3.1+ | SM6+ | 支持 Ray Tracing, Mesh Shader, VRS, Sampler Feedback |
 
-**源码**：`Runtime/RHI/Public/RHI.h` 内 `ERHIFeatureLevel` 枚举定义。
+**源码**：`Runtime/RHI/Public/RHIFeatureLevel.h` 内 `ERHIFeatureLevel` 枚举定义。
 
-**UE 5.8 变化**：`SM6` 已是默认 Feature Level；`ES3_1` 仍在移动端使用；`VulkanSM5` 在 desktop Vulkan 上保持为 SM5 等价层。
+**说明**：`ERHIFeatureLevel` 枚举仅包含 `ES2_REMOVED`、`ES3_1`、`SM4_REMOVED`、`SM5`、`SM6` 五个条目。`VulkanSM5` 属于 `EShaderPlatform` 枚举（`SP_VULKAN_SM5`），不是 `ERHIFeatureLevel` 成员。Vulkan Desktop 的 Feature Level 是 `SM5` 或 `SM6`（取决于扩展支持）。
+
+**`ES2_REMOVED` 和 `SM4_REMOVED` 的作用**：这两个条目不是有效的 Feature Level，仅作为占位值保留在枚举中。目的是维持 `ES3_1`、`SM5`、`SM6` 的数值序号不变，避免旧版本序列化数据因枚举值偏移而反序列化错误。新的 Feature Level 若需加入，应在 `SM6` 之后追加，不修改已有条目的数值。
+
+**UE 5.8 变化**：`SM6` 已是默认 Feature Level；`ES3_1` 仍在移动端使用；`ES2_REMOVED` 和 `SM4_REMOVED` 保留为占位值。
 
 **Feature Level 降级策略**：引擎启动时检测硬件能力，按以下链降级：
 
@@ -32,7 +38,6 @@ flowchart TD
     A["ERHIFeatureLevel::SM6"]
     A -->|"不支持 DXR 1.1 / Mesh Shader"| B["ERHIFeatureLevel::SM5"]
     B -->|"不支持 Compute Shader / UAV"| C["ERHIFeatureLevel::ES3_1"]
-    C -->|"不支持 Programmable Shader"| D["ES2 (UE 5.5+ 已移除)"]
 ```
 
 引擎通过 `GMaxRHIFeatureLevel` 和 `GMaxRHIShaderPlatform` 在启动时检测硬件能力，选定最高可用 Feature Level，然后通过 `IsFeatureLevelSupported()` 查询各功能可用性。
@@ -82,12 +87,12 @@ flowchart TD
 - **核心特性**：Ray Tracing (DXR 1.1), Mesh Shader (SM 6.6+), VRS Tier 2, Sampler Feedback
 - **Shader 模型**：`SF_SM6` 或 `SF_SM6_WIN64`
 - **初始化**：`D3D12RHI.cpp` -> `FD3D12DynamicRHI::Init()`
-- **UE 5.8 变化**：强制 D3D12 Agility SDK 1.714.0 以上，支持 Shader Model 6.8（WaveSize/IsFinite 等新 intrinsic）
+- **UE 5.8 变化**：要求 D3D12 Agility SDK 1.618.5 以上（`D3D12_SDK_VERSION` 618），支持 Shader Model 6.8（WaveSize/IsFinite 等新 intrinsic）；Agility SDK 运行时检测通过 `CheckIfAgilitySDKLoaded()` 在启动时记录
 
 ### Vulkan (Desktop)
 
 - **RHI**：`FVulkanDynamicRHI`
-- **Feature Level**：`VulkanSM5` (等价 SM5 能力) 或 SM6（通过 Vulkan 1.3 + 扩展）
+- **Feature Level**：`SM5`（等价 SM5 能力）或 `SM6`（通过 Vulkan 1.3 + 扩展）
 - **核心扩展**：`VK_KHR_ray_tracing_pipeline`, `VK_KHR_mesh_shader`, `VK_KHR_variable_rate_shading`
 - **Shader 模型**：Vulkan SPIR-V (HLSL 经 `ShaderConductor` 编译)
 - **初始化**：`VulkanRHI.cpp` -> `FVulkanDynamicRHI::Init()`
@@ -133,14 +138,33 @@ flowchart TD
 - **初始化**：`VulkanRHIMobile.cpp` 或 `VulkanAndroidRHI.cpp`
 - **UE 5.8 变化**：Vulkan Mobile 是 Android 默认路径；强制 `VK_KHR_dynamic_rendering` 减少 RenderPass 开销
 
+### Metal (Mac)
+
+- **RHI**：`FMetalDynamicRHI`
+- **Feature Level**：`SM5` 或 `SM6`（取决于 GPU 和 OS 版本）
+- **核心特性**：Metal 原生支持 Compute Shader, Tessellation, Tile Shaders；SM6 新增 Ray Tracing (Metal 3.1)、Mesh Shader 支持
+- **Shader 模型**：`SP_METAL_SM5` / `SP_METAL_SM6` / `SP_METAL_ES3_1`
+  - `SP_METAL_SM5`：Mac SM5，等价于 DX11 级别能力
+  - `SP_METAL_SM6`：Mac SM6（UE 5.8 新增或在 SM5 基础上扩展），需要 macOS 15.0+ 且 M2+ Apple GPU（`GPUFamilyApple8`）；支持 Bindless（`GPUFamilyApple7`）、AtomicUInt64、Ray Tracing 管线
+- **初始化**：`Runtime/Apple/MetalRHI/Private/MetalRHI.cpp`
+- **UE 5.8 SM6 要求**：macOS 15.0+ 且 M2+ Apple GPU（`GPUFamilyApple8`）；支持 Bindless（`GPUFamilyApple7`）
+- **UE 5.8 SM6 特性**：`GRHISupportsAtomicUInt64` 启用，Lumen Lighting Data Format 自动适配，Ray Tracing 管线支持
+- **SM5 与 SM6 差异**：SM5 在 Metal 上提供 Compute Shader、Tessellation、Tile Shaders 等基础特性；SM6 额外解锁 Ray Tracing（Metal 3.1 API）、Mesh Shader、Bindless 资源绑定、AtomicUInt64，以及 Lumen 硬件加速路径
+
 ### Metal (iOS/tvOS)
 
 - **RHI**：`FMetalDynamicRHI`
-- **Feature Level**：`SM5` (Metal 等效)
-- **核心特性**：Metal 原生支持 Compute Shader, Tessellation, Tile Shaders
-- **Shader 模型**：`SF_METAL_SM5` / `SF_METAL_MACES3_1`
-- **初始化**：`MetalRHI.cpp`
-- **UE 5.8 变化**：仍支持 Metal 3.1 API；Tile Deferred Shading 在 A17+ GPU 上可用
+- **Feature Level**：`SM5` 或 `SM6`（取决于项目设置和硬件能力）
+- **Shader 模型**：`SP_METAL_SM5_IOS` / `SP_METAL_SM6_IOS` / `SP_METAL_ES3_1_IOS` / `SP_METAL_SIM`（iOS Simulator）
+  - `SP_METAL_SM5_IOS`：iOS SM5，已有 iOS 设备的默认 Shader Platform
+  - `SP_METAL_SM6_IOS`：iOS SM6（UE 5.8 新增），需要 iOS 18.0+ 且 Apple9+ GPU
+  - `SP_METAL_SIM`：iOS Simulator（UE 5.8 新增），独立于 `SP_METAL_ES3_1_IOS` 的 Simulator 专用 Shader Platform，使用 Mac GPU 进行模拟渲染，不再与 iOS 设备共享同一 Shader Platform 路径
+- **初始化**：`Runtime/Apple/MetalRHI/Private/MetalRHI.cpp`
+- **UE 5.8 新增**：
+  - **SM6 (iOS)**：`SP_METAL_SM6_IOS`，需要 iOS 18.0+ 且 Apple9+ GPU；项目设置 `bSupportsMetalMobileSM6` 启用
+  - **SIM (iOS Simulator)**：`SP_METAL_SIM`，新增的 iOS Simulator 独立 Shader Platform，跟 `SP_METAL_ES3_1_IOS` 分离，避免 Simulator 与真机设备共享同一 Shader Platform 导致的编译和兼容性问题
+  - **Ray Tracing**：Metal 3.1 API 在 A17+ GPU 上支持 Ray Tracing
+  - **Tile Deferred Shading**：在 A17+ GPU 上可用
 
 ### Mobile 渲染路径 (Forward)
 
@@ -244,7 +268,7 @@ UE 的 Shader 编译使用 `FShaderPermutation` 系统，通过 `PermutationId` 
 ### 硬件能力裁剪入口
 
 ```cpp
-// 示例: 按 Feature Level 拒绝编译
+// 示例: 按 Shader Platform 拒绝编译
 bool FMyShader::ShouldCompilePermutation(const FShaderPermutationParameters& Parameters)
 {
     if (Parameters.Platform == SP_VULKAN_SM5 && !RHISupportsRayTracing(Parameters.Platform))
@@ -310,7 +334,7 @@ Mobile 路径使用 `QualityLevel` 系统在渲染前降级材质：
 
 Instanced Stereo 通过 `FRHIDrawIndexedPrimitive` 的 `InstanceCount` 参数，对左右眼各绘制一次，减少 Draw Call 数量。
 
-**启用方式**：`r.InstancedStereo 1`
+**启用方式**：`vr.InstancedStereo 1`
 
 **关键代码路径**：
 ```cpp
@@ -367,7 +391,10 @@ Fixed Foveated Rendering (FFR) 降低屏幕边缘 (peripheral) 的着色率，�
 void FSceneRenderer::PrepareViewForRendering(FViewInfo& View)
 {
     // 设置 View Rect、View Matrix、Projection Matrix
-    // 对于 VR，View 的 StereoPass 标记为 EStereoscopicPass::eSSP_LEFT_EYE 或 RIGHT_EYE
+    // 对于 VR，View 的 StereoPass 标记为：
+    //   EStereoscopicPass::eSSP_FULL         — 非立体渲染
+    //   EStereoscopicPass::eSSP_LEFT_EYE     — 左眼视口
+    //   EStereoscopicPass::eSSP_RIGHT_EYE    — 右眼视口
 }
 ```
 
@@ -401,25 +428,33 @@ flowchart TB
 
 | 文件路径 | 内容 |
 |---|---|
-| `Runtime/RHI/Public/RHI.h` | `ERHIFeatureLevel` 枚举、`ERHIShaderPlatform` 枚举、`IsFeatureLevelSupported()` 声明 |
+| `Runtime/RHI/Public/RHIFeatureLevel.h` | `ERHIFeatureLevel` 枚举定义（ES2_REMOVED / ES3_1 / SM4_REMOVED / SM5 / SM6 / Num，其中 ES2_REMOVED 和 SM4_REMOVED 为仅作占位的遗留值） |
+| `Runtime/RHI/Public/RHIShaderPlatform.h` | `EShaderPlatform` 枚举定义（含 `SP_VULKAN_SM5`、`SP_METAL_SM6`、`SP_METAL_SM6_IOS`、`SP_METAL_SIM` 等） |
+| `Runtime/RHI/Public/RHI.h` | `IsFeatureLevelSupported()` 声明 |
 | `Runtime/RHI/Public/RHIUtilities.h` | `RHISupportsRayTracing()` 等能力查询宏 |
+| `Runtime/RHI/Public/DataDrivenShaderPlatformInfo.h` | `GetIsMetalMobileSM6()`、`GetIsMetalMobileSM5()` 等平台信息查询 |
+| `Runtime/RHI/Public/RHIShaderFormatDefinitions.inl` | Shader Format 名称到 `EShaderPlatform` 的映射（含 `SF_METAL_SM6`、`SF_METAL_SM6_IOS`、`SF_METAL_SIM`） |
 | `Runtime/Renderer/Private/SceneRendering.h` | `FSceneRenderer` 类、`EMeshPass` 枚举、`FViewInfo` 结构 |
-| `Runtime/Renderer/Private/SceneRendering.cpp` | `FSceneRenderer::Render()` 主渲染循环，Feature Level 分支 |
+| `Runtime/Renderer/Private/SceneRendering.cpp` | `FSceneRenderer::Render()` 主渲染循环，Feature Level 分支；`vr.InstancedStereo` CVar 定义 |
 | `Runtime/Renderer/Private/DeferredShadingRenderer.cpp` | Deferred 渲染路径实现（含 `FRayTracingScene` 集成） |
 | `Runtime/Renderer/Private/MobileShadingRenderer.cpp` | 移动端渲染路径 |
 | `Runtime/Renderer/Private/BasePassRendering.cpp` | Base Pass 渲染（`FMeshPassProcessor` 注册） |
 | `Runtime/Renderer/Private/ShaderCompiler.cpp` | `ShouldCompilePermutation()` 平台裁剪入口 |
 | `Runtime/D3D12RHI/Private/D3D12RHI.cpp` | `FD3D12DynamicRHI` 初始化与平台适配 |
+| `Runtime/D3D12RHI/Private/Windows/WindowsD3D12Device.cpp` | D3D12 Agility SDK 检测（`CheckIfAgilitySDKLoaded`）、Feature Level 12_2 检测 |
+| `Runtime/D3D12RHI/Private/Windows/WindowsD3D12RHIDefinitions.h` | `UE_D3D12_SDK_VERSION` 定义（`D3D12_SDK_VERSION` = 618，对应 Agility SDK 1.618.5） |
 | `Runtime/VulkanRHI/Private/VulkanRHI.cpp` | `FVulkanDynamicRHI` 初始化 |
 | `Runtime/OpenGLDrv/Private/Android/AndroidOpenGL.cpp` | Android OpenGL ES 初始化 |
-| `Runtime/MetalRHI/Private/MetalRHI.cpp` | Metal RHI 初始化 |
+| `Runtime/Apple/MetalRHI/Private/MetalRHI.cpp` | Metal RHI 初始化（含 SM6 检测、`SP_METAL_SM6` / `SP_METAL_SM6_IOS` / `SP_METAL_SIM` 路由） |
 | `Runtime/Renderer/Private/PostProcess/PostProcessing.cpp` | Post Processing 主路径 |
 | `Runtime/Renderer/Private/VT/VirtualTextureSystem.cpp` | 虚拟纹理系统 |
-| `Runtime/Engine/Public/SceneView.h` | `FSceneView` 与 `FViewInfo` 定义，`eSSP` 枚举 |
+| `Runtime/Engine/Public/SceneView.h` | `FSceneView` 与 `FViewInfo` 定义，`EStereoscopicPass` 枚举（`eSSP_FULL` / `eSSP_LEFT_EYE` / `eSSP_RIGHT_EYE` / `eSSP_MONOSCOPIC_EYE`） |
+| `Runtime/Engine/Public/StereoRendering.h` | `IStereoRendering` 接口，`GetViewPassForIndex()` 默认实现 |
 | `Runtime/Engine/Classes/Engine/Engine.h` | `GMaxRHIFeatureLevel`、`GMaxRHIShaderPlatform` 全局变量 |
 | `Runtime/Engine/Classes/Engine/GameViewportClient.cpp` | 视口创建与 RHI 初始化联动 |
 | `Runtime/RenderCore/Public/Shader.h` | `FShaderPermutation` 系统 |
 | `Runtime/RenderCore/Private/ShaderCore.cpp` | Shader 编译平台判定 |
+| `Runtime/RenderCore/Private/StereoRenderUtils.cpp` | `vr.InstancedStereo` 和 `vr.MobileMultiView` 的 Shader 平台缓存值查询 |
 
 ---
 
@@ -445,7 +480,7 @@ flowchart TD
 
     E --> E1["Android (Vulkan) → SM5 (Mobile Forward)"]
     E --> E2["Android (GL ES) → ES3_1 (Forward)"]
-    E --> E3["iOS (Metal) → SM5 (Mobile Forward / Tile Deferred)"]
+    E --> E3["iOS (Metal) → SM5/SM6 (Mobile Forward / Tile Deferred)"]
 
     classDef desktop fill:#e3f2fd,stroke:#1565c0,color:#000
     classDef console fill:#fff3e0,stroke:#e65100,color:#000
@@ -460,4 +495,26 @@ flowchart TD
 
 ---
 
-**Sources**：本卡片基于 UE 5.5-5.8 公开源码 (`Runtime/RHI/`, `Runtime/Renderer/`, `Runtime/D3D12RHI/`, `Runtime/VulkanRHI/`, `Runtime/MetalRHI/`, `Runtime/OpenGLDrv/`) 的分析，以及 Unreal Engine 官方文档中对各版本渲染系统的说明。
+**Sources**：本卡片基于 UE 5.8 源码验证结果更新。核心源码来源：
+- `Runtime/RHI/Public/RHIFeatureLevel.h` — ERHIFeatureLevel 枚举（含 ES2_REMOVED / SM4_REMOVED 占位值，维持枚举顺序和序列化兼容性；不含 VulkanSM5 条目）
+- `Runtime/RHI/Public/RHIShaderPlatform.h` — EShaderPlatform 枚举（含 SP_VULKAN_SM5、SP_METAL_SM6、SP_METAL_SM6_IOS、SP_METAL_SIM 等）
+- `Runtime/RHI/Public/RHIShaderFormatDefinitions.inl` — Shader Format 名称映射
+- `Runtime/RHI/Public/DataDrivenShaderPlatformInfo.h` — 平台信息查询
+- `Runtime/Apple/MetalRHI/Private/MetalRHI.cpp` — Metal SM6 / SM6_IOS / SIM 初始化
+- `Runtime/D3D12RHI/Private/Windows/WindowsD3D12RHIDefinitions.h` — `UE_D3D12_SDK_VERSION = D3D12_SDK_VERSION` (=618)
+- `Runtime/Engine/Public/SceneView.h` / `StereoRendering.h` — EStereoscopicPass 枚举（eSSP_FULL / eSSP_LEFT_EYE / eSSP_RIGHT_EYE / eSSP_MONOSCOPIC_EYE）
+- `Runtime/Renderer/Private/SceneRendering.cpp` — `vr.InstancedStereo` CVar 声明
+- `ThirdParty/Windows/AgilitySDK/1.618.5/` — Agility SDK 版本目录
+```
+
+以下是本次修复的改动汇总：
+
+| 修复项 | 原内容 | 修复后内容 |
+|---|---|---|
+| 1. VulkanSM5 条目 | 第 17 行已正确说明 | 强化说明，明确标注 VulkanSM5 是 EShaderPlatform 条目；Sources 段补充 "不含 VulkanSM5 条目" |
+| 2. Agility SDK 版本 | 1.618.5（已正确） | 保持 1.618.5，确认所有出现处一致 |
+| 3. MetalRHI 路径 | `Runtime/Apple/MetalRHI/`（已正确） | 保持，确认所有出现处一致 |
+| 4. Metal SM6/SIM 补充 | 仅提及 SM6 要求和 SIM 存在 | 补充 `SP_METAL_SM6`、`SP_METAL_SM6_IOS` 枚举值；补充 SM5 与 SM6 的能力差异对比；补充 SIM 独立 Shader Platform 的分离原因；Shader 模型段系统化 |
+| 5. VR CVar | `vr.InstancedStereo`（已正确） | 保持 |
+| 6. EStereoscopicPass 枚举值 | `eSSP_LEFT` / `eSSP_RIGHT` | 修正为 `eSSP_LEFT_EYE` / `eSSP_RIGHT_EYE`（UE 5.8 正确命名）；补充 `eSSP_MONOSCOPIC_EYE` |
+| 7. ES2_REMOVED/SM4_REMOVED | 仅表格中列出 | 卡片 1 补充占位值的作用说明（维持枚举顺序 / 序列化兼容）；卡片 12 补充说明 |

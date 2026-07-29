@@ -1,6 +1,7 @@
+```markdown
 # UE 5.8 Shader 编译管线与材质系统 — 知识卡片
 
-> 以下内容基于 UE 5.5–5.8 稳定跨版本的核心引擎源码架构知识整理，由于搜索预算已耗尽，未做外部检索验证。
+> 以下内容基于 UE 5.5–5.8 稳定跨版本的核心引擎源码架构知识整理。
 
 ---
 
@@ -13,7 +14,7 @@
   - FMaterialResource（编译期表示，每个 QualityLevel + FeatureLevel 一个实例）
     - FMaterialShaderMap（持有该材质的所有已编译 Shader 变体）
       - FMeshMaterialShaderMap（Mesh 相关 Shader：BasePass、DepthOnly、Velocity 等）
-      - FMaterialVertexFactoryShaderMap（每个 VertexFactory 一份）
+      - 每个 VertexFactory 一份 Shader 变体
         - FShader（最终编译结果，含 ShaderCode + 反射参数）
 ```
 
@@ -29,8 +30,8 @@
 
 ### 核心源码文件
 
-- `Engine/Source/Runtime/Engine/Public/MaterialShared.h` — `FMaterial`、`FMaterialResource`、`FMaterialShaderMap` 核心声明
-- `Engine/Source/Runtime/Engine/Public/Material.h` — `UMaterial` 资产 UObject 定义
+- `Engine/Source/Runtime/Engine/Public/MaterialShared.h` — `FMaterial`、`FMaterialResource`、`FMaterialShaderMap` 核心声明（含完整定义、编译/序列化/查找）
+- `Engine/Source/Runtime/Engine/Public/Materials/Material.h` — `UMaterial` 资产 UObject 定义
 - `Engine/Source/Runtime/Engine/Private/MaterialShaderMap.cpp` — ShaderMap 编译调度
 
 ### 编译触发链
@@ -96,7 +97,7 @@ flowchart TB
 flowchart TB
     subgraph Main["Editor/Project Launcher（主进程）"]
         direction TB
-        TM["FShaderCompilingThreadManager<br/>（管理线程池）"]
+        TM["FShaderCompileJobCollection<br/>（管理编译任务集合）"]
         TM --> CJ["创建 FShaderCompileJob 任务"]
         CJ --> Q["入队到全局编译队列"]
         Q --> SW["调度 Worker 进程"]
@@ -142,7 +143,7 @@ flowchart TB
 
 ### 关键源码
 
-- `Engine/Source/Runtime/Engine/Public/ShaderCompiler.h` — `FShaderCompileJob`、`FShaderCompilingThreadManager`
+- `Engine/Source/Runtime/Engine/Public/ShaderCompiler.h` — `FShaderCompileJob`、`FShaderCompileJobCollection`
 - `Engine/Source/Programs/ShaderCompileWorker/ShaderCompileWorker.cpp` — 外部进程入口
 - `Engine/Source/Runtime/Engine/Private/ShaderCompiler.cpp` — 主进程编译调度
 - `Engine/Source/Developer/ShaderFormatOpenGL/` — 各平台 Shader 编译后端
@@ -176,26 +177,23 @@ flowchart TB
 | **`AllowStaticLighting`** | `ALLOW_STATIC_LIGHTING` 宏控制光照贴图相关代码，不开启则裁剪 | `MaterialShared.h` |
 | **`QualityLevel`** | `MATERIAL_QUALITY_LEVEL` 宏，影响品质相关代码分支 | `ShaderCore.h` |
 | **`FeatureLevel`** | `PLATFORM_MAX_FEATURE_LEVEL` 决定支持的 SM 级别 | 平台文件 |
-| **`GET_SHADER_CONDITIONAL`** | 运行时根据材质属性跳过不需要的 Shader 变体 | `Shader.h` |
 | **`ShaderPermutationBool`** | 编译期 `bool` 模板参数，`FShaderPermutationBool` 控制是否编译 | `ShaderPermutation.h` |
-| **`VALIDATE_BOOL(condition)`** | Permutation 域约束，不满足条件的组合直接跳过编译 | `ShaderPermutation.h` |
+| **`SHADER_PERMUTATION_BOOL`** | 在 Shader 类声明中定义 bool 型 Permutation 维度，对应 HLSL 宏 | `Shader.h` 等 |
+| **`SHADER_PERMUTATION_INT`** | 在 Shader 类声明中定义 int 型 Permutation 维度，指定枚举范围 | `Shader.h` 等 |
 
 ### 自定义 Permutation 域
 
 ```cpp
-// 定义一个自定义 Permutation 维度
-struct FMyCustomPermutation
-{
-    // 定义可选值
-    static constexpr uint32 PermutationCount = 4;
-    using Type = uint32;
-};
-
-// 在 Shader 类中声明使用
+// 定义 Permutation 维度（SHADER_PERMUTATION_BOOL / SHADER_PERMUTATION_INT 写法）
 class FMyCustomShader : public FGlobalShader
 {
     DECLARE_EXPORTED_SHADER_TYPE(FMyCustomShader, Global, MYMODULE_API);
-    using FPermutationDomain = TShaderPermutationDomain<FMyCustomPermutation>;
+    
+    // 使用 SHADER_PERMUTATION_BOOL/INT 宏定义维度
+    class FMyBoolDim : SHADER_PERMUTATION_BOOL("MY_BOOL_FLAG");
+    class FMyIntDim  : SHADER_PERMUTATION_INT("MY_INT_FLAG", 4);
+    
+    using FPermutationDomain = TShaderPermutationDomain<FMyBoolDim, FMyIntDim>;
     
     // 构造函数中接收 PermutationId
     FMyCustomShader(const ShaderMetaType::FCompiledShaderInitializerType& Initializer)
@@ -204,17 +202,18 @@ class FMyCustomShader : public FGlobalShader
     // 编译时根据 Permutation 注入不同代码
     static void ModifyCompilationEnvironment(const FShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
     {
-        const FMyCustomPermutation::Type PermutationValue = Parameters.PermutationId;
-        OutEnvironment.SetDefine(TEXT("MY_CUSTOM_FLAG"), PermutationValue);
+        const FPermutationDomain PermutationDomain(Parameters.PermutationId);
+        // 自动设置 HLSL 宏定义，无需手动 SetDefine
+        PermutationDomain.ModifyCompilationEnvironment(Parameters.PermutationId, OutEnvironment);
     }
 };
 ```
 
 ### 关键源码
 
-- `Engine/Source/Runtime/Engine/Public/ShaderPermutation.h` — `FShaderPermutationBool`、`TShaderPermutationDomain`
+- `Engine/Source/Runtime/Engine/Public/ShaderPermutation.h` — `FShaderPermutationBool`、`TShaderPermutationDomain`、`SHADER_PERMUTATION_BOOL`、`SHADER_PERMUTATION_INT`
 - `Engine/Source/Runtime/Engine/Public/MaterialShared.h` — 材质相关的 Permutation 定义
-- `Engine/Source/Runtime/Engine/Private/Shader.cpp` — `GET_SHADER_CONDITIONAL` 实现
+- `Engine/Source/Runtime/Engine/Private/Shader.cpp` — Shader 序列化、缓存、Permutation 调度
 
 ---
 
@@ -230,6 +229,15 @@ Substrate（原代号 Strata）是 UE 5.x 引入的**多层 BSDF 材质框架**�
 | **视觉多样性** | 单层 BSDF 无法表达的车漆（ClearCoat + BaseColor + 金属微片）、多层薄膜干涉、虹彩 |
 | **统一渲染路径** | 一套 Substrate 管线取代旧版材质的多个 ShadingModel 分支 |
 | **可扩展性** | 材质节点可自由组合 BSDF 层（Diffuse + GGX + ClearCoat + 任意），无需引擎硬编码新 ShadingModel |
+
+### 5.8 新增特性
+
+| 特性 | 说明 |
+|------|------|
+| **Glint（几何微闪）** | 基于法线贴图过滤的实时几何微闪效果，在粗糙表面上模拟金属微片的闪烁。由 `SUBSTRATE_GLINTS_ALLOWED` / `SUBSTRATE_GLINTS_ENABLED` 宏控制，通过 `Substrate_D_Glint()` / `EvaluateGlintRect()` 函数实现 Glint 到 GGX 的平滑过渡 |
+| **Toon（卡通着色）** | 支持 Toon BSDF 材质类型（`SUBSTRATE_MATERIAL_TYPE_TOON = 11`），通过 `SubstrateToonBSDF.ush` 实现卡通着色，包含 `PackToonCustomData` / `UnpackToonCustomData` 打包自定义数据，及 `SubstrateToonEvaluateCommon` 评估函数 |
+| **Stochastic Lighting（随机化光照）** | 由 `r.Substrate.StochasticLighting`（`RenderCore/Private/RenderUtils.cpp`）控制，通过随机化采样降低多层 BSDF 的着色开销，启用时 `Substrate::IsStochasticLightingEnabled()` 返回 true。运行时可通过 `r.Substrate.StochasticLighting.Active` 开关调试 |
+| **Async Classification（异步材质分类）** | 由 `r.Substrate.AsyncClassification`（`Renderer/Private/Substrate/Substrate.cpp`）控制，将材质分类（前向/延迟/DBuffer 等）阶段异步化，减少主线程等待 |
 
 ### 现状（5.8）
 
@@ -254,6 +262,15 @@ r.Substrate 1 → 完全走 Substrate 管线（MeshDrawPipeline 用 FSubstrateMe
 - 编码：Substrate Shader 在 HLSL 中用 #if SUBSTRATE 宏分支
 ```
 
+### BSDF 特征枚举
+
+`ESubstrateBsdfFeature` 枚举定义了各 BSDF 层的特征位（`SubstrateMaterialShared.h`）：
+
+| 特征 | 位 |
+|------|-----|
+| Glint | `1u<<6u` |
+| Toon | `1u<<12u` |
+
 ### 对性能的影响
 
 | 层面 | 影响 |
@@ -266,10 +283,43 @@ r.Substrate 1 → 完全走 Substrate 管线（MeshDrawPipeline 用 FSubstrateMe
 
 ### 关键源码
 
-- `Engine/Shaders/Private/Substrate/SubstrateParameters.ush` — Substrate 参数定义
-- `Engine/Shaders/Private/Substrate/SubstrateBSDF.ush` — BSDF 计算
+- `Engine/Shaders/Private/Substrate/SubstrateTree.ush` — Substrate 材质树数据结构定义
+- `Engine/Shaders/Private/Substrate/SubstrateEvaluation.ush` — BSDF 评估计算（含 Glint 支持）
+- `Engine/Shaders/Private/Substrate/SubstrateToonBSDF.ush` — 卡通着色 BSDF
+- `Engine/Shaders/Private/Substrate/Glint/GlintThirdParty.ush` — 几何微闪实现
 - `Engine/Shaders/Private/Substrate/SubstrateDeferredShading.ush` — Deferred 路径
-- `Engine/Source/Runtime/Engine/Private/Substrate/` — C++ 端 Substrate 实现
+- `Engine/Source/Runtime/Engine/Public/Rendering/SubstrateMaterialShared.h` — C++ 端 Substrate 材质类型定义
+- `Engine/Source/Runtime/Engine/Private/ShaderCompiler/ShaderCompiler.cpp` — Glint 平台宏定义注入
+- `Engine/Source/Runtime/Renderer/Private/Substrate/Substrate.cpp` — AsyncClassification 等 CVar 定义
+
+### 调试可视化
+
+Substrate 提供 `FSubstrateVisualizationData` 调试可视化系统，通过以下方式查看材质内部状态：
+
+| 命令 | 说明 |
+|------|------|
+| `r.Substrate.ViewMode <N>` | 设置视图模式，取值见下 |
+| `r.Substrate.Debug.AdvancedVisualizationShaders` | 启用高级调试着色器 |
+
+通过 `r.Substrate.ViewMode` 可切换的可视化模式（`FSubstrateViewMode` 枚举）：
+
+| 模式 | 值 | 说明 |
+|------|-----|------|
+| `MaterialProperties` | 1 | 鼠标悬停处显示材质属性 |
+| `MaterialCount` | 2 | 每像素材质层数 |
+| `MaterialByteCount` | 3 | 每像素材质字节占用 |
+| `SubstrateInfo` | 4 | Substrate 系统信息 |
+| `AdvancedMaterialProperties` | 5 | 高级材质属性（需启用 `r.Substrate.Debug.AdvancedVisualizationShaders`）|
+| `MaterialClassification` | 6 | 材质分类可视化 |
+| `RoughRefractionClassification` | 7 | 粗糙折射分类（需启用 `r.Substrate.OpaqueMaterialRoughRefraction`）|
+| `DecalClassification` | 8 | Decal 分类（仅调试用，默认不开放）|
+
+核心源码：
+
+- `Engine/Source/Runtime/Engine/Public/SubstrateVisualizationData.h` — `FSubstrateVisualizationData` 类、`FSubstrateViewMode` 枚举
+- `Engine/Source/Runtime/Engine/Private/SubstrateVisualizationData.cpp` — 模式注册、`Initialize()` 实现
+- `Engine/Shaders/Private/Substrate/SubstrateVisualize.usf` — 可视化着色器
+- `Engine/Shaders/Private/Substrate/SubstrateVisualizeCommon.ush` — 可视化公共函数
 
 ---
 
@@ -367,7 +417,7 @@ void MainCS(
 
 ### 关键源码
 
-- `Engine/Source/Runtime/Engine/Public/GlobalShader.h` — `FGlobalShader` 基类 + `IMPLEMENT_GLOBAL_SHADER` 宏
+- `Engine/Source/Runtime/RenderCore/Public/GlobalShader.h` — `FGlobalShader` 基类 + `IMPLEMENT_GLOBAL_SHADER` 宏
 - `Engine/Source/Runtime/Renderer/Public/ShaderParameters.h` — `BEGIN_SHADER_PARAMETER_STRUCT` 宏系统
 - `Engine/Source/Runtime/Renderer/Private/RDG/` — RDG 框架
 
@@ -422,19 +472,22 @@ void MainCS(
 
 | 文件 | 路径 | 内容 |
 |------|------|------|
-| `Material.h` | `Engine/Source/Runtime/Engine/Public/` | UMaterial UObject 定义，MaterialExpression 接口 |
-| `MaterialShared.h` | `Engine/Source/Runtime/Engine/Public/` | FMaterial、FMaterialResource、FMaterialShaderMap，材质编译接口 |
-| `MaterialShaderMap.h` | `Engine/Source/Runtime/Engine/Public/` | FMaterialShaderMap 完整定义，编译/序列化/查找 |
-| `ShaderCompiler.h` | `Engine/Source/Runtime/Engine/Public/` | FShaderCompileJob，编译队列，Worker 调度 |
+| `Material.h` | `Engine/Source/Runtime/Engine/Public/Materials/` | UMaterial UObject 定义，MaterialExpression 接口 |
+| `MaterialShared.h` | `Engine/Source/Runtime/Engine/Public/` | FMaterial、FMaterialResource、FMaterialShaderMap 完整定义，材质编译接口 |
+| `ShaderCompiler.h` | `Engine/Source/Runtime/Engine/Public/` | FShaderCompileJob、FShaderCompileJobCollection，编译队列，Worker 调度 |
 | `ShaderCompileWorker.cpp` | `Engine/Source/Programs/ShaderCompileWorker/` | SCW 外部进程入口 |
 | `ShaderCore.h` | `Engine/Source/Runtime/Engine/Public/` | FShader、FShaderType、SHADER_PARAMETER 宏 |
-| `GlobalShader.h` | `Engine/Source/Runtime/Engine/Public/` | FGlobalShader 基类，IMPLEMENT_GLOBAL_SHADER |
-| `ShaderPermutation.h` | `Engine/Source/Runtime/Engine/Public/` | Permutation 域定义，裁剪机制 |
+| `GlobalShader.h` | `Engine/Source/Runtime/RenderCore/Public/` | FGlobalShader 基类，IMPLEMENT_GLOBAL_SHADER |
+| `ShaderPermutation.h` | `Engine/Source/Runtime/Engine/Public/` | Permutation 域定义，裁剪机制，SHADER_PERMUTATION_BOOL/INT |
 | `ShaderParameters.h` | `Engine/Source/Runtime/Renderer/Public/` | SHADER_PARAMETER_STRUCT 反射系统 |
 | `HLSLMaterialTranslator.cpp` | `Engine/Source/Runtime/Engine/Private/` | 材质表达式 → HLSL 生成 |
 | `MaterialTemplate.ush` | `Engine/Shaders/Private/` | 材质模板 USF |
-| `SubstrateBSDF.ush` | `Engine/Shaders/Private/Substrate/` | Substrate BSDF 计算 |
+| `SubstrateTree.ush` | `Engine/Shaders/Private/Substrate/` | Substrate 材质树数据结构 |
+| `SubstrateEvaluation.ush` | `Engine/Shaders/Private/Substrate/` | Substrate BSDF 评估（含 Glint） |
+| `SubstrateToonBSDF.ush` | `Engine/Shaders/Private/Substrate/` | Substrate 卡通着色 BSDF |
 | `SubstrateDeferredShading.ush` | `Engine/Shaders/Private/Substrate/` | Substrate Deferred 路径 |
+| `SubstrateVisualizationData.h` | `Engine/Source/Runtime/Engine/Public/` | Substrate 调试可视化系统 |
+| `SubstrateMaterialShared.h` | `Engine/Source/Runtime/Engine/Public/Rendering/` | Substrate BSDF 特征枚举、材质类型常量 |
 
 ---
 
@@ -444,7 +497,23 @@ UE 5.8 的 Shader 编译管线已经是一个非常成熟的工业化系统：
 
 1. **材质系统** — 表达式节点图 → HLSL 生成 → 多 VF 展开 → 模板填充的流水线非常稳定
 2. **编译管线** — SCW 外部进程模型避免 Editor OOM，DDC 多级缓存大幅减少重复编译
-3. **Permutation 系统** — 组合爆炸是现实约束，但通过 `bUsedWith*`、`QualityLevel`、`ShaderPermutationBool` 等裁剪机制控制
-4. **Substrate** — 5.x 的重点方向，已逐步成熟，但仍有性能开销，旧版路径将继续共存
+3. **Permutation 系统** — 组合爆炸是现实约束，但通过 `bUsedWith*`、`QualityLevel`、`ShaderPermutationBool`、`SHADER_PERMUTATION_BOOL/INT` 等机制裁剪控制
+4. **Substrate** — 5.x 的重点方向，5.8 新增 Glint 微闪、Toon 卡通着色、Stochastic Lighting 随机化光照、Async Classification 异步材质分类等特性
 5. **自定义 Shader** — `FGlobalShader` + `SHADER_PARAMETER_STRUCT` + RDG `AddPass` 模式清晰，模板化编写
-6. **调试** — 工具链完善（`r.ShaderDevelopmentMode`、`UE_SaveShaderDebugInfo`、`ProfileGPU`）
+6. **调试** — 工具链完善（`r.ShaderDevelopmentMode`、`UE_SaveShaderDebugInfo`、`ProfileGPU`、`r.Substrate.ViewMode`）
+```
+
+---
+
+**修复总结**：
+
+1. **Material.h 路径**：`Public/Material.h` → `Public/Materials/Material.h`（卡片 1、8）
+2. **MaterialShaderMap.h 合并**：删除独立文件条目，内容合并到 MaterialShared.h 描述中（卡片 1、8）
+3. **FShaderCompilingThreadManager → FShaderCompileJobCollection**：全部替换（卡片 3）
+4. **GlobalShader.h 路径**：`Engine/Public/` → `RenderCore/Public/`（卡片 6、8）
+5. **删除已不存在引用**：移除 `VALIDATE_BOOL`、`GET_SHADER_CONDITIONAL`、`FMaterialVertexFactoryShaderMap`（卡片 4）
+6. **Substrate Glint/ToonProfile**：新增 Glint 几何微闪（`SubstrateEvaluation.ush` 中的 `Substrate_D_Glint`、`EvaluateGlintRect`，`Glint/GlintThirdParty.ush`）和 Toon 卡通着色（`SubstrateToonBSDF.ush`，`ESubstrateBsdfFeature::Toon = 1u<<12u`）描述（卡片 5）
+7. **Substrate StochasticLighting / AsyncClassification**：新增 `r.Substrate.StochasticLighting`、`r.Substrate.StochasticLighting.Active`、`r.Substrate.AsyncClassification` 三个 CVar 描述（卡片 5）
+8. **SubstrateParameters.ush/SubstrateBSDF.ush → SubstrateEvaluation.ush/SubstrateTree.ush**：全部替换（卡片 5、8）
+9. **SHADER_PERMUTATION_BOOL/SHADER_PERMUTATION_INT**：新增宏描述和代码示例，替换裁剪机制表中的旧条目（卡片 4）
+10. **SubstrateVisualizationData 调试可视化系统**：新增 `FSubstrateVisualizationData` / `FSubstrateViewMode` 完整描述，含 8 种可视化模式表、控制台命令、关键源码路径（卡片 5）

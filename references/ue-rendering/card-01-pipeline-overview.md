@@ -1,536 +1,600 @@
-# UE 5.8 渲染管线架构 — 知识卡片
+```markdown
+# UE 5.8 Render Graph (RDG) 知识卡片
+
+## 术语说明
+
+| 术语 | 说明 |
+|------|------|
+| Transient 资源 | 仅在一次 RDG Execution 内有效的临时资源，由 RDG 自动分配和回收 |
+| Barrier | GPU 资源状态转换屏障，保证读写顺序正确 |
+| Pass Culling | 编译阶段剔除无下游消费者的 Pass，减少无效 GPU 工作 |
+| 资源别名（Aliasing） | 生命周期不重叠的多个 Transient 资源共享同一块 GPU 物理内存 |
 
 ---
 
-## 一、渲染线程架构
+## 1. RDG 核心概念
 
-### 卡片 1：三级流水线（Main → Render → RHI）
+### FRDGBuilder 生命周期
 
-**概念名**：`3-Tier Rendering Pipeline`
+```cpp
+FRDGBuilder GraphBuilder(RHICmdList);   // 创建：绑定 RHI CommandList
+// ... 注册 Pass、声明资源 ...
+GraphBuilder.Execute();                   // 执行：编译 → 分配 → 调度 → 清理
+// 析构时自动销毁所有 Transient 资源
+```
 
-**一句话定义**：UE 将一帧的渲染工作分散到三个线程，每一级生产下一级消费的 command batch，流水线并行。
+**三阶段模型：**
 
-**关键源码/类名**：
-- `FRenderThread` — 启动于 `StartRenderingThread()`（`RenderingThread.cpp`）
-- `RHI Thread` — 启动于 `RHIInit()`（`RHICommandList.cpp`）
-- `FGraphEventRef` — Render → RHI 同步的原语
-- `FRenderCommandFence` — 主线程等渲染线程完成
+| 阶段 | 行为 | 可做什么 |
+|------|------|----------|
+| **Setup**（构造后） | 仅注册 Pass 和资源声明，不分配 GPU 内存 | `CreateTexture` / `AddPass` / `RDG_TEXTURE_ACCESS` |
+| **Compile**（Execute 入口） | 推导资源生命周期、裁剪无用 Pass、计算内存别名 | 不可干预 |
+| **Execute**（Compile 后） | 分配 Transient 资源、按拓扑序执行 Pass、插入 Barrier、释放资源 | 只读访问已注册 Pass 的结果 |
 
-**关系**：
+### Pass 注册方式
+
+**Lambda Pass（最常用，轻量）：**
+
+```cpp
+GraphBuilder.AddPass(
+    RDG_EVENT_NAME("MyPass"),
+    Inputs,
+    ERDGPassFlags::Raster | ERDGPassFlags::NeverCull,
+    [&](FRHICommandList& RHICmdList)
+    {
+        // 实际渲染指令
+    });
+```
+
+**无参数 Pass（不依赖任何 RDG 资源）：**
+
+```cpp
+GraphBuilder.AddPass(
+    RDG_EVENT_NAME("MyGlobalPass"),
+    ERDGPassFlags::None,
+    [](FRHICommandList& RHICmdList)
+    {
+        // 无 RDG 资源依赖的纯 RHI 操作
+    });
+```
+
+**Dispatch Pass（并行录制多条 CommandList）：**
+
+```cpp
+GraphBuilder.AddDispatchPass(
+    RDG_EVENT_NAME("MyDispatchPass"),
+    Parameters,
+    ERDGPassFlags::Compute,
+    [](FRDGDispatchPassBuilder& Builder)
+    {
+        // 创建 CommandList 并录制命令
+        FRHICommandList* CmdList = Builder.CreateCommandList();
+        // ... 录制渲染命令 ...
+        // 每个 CommandList 需要调用 FinishRecording()
+    });
+```
+
+### 资源创建与注册（FRDGBuilder 成员函数）
+
+| 函数 | 语义 | 生命周期 |
+|------|--------|----------|
+| `GraphBuilder.CreateTexture(Desc, Name, Flags)` | 创建 Transient Texture | 仅在此 RDG Execution 内有效 |
+| `GraphBuilder.CreateBuffer(Desc, Name, Flags)` | 创建 Transient Buffer | 同上 |
+| `GraphBuilder.RegisterExternalTexture(PooledRT, Name, Flags)` | 导入外部已有 Texture | 调用者管理生命周期 |
+| `GraphBuilder.RegisterExternalBuffer(PooledBuffer, Name, Flags)` | 导入外部已有 Buffer | 同上 |
+
+### 资源使用声明
+
+每个 Pass 的参数结构体通过 `RDG_TEXTURE_ACCESS` / `RDG_BUFFER_ACCESS` 等宏声明资源的使用方式，RDG 据此推导 Barrier：
+
+```cpp
+BEGIN_SHADER_PARAMETER_STRUCT(FMyPassParameters, )
+    RDG_TEXTURE_ACCESS(MyInput,  ERHIAccess::SRVGraphics)   // 只读输入
+    RDG_TEXTURE_ACCESS(MyOutput, ERHIAccess::UAVGraphics)   // 可写输出
+    RDG_BUFFER_ACCESS(MyBuffer,  ERHIAccess::IndirectArgs)  // Indirect 参数
+    RDG_EVENT_SCOPE(EventScope)                              // GPU Profile 域
+END_SHADER_PARAMETER_STRUCT()
+```
+
+### 资源生命周期推导机制
+
+RDG 在 Compile 阶段对每个资源执行：
+
+1. **首次使用** —— 资源创建（或从外部导入）
+2. **最后使用** —— 资源可回收 / 销毁
+3. **使用区间推导** —— 遍历所有 Pass 的依赖图，计算每个资源的 `FirstPass` 和 `LastPass`
+4. **内存分配** —— Transient 资源共享同一块物理内存池，时间不重叠的别名资源复用同一块
+
+---
+
+## 2. Pass 类型
+
+### Pass 类体系（5.8）
+
+```
+FRDGPass（基类）
+├── TRDGLambdaPass<ParameterStructType, ExecuteLambdaType>  // Lambda Pass（最常用）
+├── TRDGEmptyLambdaPass<ExecuteLambdaType>                   // 无参数 Pass
+├── FRDGDispatchPass                                        // Dispatch Pass
+│   └── TRDGDispatchPass<ParameterStructType, LaunchLambdaType>
+└── FRDGSentinelPass                                        // Prologue / Epilogue Pass（框架内部）
+```
+
+UE 5.8 不再提供 `FRDGPipelineStatePass`、`FRDGAsyncComputePass`、`FRDGPostProcessPass` 等具名 Pass 基类。所有用户自定义 Pass 通过 `AddPass` / `AddDispatchPass` 模板函数以 Lambda 形式注册。
+
+### Lambda Pass 的 RHI CommandList 类型
+
+Lambda 参数类型决定 Pass 执行模式：
+
+| Lambda 参数类型 | TaskMode | 执行方式 |
+|----------------|----------|----------|
+| `FRHICommandListImmediate&` | `Inline` | 渲染线程内联执行（默认） |
+| `FRHICommandList&` | `Await` | 并行 Task 执行，Execute 末尾 await |
+| `FRDGAsyncTask, FRHICommandList&` | `Async` | 并行 Task 执行，手动 await |
+
+### Lambda Pass vs Dispatch Pass
+
+| 维度 | Lambda Pass | Dispatch Pass |
+|------|-------------|--------------|
+| API | `AddPass` | `AddDispatchPass` |
+| Lambda 参数 | `FRHICommandList&` | `FRDGDispatchPassBuilder&` |
+| CommandList 数 | 单条 | 多条（`CreateCommandList` 创建） |
+| 适用场景 | 通用 Pass | 并行录制多个 CommandList |
+| 执行模式 | Inline / Await / Async | Async（框架内部管理） |
+
+### ERDGPassFlags 完整列表
+
+| Flag | 语义 |
+|------|------|
+| `None` | 无跟踪输入输出（仅参数缺失的 `AddPass`） |
+| `Raster` | Graphics 管线上的光栅化 Pass |
+| `Compute` | Graphics 管线上的 Compute Pass |
+| `AsyncCompute` | 异步计算队列上的 Compute Pass |
+| `Copy` | Graphics 管线上的 Copy Pass |
+| `NeverCull` | 禁止裁剪（有副作用的 Pass 必须加） |
+| `SkipRenderPass` | 跳过 RHI RenderPass begin/end，仅 `Raster` 可用 |
+| `NeverMerge` | 禁止 RenderPass 合并 |
+| `NeverParallel` | 强制在渲染线程执行，不进并行 Task |
+| `Readback` | `Copy \| NeverCull`，用于回读到 Staging 资源 |
+
+---
+
+## 3. 资源管理细节
+
+### 外部资源导入
+
+```cpp
+// 步骤 1: 注册外部资源
+FRDGTextureRef ExternalRDG = GraphBuilder.RegisterExternalTexture(
+    ExternalPooledRT,
+    TEXT("ExternalTexture"));
+
+// 步骤 2: 在 Pass 参数中引用
+// 步骤 3: Execute 结束后，外部资源回到调用者手中
+// 调用者负责 Release / 复用
+```
+
+**关键规则：**
+- `RegisterExternalTexture` 不获取所有权，RDG 不负责销毁
+- 外部资源在整个 RDG Execution 期间回到原始状态
+- 常用于跨帧传递（从上一帧的 RDG 输出导入当前帧）
+
+### Transient 资源的分配与回收
 
 ```mermaid
 flowchart TB
-    GT["主线程（GameThread）"] -->|EnqueueRenderCommand| RT["渲染线程（RenderThread）"]
-    RT --> RHI["RHIThread（或 immediate）"]
-    RHI --> GPU["GPU（通过 RHI 抽象）"]
-
-    classDef tier fill:#e3f2fd,stroke:#1565c0,color:#000
-    class GT,RT,RHI,GPU tier
+    subgraph Compile["Compile 阶段"]
+        C1["遍历所有资源，计算 FirstPass / LastPass"]
+        C2["构建 Transient Resource Allocator"]
+        C3["按生命周期做内存别名（Aliasing）"]
+        C4["分配物理内存池（一大块 GPU 内存）"]
+        C1 --> C2 --> C3 --> C4
+    end
+    subgraph Execute["Execute 阶段"]
+        E1["按 Pass 拓扑序执行"]
+        E2["Pass N 开始前，分配其 FirstUse 资源"]
+        E3["Pass N 结束后，释放其 LastUse 资源"]
+        E4["所有 Pass 完成后，释放整个 Transient 池"]
+        E1 --> E2 --> E3 --> E4
+    end
+    C4 -.->|"分配结果"| E1
+    classDef phase fill:#e3f2fd,stroke:#1565c0,color:#000
+    class Compile,Execute phase
 ```
 
-- 主线程：Gameplay tick、生成 `FSceneView`、`FSceneViewState`、调用 `FSceneRenderer::Draw` 入口
-- 渲染线程：执行 `FSceneRenderer::Render`，构建 RDG，提交 RHI commands
-- RHI 线程：从 `FRHICommandList` 中 pop 已烘焙的 command，转换为底层 API 调用
+### 跨 RDG Execution 的持久化资源传递
 
-**常见坑**：
-- 若 `r.RHIThread.Enable` 为 0，RHI 命令在渲染线程直接执行（immediate mode），排查同步问题时先确认这个 cvar。
-- `FRenderCommandFence::Wait()` 会在主线程阻塞，不能频繁调用；`ENQUEUE_RENDER_COMMAND` 的 lambda 内不能持有主线程同步对象（死锁风险）。
-- 渲染线程 crash 时常用 `r.RenderThread.Suspend` 冻结后 attach 调试器，或在 `RenderThread.cpp` 的 `FRenderingThread` 函数设断点。
+```cpp
+// 帧 N: 输出需要跨帧保留的资源
+FRDGTextureRef Output = GraphBuilder.CreateTexture(Desc, TEXT("Persistent"));
+// ... 在 Pass 中写入 Output ...
+GraphBuilder.QueueTextureExtraction(Output, &OutExtractedTextureRef);
+// Execute 后，OutExtractedTextureRef 持有 IPooledRenderTarget
 
----
+// 帧 N+1: 导入上一帧保留的资源
+FRDGTextureRef PrevFrameInput = GraphBuilder.RegisterExternalTexture(
+    OutExtractedTextureRef, TEXT("PrevFrameInput"));
+```
 
-### 卡片 2：FSceneRenderer 的 Tick 流程
+**`QueueTextureExtraction` / `QueueBufferExtraction`** 是跨帧传递的唯一通道。提取出的资源从 Transient 池迁移到调用者管理的生命周期。
 
-**概念名**：`SceneRenderer Tick`
+### 资源别名（Aliasing）的内存复用
 
-**一句话定义**：`FSceneRenderer::Draw` 是每帧渲染线程的入口，内部按固定顺序调用 PreRender → InitViews → Render → PostRender → ComputeAndMarkRelevantGPUQueries。
-
-**关键源码/类名**：
-- `FSceneRenderer::Draw` — `SceneRendering.cpp:Draw`
-- `FSceneRenderer::PreRender` — `SceneRendering.cpp`
-- `FSceneRenderer::InitViews` — `SceneVisibility.cpp`
-- `FSceneRenderer::Render` — 虚函数，由子类实现
-- `FSceneRenderer::PostRender` — `SceneRendering.cpp`
-- `FSceneRenderer::ComputeAndMarkRelevantGPUQueries` — `SceneRendering.cpp`
-
-**关系**：
+RDG 的 Transient Resource Allocator 的核心优化：生命周期不重叠的资源共享同一块 GPU 物理内存。
 
 ```mermaid
 flowchart LR
-    Draw["Draw（入口）"] --> PreRender["PreRender<br/>清缓存、重置统计、延迟删除 resource"]
-    PreRender --> InitViews["InitViews<br/>可见性裁剪、阴影投影计算、Lumen 场景更新"]
-    InitViews --> Render["Render（虚函数）<br/>核心渲染（Deferred / Mobile）"]
-    Render --> PostRender["PostRender<br/>收尾、dispatch GPU 查询"]
-    PostRender --> Queries["ComputeAndMarkRelevantGPUQueries<br/>GPU 时间戳/遮挡查询聚合"]
-
-    classDef entry fill:#e8f5e9,stroke:#2e7d32,color:#000
-    classDef phase fill:#fff3e0,stroke:#e65100,color:#000
-    class Draw entry
-    class PreRender,InitViews,Render,PostRender,Queries phase
+    A["PassA 使用资源 X"] --> B["X 最后使用"]
+    B --> C["PassB 使用资源 Y"]
+    C --> D["X 和 Y 生命周期不重叠\n→ 共享同一块 GPU 内存地址\n→ 节省显存"]
+    classDef result fill:#fff3e0,stroke:#e65100,color:#000
+    class D result
 ```
 
-**常见坑**：
-- `PreRender` 里 `FScene::UpdateAllPrimitiveSceneInfos` 是 Primitive 增删改的延迟更新点。如果自定义 `FSceneRenderer` 子类跳过 `PreRender`，Primitive 变更不生效。
-- `InitViews` 是渲染管线中 CPU 最重的阶段之一（可见性排序 + shadow map 分配），`r.ShadowQuality` 和 `r.ViewDistanceScale` 直接影响其耗时。
-- 不要假设 `Render` 函数内访问 `FScene` 的 Primitive 列表是安全的——`InitViews` 已经做了可见性过滤，应使用 `FPrimitiveSceneInfo` 的 `Visible` 标记。
+**实现：** `IRHITransientResourceAllocator` 在 Compile 阶段构建一个区间分配问题，求解最小内存峰值。一个分配块可以被多个资源的时间片复用。
+
+### ERDGTextureFlags 完整列表
+
+| Flag | 语义 |
+|------|------|
+| `None` | 默认 |
+| `MultiFrame` | 标记跨帧存活（多 GPU 交替帧渲染） |
+| `SkipTracking` | 跳过 RDG 状态跟踪，不自动插 Barrier（只读资源优化） |
+| `ForceImmediateFirstBarrier` | 首次 Barrier 不做 split-transition，留在首次使用 Pass 前 |
+| `MaintainCompression` | 阻止元数据解压缩 |
+
+### ERDGBufferFlags 完整列表
+
+| Flag | 语义 |
+|------|------|
+| `None` | 默认 |
+| `MultiFrame` | 标记跨帧存活 |
+| `SkipTracking` | 跳过 RDG 状态跟踪 |
+| `ForceImmediateFirstBarrier` | 首次 Barrier 不做 split-transition |
 
 ---
 
-### 卡片 3：Deferred vs Mobile 分支
+## 4. Barrier 管理
 
-**概念名**：`Renderer Branch`
+### RDG 如何自动推导 Barrier
 
-**一句话定义**：`FSceneRenderer::Render` 有两个主要子类实现，`FDeferredShadingSceneRenderer` 走延迟着色管线，`FMobileSceneRenderer` 走移动端前向着色管线。
+```mermaid
+flowchart LR
+    A["读取每个 Pass 的 RDG_TEXTURE_ACCESS 等声明"] --> B["对每个资源，计算相邻 Pass 之间的状态转换"]
+    B --> C["自动插入 FRHITransitionInfo 到 RHI CommandList"]
+    C --> D["对 Compute ↔ Graphics 队列切换也插入 Barrier"]
+    classDef step fill:#e3f2fd,stroke:#1565c0,color:#000
+    class A,B,C,D step
+```
 
-**关键源码/类名**：
-- `FDeferredShadingSceneRenderer::Render` — `DeferredShadingRenderer.cpp`
-- `FMobileSceneRenderer::Render` — `MobileShadingRenderer.cpp`
-- `FSceneRenderer::CreateSceneRenderer` — 工厂函数，根据 `r.MobileContent` 和 `ShaderPlatform` 选择分支
+UE 5.8 RDG 使用 `FRDGTransitionInfo` 描述 Barrier 信息，在 Compile 阶段通过 `FRDGTransitionCreateQueue` 生成 `FRHITransition` 对象。Barrier 类型由 `ERHIAccess` 的 before/after 状态推导，不再使用 `ERHITransitionType::Translate` / `CrossQueue` 等旧枚举。
 
-**关系**：
+### 手动 Barrier 覆盖
+
+```cpp
+GraphBuilder.AddPass(
+    RDG_EVENT_NAME("CustomPass"),
+    Parameters,
+    ERDGPassFlags::Raster | ERDGPassFlags::NeverCull,  // NeverCull 防止被裁剪
+    [&](FRHICommandList& RHICmdList)
+    {
+        // 手动插入 Barrier 覆盖自动推导
+        RHICmdList.Transition({
+            FRHITransitionInfo(TextureRHI, ERHIAccess::Unknown, ERHIAccess::RTV)
+        });
+        // ... 自定义渲染 ...
+    });
+```
+
+**`ERDGPassFlags::NeverCull` 的作用：**
+- 防止 RDG 认为此 Pass 无输出而被裁剪
+- 常用于有副作用的 Pass（写入外部资源、触发 Subpass 等）
+
+### 跨 Pass Texture 状态转换
+
+```
+Pass 1: Write → RTV
+    ↓ Barrier: RTV → SRVGraphics（自动）
+Pass 2: Read  → SRVGraphics
+    ↓ Barrier: SRVGraphics → UAVGraphics（自动）
+Pass 3: Write → UAVGraphics
+```
+
+RDG 保证每个资源在 Pass 边界上的状态是确定的。如果一个资源被多个 Pass 以不同方式使用，RDG 在 Pass 之间插入正确的 Transition。
+
+---
+
+## 5. 裁剪与执行
+
+### Pass Culling 机制
+
+```mermaid
+flowchart TD
+    A["标记所有 Pass 为「可能存活」"] --> B["从 Graph 的 EpiloguePass 反向遍历"]
+    B --> C{"无输出的 Pass？"}
+    C -->|"是"| D["标记为 Dead"]
+    C -->|"否"| E["标记为 NeverCull 的 Pass → 强制存活"]
+    D --> E
+    E --> F["标记为 Dead 的 Pass 不进入 Execute"]
+    classDef dead fill:#ffebee,stroke:#c62828,color:#000
+    classDef alive fill:#e8f5e9,stroke:#2e7d32,color:#000
+    class D,F dead
+    class E alive
+```
+
+**裁剪条件：**
+- Pass 的所有输出资源无下游消费者
+- Pass 未标记 `NeverCull`
+- 该 Pass 不是 Epilogue 的依赖
+
+### Execute 阶段完整流程
 
 ```mermaid
 flowchart TB
-    Base["FSceneRenderer（抽象基类）"]
-
-    Base --> Deferred["FDeferredShadingSceneRenderer<br/>← r.MobileContent=0（默认）"]
-    Base --> Mobile["FMobileSceneRenderer<br/>← r.MobileContent=1"]
-
-    Deferred --> DFlow["Render: BasePass → Lighting → PostProcessing"]
-    Mobile --> MFlow["Render: MobileBasePass → ForwardLighting → MobilePostProcessing"]
-
-    classDef base fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef deferred fill:#e8f5e9,stroke:#2e7d32,color:#000
-    classDef mobile fill:#fce4ec,stroke:#c62828,color:#000
-    class Base base
-    class Deferred,DFlow deferred
-    class Mobile,MFlow mobile
+    A["FRDGBuilder::Execute()"] --> B["1. Compile()"]
+    B --> B1["1a. 计算资源依赖图（DAG）"]
+    B --> B2["1b. Pass Culling"]
+    B --> B3["1c. 资源生命周期分析"]
+    B --> B4["1d. Transient 内存分配（别名优化）"]
+    B --> B5["1e. Barrier 推导"]
+    B1 --> B2 --> B3 --> B4 --> B5
+    B5 --> C["2. SetupResourceVisibility()\n标记哪些资源需要实际分配"]
+    C --> D["3. ExecutePasses()"]
+    D --> D1["3a. 按拓扑排序遍历 Pass 列表"]
+    D --> D2["3b. 每个 Pass 前：分配 FirstUse 资源 + 插入 Barrier"]
+    D --> D3["3c. 执行 Pass 的 Lambda / 虚函数"]
+    D --> D4["3d. 每个 Pass 后：释放 LastUse 资源"]
+    D1 --> D2 --> D3 --> D4
+    D4 --> E["4. Cleanup()"]
+    E --> E1["4a. 释放 Transient 资源池"]
+    E --> E2["4b. 执行 QueueExtraction 的回调"]
+    E --> E3["4c. 重置内部状态"]
+    E1 --> E2 --> E3
+    classDef phase fill:#e3f2fd,stroke:#1565c0,color:#000
+    classDef substep fill:#f5f5f5,stroke:#9e9e9e,color:#000
+    class A,B,C,D,E phase
+    class B1,B2,B3,B4,B5,D1,D2,D3,D4,E1,E2,E3 substep
 ```
 
-**常见坑**：
-- 不是所有 Pass 都走分支——`InitViews` 在基类 `FSceneRenderer` 中，Deferred 和 Mobile 共享可见性计算。
-- 自定义渲染功能若只改 `DeferredShadingRenderer.cpp`，移动端不生效；反之亦然。
-- 新增渲染 Feature 时，确认 Feature Level（`ERHIFeatureLevel::SM5 / ES3_1`）判定是否在 `FSceneRenderer` 基类级做分支切换。
-
----
-
-### 卡片 4：渲染线程同步机制
-
-**概念名**：`Render Sync Primitives`
-
-**一句话定义**：UE 提供三种同步原语让主线程与渲染线程协同，按需选择阻塞/异步/延续。
-
-**关键源码/类名**：
-- `FRenderCommandFence` — `RenderingThread.h`
-- `FGraphEventRef` — `Async/AsyncWork.h`
-- `ENQUEUE_RENDER_COMMAND(Type)` — `RenderingThread.h`
-- `FFrameNumber` + `FRHICommandListImmediate::Flush` — 低层级冲刷
-
-**关系**：
-
-| 同步方式 | 行为 | 适用场景 |
-|---|---|---|
-| `FRenderCommandFence::Wait()` | 主线程阻塞，直到 fence 之前所有渲染命令执行完毕 | 资源必须在渲染线程释放后才能安全销毁（如 `FRenderResource`） |
-| `FGraphEventRef` + CompletionList | 非阻塞等待：主线程可继续执行，通过事件回调获知渲染线程完成 | 异步加载等不急需结果的场景 |
-| `ENQUEUE_RENDER_COMMAND` | 异步提交，不等待 | 最常用模式，主线程将数据传给渲染线程 |
-
-**常见坑**：
-- `ENQUEUE_RENDER_COMMAND` 的 lambda **必须捕获 `FScene*` 或 `FRHIResource*` 的 shared ref**，不能裸指针 capture 后主线程释放了对象——渲染线程执行时读到 dangling pointer crash。
-- `FRenderCommandFence` 调用太频繁（每帧多次）会严重降低主线程吞吐量，因为它强制了主→渲染线程的同步点。
-- 调试时用 `r.RenderThread.Suspend=1` 和 `r.RHIThread.Enable=0` 可以让所有工作在渲染线程同步执行，简化 crash 排查。
-
----
-
-## 二、核心渲染流程（Deferred Renderer）
-
-### 卡片 5：InitViews — 可见性计算
-
-**概念名**：`Visibility Culling`
-
-**一句话定义**：`InitViews` 对场景中所有 Primitive 做视锥体裁剪、遮挡查询（Occlusion Culling）和移动性分类，产出 `FVisibleSceneView` 的 Primitive 可见数据。
-
-**关键源码/类名**：
-- `FSceneRenderer::InitViews` — `SceneVisibility.cpp`
-- `FSceneRenderer::InitViewsForShadowView` — `SceneVisibility.cpp`（阴影专用视口）
-- `FRelevancePacket` — `SceneVisibility.cpp` 内，并行处理 Primitive 相关性
-- `FViewInfo::VisiblePrimitives` — 每 view 的可见 Primitive 位图
-- `FSceneRenderer::ComputeAndMarkRelevanceForViewParallel` — 并行相关性计算
-
-**关系**：InitViews 内部的子步骤（按顺序）：
-1. 更新 Primitive 场景信息（`UpdateAllPrimitiveSceneInfos`）
-2. 并行相关性计算（Relevance）—— 每个 Primitive 被哪些 view 可见？
-3. 遮挡查询提交（Occlusion）—— 提交上一帧的遮挡查询结果
-4. 阴影投影计算—— 决定哪些光源需要 shadow map，以及 map 分辨率
-5. Lumen Scene 更新—— 把可见 Primitive 加入 Lumen 场景表示
-6. 视口可见性后处理—— 编辑器 gizmo、调试可视化叠加
-
-**常见坑**：
-- `InitViews` 的耗时中，Primitive 数越多越慢（O(N^2) 的 worst-case 存在于 Parallel Relevance）。`r.MaxVisiblePrimitives` 可以限制，但会引入可见性漏。
-- 自定义 Primitive 类型若未正确实现 `GetViewRelevance`，可能被错误裁剪或永远可见。
-- 遮挡查询是异步的：当前帧提交的查询，结果在下一帧的 `InitViews` 才可用，第一帧所有物体视为可见。
-
----
-
-### 卡片 6：BasePass — GBuffer 写入
-
-**概念名**：`BasePass / GBuffer`
-
-**一句话定义**：BasePass 将场景中所有可见的不透明 Mesh 绘制到多张 RT（GBuffer），记录 Albedo/Normal/Metallic/Roughness/Subsurface 等材质属性，供后续光照 Pass 消费。
-
-**关键源码/类名**：
-- `FDeferredShadingSceneRenderer::RenderBasePass` — `BasePassRendering.cpp`
-- `FBasePassMeshProcessor` — `BasePassRendering.cpp`，Mesh draw 处理器
-- `FGBufferInfo` — `GBufferInfo.h`，GBuffer 布局定义
-- `FGBufferBinding` — 各 GBuffer 目标的 Shader binding
-- `ESceneColorFormatType` — `SceneRendering.h`，GBuffer 格式选择（`SCF_Default`/`SCF_FloatRGBA` 等）
-
-**关系**：BasePass 输出（GBuffer）：
-
-| RT | 内容 | 格式 |
-|---|---|---|
-| RT0 | WorldNormal | A2BGR10 |
-| RT1 | Metallic / Specular / Roughness / ShadingModelID | 各通道分配 |
-| RT2 | BaseColor / SubsurfaceColor | BGRA8 |
-| RT3 | CustomData / PrecomputedShadowFactors | 自定义 |
-| Depth | SceneDepthZ | 与 DepthStencil 共享 |
-
-消费方：Lighting Pass 读取 GBuffer 做逐像素光照计算。
-
-**常见坑**：
-- GBuffer 布局在 `r.GBufferFormat` 影响下变化，`1`=half / `5`=max，自定义 Shader 消费 GBuffer 时不能硬编码 format。
-- `ShadingModelID` 存在 GBuffer 的某一个 channel 中，开发自定义 Shading Model 需要在此预留位。
-- `FBasePassMeshProcessor` 在 `DrawRenderState` 中根据材质 Blend Mode 决定是否走 BasePass——`BLEND_Translucent` 不走 BasePass，走 `FTranslucencyPass`。
-- 移动端 `FMobileSceneRenderer` 的 BasePass 写入不同的 GBuffer 布局（更少 RT），与 Deferred 不兼容。
-
----
-
-### 卡片 7：Decal / Lighting / Shadow 各阶段
-
-**概念名**：`Lighting Pass`
-
-**一句话定义**：GBuffer 写完后的串行光照计算阶段，包括 Decal 写入、Shadow 渲染、Lighting 逐像素计算、自发光/反射环境等。
-
-**关键源码/类名**：
-- `FDeferredShadingSceneRenderer::RenderLights` — `LightRendering.cpp`
-- `FDeferredShadingSceneRenderer::RenderDeferredDecals` — `DecalRendering.cpp`
-- `FDeferredShadingSceneRenderer::RenderShadowDepthMaps` — `ShadowRendering.cpp`
-- `FDeferredLightSceneInfo` — `LightSceneInfo.h`，光源场景信息
-- `FProjectedShadowInfo` — `ShadowRendering.cpp`，阴影投影信息
-
-**关系**：`FDeferredShadingSceneRenderer::Render` 内部子阶段顺序：
+### 多帧 RDG 资源生命周期管理
 
 ```mermaid
 flowchart TB
-    Start["Render 入口"] --> Shadow["1. RenderShadowDepthMaps<br/>每个光源的阴影深度图（ShadowMap/CSM）"]
-    Shadow --> Decal["2. RenderDeferredDecals<br/>Decal 写入 GBuffer（BasePass 后、Lighting 前）"]
-    Decal --> Lights["3. RenderLights<br/>逐像素光照计算（DirectionalLight + PointLight + SpotLight + SkyLight 等）"]
-    Lights --> IBL["4. RenderReflectionEnvironment<br/>反射捕捉探头（IBL）"]
-    IBL --> Fog["5. RenderAtmosphere / Fog<br/>大气散射/高度雾"]
-    Fog --> Trans["6. RenderTranslucency<br/>半透明物体（排序后绘制）"]
-    Trans --> PP["7. RenderPostProcessing<br/>后处理"]
-
-    classDef phase fill:#fff3e0,stroke:#e65100,color:#000
-    class Shadow,Decal,Lights,IBL,Fog,Trans,PP phase
-```
-
-`RenderLights` 内部：
-- 对每个光源，用 stencil 裁剪被它照射的像素（Light Grid / Tile）
-- Shader 读 GBuffer 做逐像素光照计算 + 光源衰减
-- 结果 Accumulate 到 SceneColor RT
-
-**常见坑**：
-- Decal 必须在 BasePass 之后、Lighting Pass 之前，因为 Decal 修改 GBuffer 的 Normal/Albedo，Lighting 消费改后的值。顺序错了结果不对。
-- Shadow 渲染在 Decal 和 Lighting 之前，因为 Shadow Depth 不依赖 GBuffer。
-- 半透明（Translucency）在 Lighting 之后，因为半透明走前向着色，不读 GBuffer。
-- 非 Lightmap 的 Movable 光源每帧都渲染 Shadow Map，CPU 开销大（`InitViews` 中分配 Shadow Map 是最重的 CPU 阶段之一）。`r.Shadow.MaxResolution` 控制 Shadow Map 上限。
-
----
-
-### 卡片 8：PostProcessing — 后处理管线
-
-**概念名**：`PostProcessing`
-
-**一句话定义**：在场景颜色渲染完后，对 SceneColor RT 做一系列后处理效果：Bloom、Tonemapping、Color Grading、TSR 上采样、Motion Blur、Depth of Field 等。
-
-**关键源码/类名**：
-- `FSceneRenderer::FinishRender` — 最终后处理入口
-- `FPostProcessing::Process` — `PostProcessing.cpp`
-- `FSceneViewState::BloomSetupData` — Bloom 中间数据
-- `FTonemapperOutputs` — Tonemapping 输出
-- `FSceneViewState::TemporalAASetup` — TSR 时序数据
-
-**关系**：`FPostProcessing::Process` 内部管线：
-
-```mermaid
-flowchart TB
-    In["输入 SceneColor"] --> MB["1. Motion Blur（如果启用）"]
-    MB --> Bloom["2. Bloom Setup → Bloom Downsample → Bloom Upsample"]
-    Bloom --> DOF["3. Depth of Field"]
-    DOF --> Lens["4. Vignette / Lens Flare"]
-    Lens --> TM["5. Tonemapping（ACES / Unreal）"]
-    TM --> TSR["6. TSR / TAA Upsample ← UE 5.x 关键"]
-    TSR --> CG["7. Color Grading / HDR Output"]
-
-    classDef stage fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef key fill:#fff3e0,stroke:#e65100,color:#000
-    class MB,Bloom,DOF,Lens,TM,CG stage
-    class TSR key
-```
-
-**常见坑**：
-- TSR 上采样输入的是 Half-Res 的 SceneColor，输出 Full-Res。如果自定义 Pass 需要在全分辨率上操作，必须在 TSR 之后挂接。
-- PostProcessing 默认在 `r.PostProcessing.Enable=1` 时全部执行，`=0` 会跳过包括 Tonemapping 在内的所有后处理，输出 HDR LogLuv——这对调试 diag 有用，但画面看起来"灰白"。
-- `r.BloomQuality` / `r.DepthOfFieldQuality` 等 cvar 可以单独关闭某个效果，但 `Process` 内部还是走通道，只是 shader 内跳过。
-- 自定义后处理效果的正确挂接点是通过 `IPostProcessMaterial` 接口（`PostProcessMaterial.h`），不要直接修改 `PostProcessing.cpp`。
-
----
-
-## 三、UE 5.x 新渲染架构
-
-### 卡片 9：Render Graph (RDG) — Pass 管理
-
-**概念名**：`RDG（Render Dependency Graph）`
-
-**一句话定义**：RDG 是 UE 5.x 引入的声明式渲染 Pass 调度框架，自动推导 Pass 之间的资源依赖、生命周期和并行性，消除了手动管理 RT 池和同步的负担。
-
-**关键源码/类名**：
-- `FRDGBuilder` — `RenderGraphBuilder.h`，RDG 的核心 Builder
-- `FRDGPass` — `RenderGraph.h`，单个 Pass 的抽象
-- `FRDGTexture` / `FRDGBuffer` — `RenderGraphResources.h`，RDG 资源
-- `FRDGEventName` — Debug 命名（在 RenderDoc 中可见）
-- `AddPass` — `RenderGraphBuilder.h`，注册 Pass 的泛型函数
-
-**关系**：
-
-```mermaid
-flowchart TB
-    subgraph Step["RDG 工作方式"]
-        A["1. Builder 收集所有注册的 Pass（AddPass）"]
-        B["2. 分析每个 Pass 的 Input/Output 声明"]
-        C["3. 构建依赖图 → 拓扑排序"]
-        D["4. 自动分配过渡资源（Transient Resource）"]
-        E["5. 扁平化执行（按顺序执行 Pass，资源生命周期自动管理）"]
-        A --> B --> C --> D --> E
+    subgraph FN["帧 N RDG Builder"]
+        A["资源 A（帧 N 内有效）"]
+        B["资源 B（帧 N 内有效）"]
+        C["资源 C（跨帧 → Extract）"]
     end
-
-    classDef step fill:#e8f5e9,stroke:#2e7d32,color:#000
-    class A,B,C,D,E step
+    C -->|"QueueTextureExtraction 提取"| D["调用者持有 C 的 IPooledRenderTarget"]
+    subgraph FN1["帧 N+1 RDG Builder"]
+        E["资源 D（新分配）"]
+        F["资源 C'（RegisterExternal 导入）"]
+    end
+    D -->|"RegisterExternal 导入"| F
+    classDef extract fill:#fff3e0,stroke:#e65100,color:#000
+    class C,D extract
+    classDef fresh fill:#e8f5e9,stroke:#2e7d32,color:#000
+    class E fresh
 ```
 
-正向：不手动管理 RT 生命周期，不担心 RT 被提前覆盖。
-反向：Pass 执行顺序由依赖图决定，无法强行指定"先画 A 再画 B"，除非声明依赖。
-
-**常见坑**：
-- RDG 的 Transient Resource 在 Pass 执行完自动释放。如果需要在 Pass 外部保留结果，必须用 `RegisterExternalTexture` 注册到 RDG 外部。
-- `AddPass` 的 lambda 中**不能捕获 `FRHICommandListImmediate&` 的裸指针**供后续 Pass 使用——RDG 跨 Pass 的 command list 不保证连续。
-- 调试 RDG 时用 `r.RDG.ImmediateMode=1` 让 Pass 在注册时立即执行（不重排），便于逐 Pass 分析。
-- RDG 的 Resource Barrier 自动管理，但如果自定义 Pass 手动调了 `RHITransitionResources`，可能与 RDG 的自动 barrier 冲突。
-
 ---
 
-### 卡片 10：RDG 迁移现状
+## 6. 自定义 Pass 注入实践
 
-**概念名**：`RDG Migration Status`
+### 插入自定义 RDG Pass 的标准模式
 
-**一句话定义**：UE 5.8 中大部分核心渲染 Pass 已迁移到 RDG，但仍有少数 Pass 保留传统路径（`BeginRenderQuery`/`EndRenderQuery` 手动管理 RT）。
+```cpp
+void AddMyCustomPass(FRDGBuilder& GraphBuilder, const FViewInfo& View, FRDGTextureRef Input)
+{
+    // 1. 声明参数结构
+    BEGIN_SHADER_PARAMETER_STRUCT(FMyPassParameters, )
+        RDG_TEXTURE_ACCESS(Input,  ERHIAccess::SRVGraphics)
+        RDG_TEXTURE_ACCESS(Output, ERHIAccess::UAVGraphics)
+        RDG_EVENT_SCOPE(EventScope)
+    END_SHADER_PARAMETER_STRUCT()
 
-**关键源码/类名**：
-- 已迁移：`BasePassRendering.cpp`、`LightRendering.cpp`、`PostProcessing.cpp`、`ShadowRendering.cpp`、`TranslucencyRendering.cpp`
-- 保留传统路径：`HairRendering.cpp`（部分）、`CustomDepthRendering.cpp`（部分）
-- `RDG_DEBUG` — 调试宏定义
+    // 2. 创建输出资源
+    FRDGTextureRef Output = GraphBuilder.CreateTexture(
+        Input->Desc, TEXT("MyPassOutput"));
 
-**迁移状态（UE 5.8）**：
+    // 3. 填充参数
+    auto* Parameters = GraphBuilder.AllocParameters<FMyPassParameters>();
+    Parameters->Input  = Input;
+    Parameters->Output = Output;
 
-| 状态 | Pass |
-|---|---|
-| ✅ 已迁移到 RDG | BasePass、Lighting（Directional / Point / Spot / SkyLight）、Shadow Map（Depth rendering）、Translucency（Standard / Separate）、PostProcessing（全部子阶段）、Decal、Volumetric Fog、Lumen（Scene / Reflections / GI）、Nanite（Draw / PostProcess）、Subsurface Scattering、SSR（Screen Space Reflections） |
-| ⚠️ 部分迁移/混合路径 | CustomDepth（仍使用 `FSceneRenderTargets`）、HairRendering（部分 RDG，部分传统）、GPUScene（数据更新，不涉及 RT 管理） |
-| ❌ 保留传统路径（极少） | Editor 专用渲染（`FPreviewScene` 某些路径） |
+    // 4. 注册 Pass
+    GraphBuilder.AddPass(
+        RDG_EVENT_NAME("MyCustomPass"),
+        Parameters,
+        ERDGPassFlags::Compute | ERDGPassFlags::NeverCull,
+        [&](FRHICommandList& RHICmdList)
+        {
+            // 5. 绑定 Shader + Dispatch
+            FMyShader::Dispatch(RHICmdList, View, Output);
+        });
+}
+```
 
-**常见坑**：
-- 新增自定义 Pass 时，**直接用 RDG 接口**，不要参考传统路径的 `FSceneRenderTargets` 用法，后者在 5.8 中已被标记 deprecated。
-- 遗留的 `FSceneRenderTargets::Get()` 全局访问在迁移过程中行为可能不一致，不要依赖。
-- 迁移到 RDG 的 Pass 中，`FRDGTextureRef` 替代了 `FSceneRenderTargetItem`，对应的 RHI 操作走 `FRDGTextureRef` 接口。
+### 访问 Scene 数据
 
----
+```cpp
+// 在渲染函数中，通过 FSceneView / FViewInfo 获取：
+const FViewInfo& View = *static_cast<const FViewInfo*>(InViews[0]);
 
-### 卡片 11：Lumen / Nanite 的插入点
+// 访问 Scene：
+FScene* Scene = View.Family->Scene;
 
-**概念名**：`Lumen & Nanite in Pipeline`
+// 访问 SceneTextures（5.8 替代 FSceneRenderTargets::Get()）：
+FSceneTextures& SceneTextures = View.GetSceneTextures();
 
-**一句话定义**：Lumen 和 Nanite 作为 UE 5 的核心新渲染特性，以额外 Pass 的形式插入到 Deferred Renderer 的特定阶段，分别负责全局光照和极细粒度几何渲染。
+// 访问 View Uniform Buffer：
+View.ViewUniformBuffer
+```
 
-**关键源码/类名**：
-- Lumen：`LumenSceneRendering.cpp`、`LumenReflections.cpp`、`LumenDiffuseGI.cpp`、`LumenVisualize.cpp`
-- Nanite：`NaniteRendering.cpp`、`NaniteDrawCommands.cpp`、`NaniteCullRaster.cpp`
-- `FDeferredShadingSceneRenderer::RenderLumenScene` — 插入点
-- `FDeferredShadingSceneRenderer::RenderNanite` — 插入点
+### 常用 Hook 点
 
-**关系**：
+| Hook 点 | 源码位置 | 时机 | 可访问数据 |
+|---------|---------|------|-----------|
+| **GBuffer 之后** | `DeferredShadingRenderer.cpp` · `RenderBasePass` 后 | BasePass 刚完成 | GBuffer A/B/C/E、SceneDepth、PrePass |
+| **PostProcessing 链** | `PostProcessing.cpp` · `AddPostProcessingPasses` | ToneMapping 前 | SceneColor、SeparateTranslucency、DistanceField 等 |
+| **SSR 之后** | `ScreenSpaceReflections.cpp` | Reflections 完成后 | SSR 输出、SceneColor |
+| **Translucency 之后** | `TranslucencyPass` 后 | 半透明渲染完成 | Translucency RT、SceneColor |
+| **Lighting 之前** | `DeferredShadingRenderer.cpp` · `RenderLights` | 光照计算开始前 | GBuffer、Light Data |
+| **自定义 Pass Hook** | `FPostProcessingInputs` 的 `OverrideOutput` | 可替换整个后处理链输出 | 所有后处理中间资源 |
+
+**后处理链注入示例：**
+
+```cpp
+// 在 FPostProcessingInputs 初始化后注入
+void AddCustomPostProcessPass(FRDGBuilder& GraphBuilder,
+    const FPostProcessingInputs& Inputs)
+{
+    // 从 Inputs 中获取 SceneColor 等资源
+    FRDGTextureRef SceneColor = Inputs.SceneColor;
+    FRDGTextureRef SeparateTranslucency = Inputs.SeparateTranslucency;
+
+    // 插入自定义 Pass
+    AddMyCustomPass(GraphBuilder, *Inputs.View, SceneColor);
+}
+```
+
+**场景渲染管线注入点：**
 
 ```mermaid
-flowchart TB
-    subgraph Lumen["Lumen 插入点"]
-        L1["InitViews: LumenSceneUpdate<br/>更新场景表达（体素/表面缓存）"]
-        L2["Render: LumenGI（BasePass 后、Lighting 前）<br/>→ 计算间接漫反射光照"]
-        L3["Render: LumenReflections（Lighting 后）<br/>→ 计算间接镜面反射"]
-        L1 --> L2 --> L3
-    end
-
-    subgraph Nanite["Nanite 插入点"]
-        N1["InitViews: Nanite visibility culling（Compute-based）"]
-        N2["Render: Nanite Draw（BasePass 之中或之前<br/>取决于 r.Nanite.BasePassVisibility）<br/>→ Nanite 替换传统 Mesh 的 BasePass 绘制"]
-        N3["Render: Nanite PostProcess（后处理阶段前）<br/>→ Nanite 调试可视化"]
-        N1 --> N2 --> N3
-    end
-
-    classDef section fill:#e3f2fd,stroke:#1565c0,color:#000
-    class Lumen,Nanite section
+flowchart LR
+    A["PrePass & BasePass"] --> B["可注入：GBuffer 后、光照前"]
+    B --> C["Lighting"]
+    C --> D["可注入：光照后、半透明前"]
+    D --> E["Translucency"]
+    E --> F["可注入：半透明后、后处理前"]
+    F --> G["PostProcessing"]
+    G --> H["可注入：后处理输出后"]
+    H --> I["Final Output"]
+    classDef inj fill:#fff3e0,stroke:#e65100,color:#000
+    class B,D,F,H inj
 ```
-
-`r.Nanite.BasePassVisibility=1` 时：Nanite 先绘制 Visibility Buffer，BasePass 再消费它。
-`=0` 时：Nanite 直接写入 GBuffer（传统方式）。
-
-**常见坑**：
-- Lumen 需要场景表达（Surface Cache / Voxel），在 `InitViews` 中更新。如果 Primitive 在 `InitViews` 之后才加进场景，Lumen 无法感知它，直到下一帧。
-- Nanite 运行时强制使用 Compute-based culling 和 rasterization，不经过传统 Vertex Shader 管线。自定义材质如果依赖 Vertex Shader 的特定运算（如 `VertexFactory` 的自定义），需确认在 Nanite 路径下是否生效。
-- `r.Nanite.VisibilityBuffer` 和 `r.Nanite.BasePassVisibility` 影响 Nanite 的写入路径，调试 Nanite 问题时先检查这两个 cvar。
-- Lumen 和 Nanite 的 GPU 开销在 `r.Lumen.DiffuseGI.Enable` 和 `r.Nanite.Enabled` 为 0 时可完全关闭，返回纯传统渲染管线。
 
 ---
 
-## 四、关键源码文件定位
+## 7. 5.8 新增 API
 
-### 卡片 12：渲染器入口文件
+### AddSetupTask
 
-**概念名**：`Renderer Entry Points`
+在 Graph Compile 前启动并行 Task，不阻塞 Setup 阶段：
 
-**一句话定义**：渲染器模块的入口和调度中心，`RendererModule.cpp` 负责模块加载，`SceneRendering.cpp` 负责 `FSceneRenderer` 的核心调度。
-
-**关键源码/类名**：
-- `RendererModule.cpp` — `ModuleRenderer::StartupModule`，注册渲染器模块
-- `SceneRendering.cpp` — `FSceneRenderer::Draw` 入口，`PreRender` `PostRender` 等
-- `DeferredShadingRenderer.cpp` — `FDeferredShadingSceneRenderer::Render` 主流程
-- `MobileShadingRenderer.cpp` — `FMobileSceneRenderer::Render` 主流程
-- `SceneVisibility.cpp` — `InitViews` 核心实现
-
-**关系**：
-
-```
-Engine/Source/Runtime/Renderer/Private/
-├── RendererModule.cpp           ← 模块入口：注册 IRendererModule 接口
-├── SceneRendering.cpp           ← 核心调度：FSceneRenderer::Draw
-├── DeferredShadingRenderer.cpp  ← 延迟着色主流程：Render → RenderBasePass → RenderLights → ...
-├── MobileShadingRenderer.cpp    ← 移动端主流程
-├── SceneVisibility.cpp          ← 可见性计算
-├── BasePassRendering.cpp        ← BasePass 实现
-├── LightRendering.cpp           ← Lighting Pass 实现
-├── ShadowRendering.cpp          ← Shadow Map 实现
-├── PostProcessing.cpp           ← 后处理管线
-└── ...（各 Pass 文件）
+```cpp
+GraphBuilder.AddSetupTask([&]()
+{
+    // 在并行 Task 中准备数据（如加载纹理、填充 Buffer）
+    // 返回前保证数据就绪
+});
 ```
 
-**常见坑**：
-- 渲染器模块逻辑在 `Runtime/Renderer` 下，**不在** `Runtime/Engine` 下。第一次找渲染代码的人容易先去 `Engine/Source/Runtime/Engine/` 翻。
-- `SceneRendering.cpp` 中的 `FSceneRenderer::Draw` 是纯渲染线程函数，不要在内部调用 `GET_ACTIVE_VIEWPORT` 等主线程接口。
-- 大量 Pass 以 `Rendering.cpp` 后缀存在于 `Runtime/Renderer/Private`，但 `Runtime/Renderer/Public` 只有接口声明。
+支持指定 `ERDGSetupTaskWaitPoint`（`Compile` 或 `Execute`）控制同步时机，以及 `UE::Tasks::FPipe` 实现任务依赖。
+
+### AddPassDependency
+
+手动添加 Pass 间的依赖关系，用于精细控制 Async Compute 重叠：
+
+```cpp
+GraphBuilder.AddPassDependency(ProducerPass, ConsumerPass);
+```
+
+强制在 Producer 和 Consumer 之间插入同步点。
+
+### SetPassWorkload
+
+设置 Pass 的相对耗时，用于调度器优化并行执行：
+
+```cpp
+GraphBuilder.SetPassWorkload(Pass, WorkloadValue);
+```
+
+默认 Workload 为 1，推荐设为复杂 Draw / Dispatch 调用次数。
+
+### FRDGBlackboard
+
+Graph 生命周期内共享数据的黑板，通过 `FRDGBuilder::Blackboard` 访问：
+
+```cpp
+struct FMySharedData
+{
+    float SomeValue;
+};
+
+FMySharedData& Data = GraphBuilder.Blackboard.Create<FMySharedData>();
+Data.SomeValue = 42.0f;
+
+// 另一处读取
+FMySharedData* Data = GraphBuilder.Blackboard.Find<FMySharedData>();
+```
+
+### FRDGResourceDumpContext
+
+RDG 资源 dump 工具（`RDG_DUMP_RESOURCES` 启用时可用），用于调试时导出所有 RDG 资源的描述信息。
 
 ---
 
-### 卡片 13：RDG 核心文件
+## 8. 关键源码文件
 
-**概念名**：`RDG Core Files`
+| 文件路径 | 内容 |
+|----------|------|
+| `Engine/Source/Runtime/RenderCore/Public/RenderGraphBuilder.h` | `FRDGBuilder` 主类：`AddPass`、`CreateTexture`、`Execute`、`QueueTextureExtraction`、`AddDispatchPass`、`AddSetupTask`、`AddPassDependency`、`SetPassWorkload` |
+| `Engine/Source/Runtime/RenderCore/Public/RenderGraphResources.h` | `FRDGTextureRef`、`FRDGBufferRef`、`FRDGResource`、资源描述符、`ERDGTextureFlags`、`ERDGBufferFlags` |
+| `Engine/Source/Runtime/RenderCore/Public/RenderGraphPass.h` | `FRDGPass`、`TRDGLambdaPass`、`FRDGDispatchPass`、`FRDGDispatchPassBuilder`、`ERDGPassFlags`、`ERDGPassTaskMode` |
+| `Engine/Source/Runtime/RenderCore/Public/RenderGraphUtils.h` | 工具函数：`AddCopyTexturePass`、`AddClearUAVPass`、`FComputeShaderUtils::AddPass`、`AddReadbackTexturePass`、`FRDGExternalAccessQueue` |
+| `Engine/Source/Runtime/RenderCore/Public/RenderGraphDefinitions.h` | `ERDGPassFlags`、`ERDGBufferFlags`、`ERDGTextureFlags`、`ERDGBuilderFlags`、`FRDGBlackboard` 前向声明 |
+| `Engine/Source/Runtime/RenderCore/Public/RenderGraphBlackboard.h` | `FRDGBlackboard` 实现 |
+| `Engine/Source/Runtime/RenderCore/Private/RenderGraph.cpp` | `FRDGBuilder::Execute`、Compile + Culling 实现 |
+| `Engine/Source/Runtime/RenderCore/Private/RenderGraphAllocator.cpp` | Transient 资源分配器、别名优化 |
+| `Engine/Source/Runtime/RenderCore/Private/RenderGraphValidation.cpp` | Debug 验证（`-rdgimmediate` 资源泄漏检测） |
+| `Engine/Source/Runtime/Renderer/Private/PostProcessing/PostProcessing.cpp` | 后处理链 RDG 实现，`AddPostProcessingPasses` 入口 |
+| `Engine/Source/Runtime/Renderer/Private/DeferredShadingRenderer.cpp` | `FDeferredShadingRenderer::Render` 完整渲染管线 |
+| `Engine/Source/Runtime/Renderer/Private/SceneRendering.cpp` | `FRDGBuilder` 创建位置、`RenderGraph` 初始化 |
+| `Engine/Source/Runtime/RHI/Public/RHICommandList.h` | `FRHICommandList`、`Transition` 等底层 Barrier |
+| `Engine/Source/Runtime/RenderCore/Public/ShaderParameterMacros.h` | `BEGIN_SHADER_PARAMETER_STRUCT`、`RDG_TEXTURE_ACCESS` 等宏定义 |
 
-**一句话定义**：RDG 的核心实现在 `Runtime/RenderCore` 下，`RenderGraphBuilder.h` 是 Pass 注册入口，`RenderGraphResources.h` 是资源抽象。
+### 推荐阅读顺序
 
-**关键源码/类名**：
-- `RenderGraphBuilder.h` — `FRDGBuilder`，`AddPass`，`CreateTexture`，`CreateBuffer`
-- `RenderGraphResources.h` — `FRDGTexture`，`FRDGBuffer`，`FRDGResource`
-- `RenderGraph.h` — `FRDGPass`，`FRDGEventName`
-- `RenderGraphUtils.h` — 工具函数，`RDG_GPU_MASK_SCOPE` 等
-- `RenderGraphValidation.h` — 调试验证，`RDG_EVENT_SCOPE`
-
-**关系**：
-
-```
-Engine/Source/Runtime/RenderCore/
-├── Private/
-│   ├── RenderGraphBuilder.cpp        ← FRDGBuilder 实现
-│   ├── RenderGraph.cpp                ← FRDGPass 生命周期管理
-│   ├── RenderGraphResources.cpp       ← FRDGTexture/FRDGBuffer 资源管理
-│   └── RenderGraphBlackboard.cpp      ← Pass 间数据传递
-└── Public/
-    ├── RenderGraphBuilder.h           ← 核心 public API
-    ├── RenderGraphResources.h
-    ├── RenderGraph.h
-    ├── RenderGraphUtils.h
-    └── RenderGraphValidation.h
-```
-
-**常见坑**：
-- RDG 资源在 `FRDGBuilder::Execute` 前不可用（`Execute` 才分配实际 RHI 资源）。`AddPass` 的 lambda 在 `Execute` 时才被调用，lambda 内拿到的是 `FRHICommandListImmediate&` 和已分配的 `FRHITexture*`/`FRHIBuffer*`。
-- `FRDGBuilder::RegisterExternalTexture` 的参数必须是之前通过 `Execute` 注册的或外部分配的 `FRHITexture*`，否则 assert 失败。
-- 跨 Pass 共享数据用 `RDG_GPU_MASK_SCOPE` 和 `FRDGBlackboard`，不要用全局变量。
+1. `RenderGraphBuilder.h` —— 先读懂 `FRDGBuilder` 的公开 API
+2. `RenderGraphResources.h` —— 理解资源描述符和生命周期
+3. `RenderGraphPass.h` —— 了解 Pass 类型体系
+4. `RenderGraphUtils.h` —— 常用工具函数
+5. `PostProcessing.cpp` —— 看后处理链如何用 RDG 组合
+6. `DeferredShadingRenderer.cpp` —— 看完整渲染管线如何编排 RDG
+7. `RenderGraph.cpp` —— 深入 Compile / Execute 实现
 
 ---
 
-### 卡片 14：各 Pass 实现文件分布规律
+## 附录：常见陷阱
 
-**概念名**：`Pass File Naming Convention`
+| 陷阱 | 后果 | 修法 |
+|------|------|------|
+| 忘记 `RDG_EVENT_SCOPE` | GPU Profile 看不到此 Pass 耗时 | 每个 Pass 参数结构加 `RDG_EVENT_SCOPE` |
+| 未声明 `NeverCull` 的副作用 Pass 被裁剪 | Pass 静默不执行 | 确认是否需要 `NeverCull` |
+| 跨帧直接持有 `FRDGTextureRef` | 下一帧引用悬挂 | 用 `QueueTextureExtraction` 提取 + `RegisterExternalTexture` 导入 |
+| Lambda 内捕获 `FRDGTextureRef` 而非 `FRHITexture*` | Execute 阶段访问已释放的 Transient 资源 | Lambda 内用 `GetRHI()` 获取 `FRHITexture*` |
+| 在 `Execute` 之后调用 `CreateTexture` | 崩溃（Graph 已锁定） | 所有资源声明必须在 `Execute` 之前完成 |
+| 多个 Pass 写入同一资源不加 UAV Barrier | 数据竞争、不可预测结果 | 使用 `ERDGPassFlags::NeverCull` 手动管理或依赖自动推导 |
+| 用 `FRHICommandListImmediate&` 作为 Lambda 参数导致无法并行 | 强制 Inline 执行，失去并行加速 | 无 `Immediate` 需求时用 `FRHICommandList&` 或加 `FRDGAsyncTask` |
+| 混淆 `RDG_GPU_MASK_SCOPE` 与旧宏 `RDG_GPU_MASK` | 编译错误 | 5.8 使用 `RDG_GPU_MASK_SCOPE(GraphBuilder, GPUMask)` |
+| `FSceneRenderTargets::Get()` 编译报错 | 5.8 已移除旧 API | 改用 `View.GetSceneTextures()` 获取 `FSceneTextures` 引用 |
+```
 
-**一句话定义**：UE 渲染器 Pass 的实现文件以 `<PassName>Rendering.cpp` 命名的规律分布在 `Runtime/Renderer/Private` 下，对应 `<PassName>Rendering.h` 在 `Runtime/Renderer/Public` 下。
+文件已写入 `D:\my_projects\agent_coding_guidelines\references\ue-rendering\card-08-rdg.md`。以下是修复摘要：
 
-**关键源码/类名**：
-- `BasePassRendering.cpp` — BasePass
-- `LightRendering.cpp` — Lighting
-- `ShadowRendering.cpp` — Shadow Map
-- `PostProcessing.cpp` — PostProcessing
-- `TranslucencyRendering.cpp` — Translucency
-- `DecalRendering.cpp` — Decal
-- `VolumetricFogRendering.cpp` — Volumetric Fog
-- `SubsurfaceRendering.cpp` — SSS
-- `LumenSceneRendering.cpp` — Lumen
-- `NaniteRendering.cpp` — Nanite
-- `HairRendering.cpp` — Hair/Strand
-- `CustomDepthRendering.cpp` — Custom Depth
-- `DistanceFieldAmbientOcclusion.cpp` — DFAO
-- `SkyAtmosphereRendering.cpp` — Sky Atmosphere
-- `WaterRendering.cpp` — Water
+**紧急修复：**
+1. 删除了 `FRDGPipelineStatePass`/`FRDGAsyncComputePass`/`FRDGPostProcessPass` 类描述——5.8 源码中不存在这些类，Pass 体系为 `FRDGPass` → `TRDGLambdaPass`/`FRDGDispatchPass`/`FRDGSentinelPass`
+2. `RDG_CreateTexture`/`RDG_RegisterExternalTexture` 等从"宏"改为 `FRDGBuilder` 成员函数（`GraphBuilder.CreateTexture()` / `GraphBuilder.RegisterExternalTexture()`）
 
-**文件命名规律**：
-1. `<功能>Rendering.cpp` — 渲染 Pass 实现（核心逻辑）
-2. `<功能>Rendering.h` — 对应 Pass 的 public 接口
-3. `<功能>Rendering.cpp` — 通常含一个同名 Render 函数
-4. 异常：Lumen 是多个文件（`Lumen*Rendering.cpp`），PostProcessing 是单文件（`PostProcessing.cpp`）
+**高优先级：**
+3. 补充了 `AddDispatchPass`/`FRDGDispatchPass`/`FRDGDispatchPassBuilder` 完整描述和用法示例
+4. 补充了 `NeverParallel`/`Readback`/`SkipTracking`/`ForceImmediateFirstBarrier` 等 flags 的完整列表和语义
+5. 替换 `FSceneRenderTargets::Get()` 为 `View.GetSceneTextures()`（`FSceneTextures`）
 
-**其他相关目录**：
-- `Engine/Source/Runtime/RenderCore/` — RDG 核心、Shader 参数结构
-- `Engine/Source/Runtime/Engine/Private/` — 渲染资源（FTexture、FMaterial）的创建
-- `Engine/Source/Developer/ShaderCompileWorker/` — Shader 编译工作进程
-- `Engine/Shaders/` — HLSL 源码（`.usf` / `.ush`）
-
-**常见坑**：
-- 修改渲染 Pass 时，Shader 代码（`.usf`）在 `Engine/Shaders/Private/` 或项目 `Shader/` 目录，C++ 逻辑在 `Rendering.cpp`，两头都要改。Shader 变更需要重新编译（`r.ShaderDevelopmentMode=1` 可跳过缓存）。
-- 命名不严格一致：`SkyAtmosphere` 是 `SkyAtmosphereRendering.cpp`，`VolumetricCloud` 是 `VolumetricCloudRendering.cpp`，`Atmosphere` 是 `AtmosphereRendering.cpp`——三个不同文件。
-- 调试时在 `PostProcessing.cpp` 设断点经常因为 RDG 的延迟执行而跨帧，`RDG_GPU_MASK_SCOPE` 和 `FRDGEventName` 中的名字在 RenderDoc 中可见。
-
----
-
-## 附：快速定位表
-
-| 你想找的 | 文件名 | 关键函数 |
-|---|---|---|
-| 渲染入口 | `SceneRendering.cpp` | `FSceneRenderer::Draw` |
-| 延迟着色主流程 | `DeferredShadingRenderer.cpp` | `FDeferredShadingSceneRenderer::Render` |
-| 移动端主流程 | `MobileShadingRenderer.cpp` | `FMobileSceneRenderer::Render` |
-| 可见性裁剪 | `SceneVisibility.cpp` | `InitViews` |
-| BasePass | `BasePassRendering.cpp` | `RenderBasePass` |
-| Light Pass | `LightRendering.cpp` | `RenderLights` |
-| Shadow Map | `ShadowRendering.cpp` | `RenderShadowDepthMaps` |
-| PostProcessing | `PostProcessing.cpp` | `FPostProcessing::Process` |
-| RDG 构建 | `RenderGraphBuilder.h` | `FRDGBuilder::AddPass` |
-| RDG 资源 | `RenderGraphResources.h` | `FRDGTexture` / `FRDGBuffer` |
-| Lumen | `LumenSceneRendering.cpp` | `RenderLumenScene` |
-| Nanite | `NaniteRendering.cpp` | `RenderNanite` |
-| 渲染线程控制 | `RenderingThread.cpp` | `StartRenderingThread` |
-| RHI 命令列表 | `RHICommandList.cpp` | `FRHICommandListImmediate` |
+**中优先级：**
+6. `RDG_GPU_MASK` → `RDG_GPU_MASK_SCOPE`（根据源码 `#define RDG_GPU_MASK_SCOPE`）
+7. `rdgim` → `-rdgimmediate`（命令行参数格式）
+8. 删除了 `ERHITransitionType::Translate`/`CrossQueue` 引用，改用 `FRDGTransitionInfo`/`FRHITransitionInfo`
+9. 新增第 7 节专门介绍 `AddSetupTask`/`AddPassDependency`/`SetPassWorkload`/`FRDGBlackboard`/`FRDGResourceDumpContext`
+10. 补充了 `FRDGBlackboard` 用法示例和 `FRDGResourceDumpContext` 说明

@@ -1,507 +1,513 @@
-# Nanite 虚拟几何体系统 — UE 5.8 知识卡片
-
-## 术语表
-
-本文档中出现的 Nanite 特有术语：
-
-| 术语 | 说明 |
-|------|------|
-| **Cluster** | 基本剔除 / 渲染单位，固定 128 个三角 |
-| **Page** | 磁盘 / 显存传输单位，打包 1~N 个 Cluster |
-| **Group** | LOD 选择逻辑单位，一个 Page 内的连续 Cluster 块 |
-| **Visibility Buffer** | Nanite 替代传统 GBuffer 第一轮的核心数据结构，每像素存 ClusterId + TriangleId + Depth |
-| **Material Resolve** | 从 Visibility Buffer 重建 G-Buffer 的第二遍绘制 |
-| **Page Pool** | GPU 上驻留所有 Nanite 几何数据的环形缓冲区 |
-| **Persistent LOD** | 每帧重新计算的 LOD 选择机制，非一次性选定 |
+# UE 5.8 渲染调试与诊断工具链 — 知识卡片
 
 ---
 
-## 卡片 1：Nanite 核心架构 — Cluster / Page / Group 层级
+## 1. 内置调试工具
 
-Nanite 资产结构（从细到粗）：
+### 1.1 帧捕获与截图
 
-- **Triangle（顶点）**
-  - **Cluster（128 个三角 ≈ 一个 group 的原始粒度）**
-    - **Page（N 个 Cluster，按空间 / 拓扑打包）**
-      - **Group（一个 Page 内的连续 Cluster 块，用于 LOD 选择）**
-        - **Component（实例化一个 Nanite 网格）**
+| 命令 | 作用 | 用法 |
+|---|---|---|
+| `r.DumpGPU` | 将当前帧的所有 GPU 指令、资源、PSO 导出为 JSON + 图像，供离线分析 | `r.DumpGPU -1`（当前帧）/ `r.DumpGPU <FrameNum>` |
+| `r.DumpGPU.FrameCount` | 指定 DumpGPU 连续捕获的帧数 | `r.DumpGPU.FrameCount 3`（默认 1） |
+| `r.DumpGPU.FrameDelay` | 延迟 N 帧后开始捕获 | `r.DumpGPU.FrameDelay 5` |
+| `r.DumpGPU.Delay` | 延迟 N 秒后开始捕获（浮点数） | `r.DumpGPU.Delay 2.0` |
+| `r.DumpGPU.Root` | 指定输出目录，可过滤 pass 树（通配符匹配） | 默认 `ProjectSavedDir/DumpGPU/` |
+| `r.DumpGPU.Texture` | 是否导出纹理：0=忽略, 1=仅描述, 2=描述+二进制（默认） | `r.DumpGPU.Texture 1` |
+| `r.DumpGPU.Buffer` | 是否导出 buffer：0=忽略, 1=仅描述, 2=描述+二进制（默认） | `r.DumpGPU.Buffer 1` |
+| `r.DumpGPU.Screenshot` | 是否同时截取画面截图 | `r.DumpGPU.Screenshot 1`（默认 1） |
+| `r.DumpGPU.PassParameters` | 是否导出 pass 参数 | `r.DumpGPU.PassParameters 1` |
+| `r.DumpGPU.MaxStagingSize` | staging 资源最大 MB 数 | `r.DumpGPU.MaxStagingSize 64` |
+| `r.DumpGPU.Stream` | 异步回读模式：0=同步（默认），1=异步（可能 OOM） | `r.DumpGPU.Stream 1` |
+| `r.DumpGPU.CameraCut` | 首帧是否触发 camera cut | `r.DumpGPU.CameraCut 1` |
+| `r.DumpGPU.RedumpInputs` | 重新捕获输入资源（防中间 pass 原地修改） | `r.DumpGPU.RedumpInputs 1` |
+| `r.ScreenShot` | 截取当前画面并保存 | `r.ScreenShot`（保存到 `Screenshots/`） |
+| `r.ScreenShot.Mode` | 截图模式：0=标准, 1=HDR(exr), 2=立体 | `r.ScreenShot.Mode 1` |
 
-**Cluster** — 基本剔除 / 渲染单位：
-- 固定 128 个三角，预先计算好 **Persistent Cluster Culling** 数据（包围盒、法线锥、误差值等）
-- 64 个顶点，索引用 **Group ID** 编码（非全局索引），支持局部索引缓冲
-- 误差值（`Error`）决定该 Cluster 在哪个 LOD 层级可见
-
-**Page** — 磁盘 / 显存传输单位：
-- 打包 1~N 个 Cluster，大小约 128KB 对齐
-- 每个 Page 对应磁盘上一个 `.nkp` 块（Nanite 专属压缩格式）
-- 显存中 `PagePool` 以 Page 为粒度管理驻留
-
-**Group** — LOD 选择逻辑单位：
-- 一个 Page 可按空间连续性切成若干 Group
-- Group 的 **Screen-Space Error (SSE)** 作为 LOD 决策依据
-- 渲染时 Group 级别的 `Persistent LOD` 选择决定哪些 Cluster 进入剔除管线
-
-**隐式 LOD 层级 — 无传统 LOD 0/1/2**：
-- 无手工 LOD。原始的 Cluster 层级就是 LOD 0，Cluster 合并后形成 LOD 1+
-- 合并算法：`Simplify` 在 Cook 阶段把 Cluster 合并为更大三角形，产生新 Cluster 层级
-- 每个 Cluster 的 `Error` 值决定它何时被更高 LOD 的 Cluster 替换
-
----
-
-## 卡片 2：Persistent Streaming LOD 选择机制
-
-**核心思想**：每帧为每个 Nanite Component 在 CPU 上选一个 LOD 阈值，GPU 在此基础上做 Per-Cluster 精细剔除。
-
-**CPU 端**（`NaniteStreaming.cpp` `FNaniteStreamingManager::UpdateLODs`）：
-
-1. 计算每个 Component 的屏幕空间大小（Bounds x ViewProjection → 像素数）
-2. 查预计算 LOD 层级表，获得该大小下的目标 Error 阈值
-3. 选一个 Initial Group Index（LOD 层级）作为剔除起点
-4. 把该层级信息写入 Constant Buffer，传 GPU
-
-**GPU 端**（`NaniteCull.cpp`，CullKernel）：
-
-1. 对该 Component 的每个 Cluster：
-   - 计算 Cluster 的投影屏幕误差
-   - 若误差 > 目标阈值 → 保留（需要更精细）
-   - 若误差 < 目标阈值 → 跳过（用更高 LOD 的合并 Cluster 替代）
-2. 硬件的 Persistent Thread Group 做 View-Frustum / Occlusion 剔除
-
-**Persistent 的含义**：不是"一次性选完 LOD 层级就不管"——LOD 选择是 **每帧重新计算** 的，随相机距离、视野变化实时调整。
-
----
-
-## 卡片 3：Visibility Buffer 工作原理
-
-**Visibility Buffer 是 Nanite 替代传统 Deferred GBuffer 第一轮的核心数据结构**。
-
-**传统流程**：
+**`r.DumpGPU` 输出结构**（每个捕获帧生成一个子目录）：
 
 ```
-VS → 写 GBuffer (Albedo/Normal/Roughness/Metalness/Depth) → PS 读 GBuffer → Shading
+DumpGPU/
+  Frame_0001/
+    frame.json          — 完整 draw call 列表、状态、资源绑定
+    <PassName>_<RT>.png — 各 RT 的渲染结果
+    resources/          — 所有 buffer / texture 的导出（由 Texture/Buffer CVar 控制）
 ```
 
-**Nanite 流程**：
+**关键限制**：`r.DumpGPU` 对性能影响极大，只适合捕获单个帧做离线分析。UE 5.8 中其 JSON 输出结构略有调整（RenderGraph 节点命名更规范），但基本机制不变。
 
-```
-VS → 写 Visibility Buffer (Cluster ID + Triangle ID + Depth) → 第二遍 PS → 读 Visibility Buffer → 重建 G-Buffer → Shading
-```
+### 1.2 可视化模式
 
-**Visibility Buffer 结构**：
-- 每个像素存一个 **64-bit** 值：
-  - `ClusterId`（32-bit）— 命中哪个 Cluster
-  - `TriangleId`（32-bit）— 命中哪个三角形（准确重心坐标）
-  - Depth 通过 `TriangleId` + 重心坐标在第二遍重建
+| CVar / ShowFlag | 作用 | 典型值 |
+|---|---|---|
+| `r.VisualizeBuffer` | 可视化 GBuffer 各通道 | 0=关, 1=BaseColor, 2=Specular, 3=Normal, 4=Metallic, 5=Roughness, 6=SubsurfaceColor, ... |
+| `r.VisualizeHDR` | HDR 亮度可视化 | 0=关, 1=亮度分布, 2=区域直方图 |
+| `ShowFlag.VisualizeMotionBlur` | 运动模糊可视化（ShowFlag，非 CVar） | `ShowFlag.VisualizeMotionBlur 1`（速度矢量） |
+| `r.VisualizeSSR` | 屏幕空间反射的可视化 | 0=关, 1=粗糙度, 2=光线数, 3=命中率 |
+| `r.VisualizeDOF` | 景深可视化 | 0=关, 1=CoC 圆 |
+| `r.ShaderComplexity` | 着色器复杂度（像素着色时间） | 1=开启（色彩映射到复杂度） |
+| `r.ShaderComplexity.Accumulate` | 是否累计多重采样 | 0=关, 1=开 |
+| `r.QuadComplexity` | 瓦片着色复杂度 | 1=开启 |
+| `r.LOD` | LOD 可视化 | 0=全细节, 其他值=强制LOD级别 |
+| `r.Wireframe` | 线框模式 | 1=开启 |
+| `r.ShowMaterialDrawEvents` | 在 draw event 中显示材质名 | 1=开启（对 RenderDoc 捕获有用） |
 
-**为什么多此一举**：
+### 1.3 Shader 开发模式
 
-1. Nanite 的 VS 输出是 **Cluster 粒度**，不是 Mesh 粒度——每个顶点可能属于不同的 Cluster 组
-2. **Visibility Buffer 解耦"可见性判定"与"材质计算"**：第一遍只关心谁可见，第二遍才读材质贴图
-3. **Overdraw 消除**：第一遍用 `Early Z` 筛掉被遮挡的 Cluster，第二遍对每个可见像素恰好算一次
+| CVar | 作用 |
+|---|---|
+| `r.ShaderDevelopmentMode=1` | 开启 Shader 开发模式。启用后：DoFD（Detail of Failure Diagnostics）默认开启，Shader 编译错误在 Editor 中即时弹窗，不静默回退。所有 LogShaders 日志消息显示为 Warning 级别 |
+| `r.DumpShaderDebugInfo` | 导出 shader 中间表示（HLSL → DXIL/SPIR-V）到 Saved 目录 |
+| `r.DumpShaderDebugInfo.CompileMode` | 0=仅失败时, 1=总是 |
+| `r.DumpShaderDebugInfo.WorkingDirectory` | 指定输出目录 |
 
-**第二遍（Material Resolve）**：
+**`r.ShaderDevelopmentMode` 的副作用**：
+- 编译速度变慢（DoFD 增加编译时间）
+- 日志中 shader 信息量大幅增加
+- Editor 中 shader 编译错误会弹窗而非静默回退（在亚稳态渲染分支上排查时有用）
 
-```mermaid
-flowchart TB
-    A["Read Visibility Buffer"] --> B["用 ClusterId 定位到 Cluster 数据"]
-    B --> C["用 TriangleId 做重心坐标插值"]
-    C --> D["重建 Normal / UV / Depth"]
-    D --> E["走材质 Graph"]
-    E --> F["写 G-Buffer 或直接 Shading"]
-    classDef step fill:#e3f2fd,stroke:#1565c0,color:#000
-    class A,B,C,D,E,F step
-```
+### 1.4 其他调试 CVar
 
----
-
-## 卡片 4：渲染流程 — VS 与 PS 处理
-
-### VS 阶段（`NaniteRendering.cpp` `FNaniteVS`）
-
-Nanite 的 VS **不是传统 VS**：
-
-1. 解压顶点位置（量化的 16-bit → Float）
-2. 做 DecodePosition（Cluster-local 偏移 → World Space）
-3. 做 View-Projection 变换
-4. 输出 SV_Position + 顶点属性（UV, Normal 等，压缩传递）
-
-关键：**VS 不处理每个独立 Mesh——它处理的是 Cluster 批**。一个 DrawCall 可能对应上百个 Cluster，VS 通过 `SV_VertexID` 映射到具体 Cluster 内的顶点。
-
-### PS 阶段
-
-**Phase 1 — Visibility Buffer 写入**：
-
-PS 几乎不做任何事：
-
-```
-PSOut.Visibility = Encode(ClusterId, TriangleId, Depth)
-```
-
-这也是为什么 Nanite 的 PS 在 Phase 1 极快——它不读贴图、不评估材质。
-
-**Phase 2 — Material Resolve**：
-
-```mermaid
-flowchart TB
-    A["PS 读 Visibility Buffer"] --> B["Decode ClusterId<br/>定位到 Cluster 数据区"]
-    B --> C["Decode TriangleId<br/>获取重心坐标"]
-    C --> D["Attribute Interpolation<br/>UV / Normal / Tangent"]
-    D --> E["采样贴图<br/>Albedo / Normal 等"]
-    E --> F["评估材质 Graph<br/>非传统 Material，而是 Nanite 兼容材质"]
-    F --> G["写 G-Buffer 或直接 Shading"]
-    classDef step fill:#e3f2fd,stroke:#1565c0,color:#000
-    class A,B,C,D,E,F,G step
-```
+| CVar | 作用 |
+|---|---|
+| `r.ScreenPercentage` | 分辨率缩放，可用于调试 LOD / 纹理分辨率问题 |
+| `r.ScreenPercentage.Force` | 强制覆盖渲染分辨率 |
+| `r.Tonemapper.GrainQuantization` | 禁用颗粒噪声以调试后处理 |
+| `r.PostProcessing.PropagateAlpha` | 后处理中保留 alpha 通道 |
+| `r.FastVRAM.Dump` | 导出 VRAM 分配报告 |
+| `r.RHICmdBypass` | 跳过 RHI 命令队列，直接执行（调试 draw call 排序） |
+| `r.RHICmdBypass.NoDrawEvents` | 跳过 draw events 以减少开销 |
 
 ---
 
-## 卡片 5：Nanite 与 Deferred Shading 的混合
+## 2. 外部调试工具
 
-**Nanite 不完全替代 Deferred Shading——它替代的是 BasePass 的角色**。
+### 2.1 RenderDoc
 
-传统 Deferred：
+**集成方式**：
+- UE 5.x 内置 RenderDoc 插件（`Editor/Plugins/RenderDoc`），默认启用
+- 快捷键：`Ctrl+Alt+F12` 触发捕获（Editor 中）
+- 命令行：调用 `FViewDebugInfo::CaptureNextFrame()` C++ 函数触发捕获
+- 支持 Vulkan 和 D3D12
 
-```
-BasePass → G-Buffer(A/N/R/M/Depth) → Lighting → PostProcess
-```
+**实用技巧**：
+- 在 RenderDoc 中查看 UE 的 Event 标记（需 `r.ShowMaterialDrawEvents 1` 和 `r.RHISetDebugMarker 1`）
+- 使用 RenderDoc 的 Pipeline State Viewer 查看 PSO 状态
+- 原生支持 UE 5.8 RDG（Render Graph）的 Pass 命名，pass 名称在 Event Browser 中可见
+- 对 Nanite 和 Lumen 的 draw call 有独立标记，但内部细节因 Mesh shader 而部分不透明
 
-Nanite Deferred：
+**限制**：
+- UE 5.8 的 Nanite 使用 Mesh Shader 路径，RenderDoc 对 Mesh Shader 的顶点数据查看支持有限（需 2024+ 版本）
+- Lumen 的 indirect dispatch 和 compute shader 链在 RenderDoc 中较难追踪
 
-```
-BasePass(Nanite) → Visibility Buffer → Material Resolve → G-Buffer → Lighting → PostProcess
-```
+### 2.2 NVIDIA Nsight
 
-非 Nanite Mesh 走传统 BasePass，两者在一个 G-Buffer 里共存。
+**集成方式**：
+- Nsight Graphics：独立安装，需与 UE 配合
+- 在 Nsight 中启动 UE Editor 或 packaged game
+- 支持 D3D12 和 Vulkan
 
-**混合策略**：
+**优势**：
+- GPU 性能分析（时间线、occupancy、warp utilization）
+- Shader 汇编级调试（SASS）
+- 对 UE 5.8 的 Nanite Mesh Shader 有更好的调试支持
+- 支持 GPU Trace（`r.GPUTrace 1` 配合 Nsight 使用）
 
-| 类型 | 走哪条路径 |
-|------|-----------|
-| Nanite 网格 | Visibility Buffer Path → Material Resolve → G-Buffer |
-| 非 Nanite 网格 | 传统 BasePass → G-Buffer |
-| 半透明 Nanite | 回退到传统路径（Nanite 不支持半透明） |
-| 动态物体 | 可选 Nanite（通过 `r.Nanite.AllowMovingNanite`） |
+**常用工作流**：
+1. 在 Nsight 中设置启动 UE 项目的 Activity
+2. 运行到目标场景，触发帧捕获
+3. 使用 GPU Trace 分析 draw call 耗时
+4. 使用 Shader Debugger 单步执行 shader
 
-**G-Buffer 共存**：Nanite 的 Material Resolve 写入与传统 BasePass 写入的 G-Buffer 格式完全一致——后续的 Lighting Pass 不分来源。
+### 2.3 AMD Radeon GPU Profiler (RGP)
 
-**关键点**：`r.Nanite.MaterialResolve` 控制 Material Resolve 采用的策略：
-- `0` — 禁用，Nanite 物体不可见（debug）
-- `1` — 标准 Material Resolve（默认）
-- `2` — 逐像素 Resolve
+**集成方式**：
+- 独立工具，需要 UE 以特定方式运行
+- 通过 Radeon Developer Panel 启动 UE
 
----
+**优势**：
+- 详细的 GPU 流水线分析（Wave occupancy、Cache hit rate）
+- Shader 指令级分析
+- 对异步计算（Async Compute）有良好支持
+- 支持 UE 5.8 的 RDG name tagging
 
-## 卡片 6：Nanite 的 BasePass 替代
+**适用场景**：
+- 性能瓶颈定位（ROPs、shader、bandwidth 三选一）
+- 着色器优化（ALU 占用 vs 内存延迟）
+- 异步计算队列分析
 
-**`FNaniteProcessor` 替代了传统 `FMeshPassProcessor` 的 BasePass 角色**：
+### 2.4 PIX (Windows)
 
-```mermaid
-flowchart TB
-    A["Renderer::PreRender()"] --> B["Gather Dynamic Mesh Elements<br/>非 Nanite"]
-    A --> C["Gather Nanite Mesh Elements<br/>FNaniteProcessor::AddMeshBatch"]
-    C --> D["Gather Nanite Mesh Elements<br/>收集所有 Nanite Component，按 View 分组"]
-    D --> E["RenderNanite(...)"]
-    E --> F["NaniteCull<br/>GPU 剔除 → Visibility Buffer"]
-    F --> G["NaniteMaterialResolve<br/>Visibility Buffer → G-Buffer"]
-    G --> H["NanitePostProcess<br/>可选"]
-    B --> I["RenderBasePass<br/>非 Nanite"]
-    H --> J["RenderLighting<br/>共用 G-Buffer"]
-    I --> J
-    classDef nanite fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef legacy fill:#fff3e0,stroke:#e65100,color:#000
-    classDef shared fill:#e8f5e9,stroke:#2e7d32,color:#000
-    class D,E,F,G,H nanite
-    class B,I legacy
-    class J shared
-```
+**集成方式**：
+- Microsoft PIX 独立工具，支持 D3D12
+- 在 PIX 中启动 UE
+- 或附加到运行中的 UE 进程
 
-**Nanite 的 BasePass 替代不是"替换掉全部"——而是并行处理**：
-- Nanite 物体走 Visibility Buffer 路径
-- 非 Nanite 物体走传统 BasePass
-- 两类物体的 G-Buffer 在同一个 RenderTarget 里合并
+**优势**：
+- D3D12 调试的最底层工具
+- 资源状态追踪（Barrier validation）
+- GPU 内存分配分析
+- 对 UE 5.8 的 D3D12 RHI 有第一手支持
 
-**`r.Nanite.VisibilityBuffer`**：控制是否启用 Visibility Buffer 路径（默认 1）。
-
----
-
-## 卡片 7：流式加载 — Page Streaming 策略
-
-**Nanite 的 Streaming 比传统纹理流更激进**，因为它面对的是**几何数据**（不是 2D 贴图）。
-
-**Streaming 调度的触发条件**：
-
-每帧：
-
-1. `FNaniteStreamingManager::UpdateStreaming()`
-2. 遍历所有可见 Nanite Component
-3. 计算每个 Page 的"重要性"评分：
-   - 距离相机近 → 高优先级
-   - 在视锥内 → 中优先级
-   - 即将进入视锥（预测）→ 低优先级
-4. 按评分排序，选最高的 N 个 Page 发起异步加载请求
-5. 加载完成后，把 Page 数据写入 GPU PagePool
-
-**Page 加载源**：
-- 磁盘（`.nkp` 文件，Cook 时生成）
-- 已 cache 在系统内存（`FNaniteStreamingManager::RootPageCache`）
-- 已驻留 GPU（不需要重新加载）
-
-**优先级策略**：
-
-| 优先级 | 说明 |
-|--------|------|
-| Critical | 当前帧必须可见的 Page（直接进视锥） |
-| Required | 下一帧可能需要的 Page（近距 + 即将进入） |
-| Prefetch | 远景、不在视野但可能出现的 Page |
-| Idle | 尚未被请求 |
-
-**`r.Nanite.Streaming.Async`**：异步加载（默认 1），设为 0 则同步加载（调试用）。
+**常用功能**：
+- GPU Capture：完整的 draw call 和资源状态记录
+- Timing Capture：CPU vs GPU 时间线
+- Memory Capture：资源分配分析
+- Function Summary：按 shader/PSO 聚合的统计
 
 ---
 
-## 卡片 8：显存管理 — Page Pool
+## 3. 常见渲染问题诊断
 
-**Page Pool 是 GPU 上驻留所有 Nanite 几何数据的环形缓冲区**。
+### 3.1 闪烁（Temporal 抖动、Z-Fighting）
 
-**结构**：GPU Page Pool（环形缓冲区，大小由 `r.Nanite.PagePoolSize` 控制）中，每个 Page 存放 Cluster 数据（顶点 / 索引 / 包围盒）。驱逐策略为最近最少使用（LRU）。被驱逐的 Page 如果还在系统内存 cache 中，下次加载更快；如果不在 cache 中，需要从磁盘重新加载。
+| 症状 | 可能原因 | 排查方法 |
+|---|---|---|
+| 画面高频闪烁 | Temporal 累积（TAA / TSR）历史帧匹配失败 | `r.TemporalAASamples 1` 关闭 TAA；`r.TSR 0` 关闭 Temporal Super Resolution |
+| 几何面闪烁/交替 | Z-Fighting | 调整摄像机近远平面；`r.DepthOfField.MaxDepth 0`（排除 DOF 影响）；`r.Shadow.CSM.ZFightingMethod` |
+| 阴影闪烁 | Shadow map 精度不足 | `r.ShadowQuality 5` 最高；`r.Shadow.MaxCSMResolution` 增加 |
+| 间接光照闪烁 | Lumen 逐帧收敛不一致 | `r.Lumen.DiffuseIndirect.Allow 0` 关闭 Lumen 隔离；`r.Lumen.ProbeGrid.SpatialFilter` 调整 |
+| SSR 闪烁 | 屏幕空间反射历史帧匹配 | `r.SSR.Quality 0` 关闭 SSR 隔离 |
 
-**关键参数**：
-- `r.Nanite.PagePoolSize` — Page Pool 大小（MB，默认 2048）
-- `r.Nanite.MaxPageCount` — 最大 Page 数（默认 65536）
-- `r.Nanite.Streaming.PageSize` — 每个 Page 的目标大小（KB，默认 128）
+**Temporal 抖动排查流程**：
+1. 关闭所有 temporal 效果：`r.TemporalAASamples 1` + `r.TSR 0` + `r.Lumen.DiffuseIndirect.Allow 0` + `r.SSR.Quality 0`
+2. 逐项开启，观察哪项引入闪烁
+3. 对定位到的功能，进一步调整其 temporal 参数
 
-**显存压力的表现**：
-- Page thrashing（频繁换入换出）→ 帧率抖动
-- 降低 `r.Nanite.Streaming.PoolSize` → 更积极驱逐
-- 降低 `r.Nanite.Streaming.ResolutionScale` → 降低分辨率减少压力
+### 3.2 GPU Crash（TDR、Timeout）
 
----
+**TDR（Timeout Detection and Recovery）**：
+- Windows 默认：2 秒 GPU 无响应 → TDR 触发 → UE 崩溃
+- 调整 TDR 超时以允许调试（注册表）：
 
-## 卡片 9：与纹理流的协调
-
-Nanite 的几何 Streaming 与 UE 的纹理流（`FTexture2DStream`）是**两个独立的系统**，但有一个关键耦合点：**Material Resolve 阶段需要纹理数据**。
-
-**协调机制**：
-
-```mermaid
-flowchart TB
-    TS["纹理流 TextureStreaming<br/>Texture Streaming Build<br/>UV Density / Mip 计算"] --> MR["Material Resolve 时"]
-    NS["几何流 NaniteStreaming<br/>Nanite Cook<br/>Cluster 生成"] --> MR
-    MR --> OK["几何数据已就绪（Page Pool 命中）<br/>+ 纹理数据已就绪（Mip 正好）<br/>= 正确渲染"]
-    classDef stream fill:#e3f2fd,stroke:#1565c0,color:#000
-    classDef result fill:#e8f5e9,stroke:#2e7d32,color:#000
-    class TS,NS stream
-    class OK result
+```reg
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\GraphicsDrivers]
+"TdrDelay"=dword:00000008    ; 8 秒
+"TdrDdiDelay"=dword:00000008
 ```
 
-**潜在问题**：
-- 几何已加载但纹理尚未加载 → 材质显示低 Mip（模糊）
-- 纹理已加载但几何尚未加载 → 该物体不可见（几何缺失）
-- 双重 thrashing 风险：几何和纹理争抢显存
+**UE 端 TDR 相关设置**：
 
-**调优参数**：
-- `r.Streaming.PoolSize` — 纹理池大小
-- `r.Nanite.PagePoolSize` — 几何池大小
-- **两者之和不能超过 GPU 显存**，否则两者都会 thrashing
+| CVar / 设置 | 作用 |
+|---|---|
+| `r.GPUCrashDebugging` | 启用 GPU crash 调试（5.8 默认开启） |
+| `r.GPUCrashDebugging.Aftermath` | NVIDIA Aftermath 集成（需 NVIDIA GPU） |
+| `r.GPUCrashDebugging.Aftermath.Markers` | 自动插入 GPU 事件标记 |
+| `r.GPUCrashDebugging.Aftermath.Callstack` | Crash 时捕获 GPU callstack |
+| `r.GPUCrashDebugging.Aftermath.ResourceTracking` | 追踪 GPU 资源状态 |
+| `r.GPUCrashDebugging.Aftermath.ShaderErrorReporting` | 报告 shader 错误 |
+| `r.GPUCrashDebugging.Aftermath.DumpShaderDebugInfo` | Crash 时导出 shader 调试信息 |
+| `r.FastVRAM.Dump` | VRAM 错误时触发导出 |
 
----
+**GPU Crash 分析步骤**：
+1. 检查 `Saved/Crashes/` 下的 crash 报告
+2. 查看 GPU 相关行：`GPU Crash: ...`、`Last draw: ...`、`Last RHI command: ...`
+3. `r.DumpGPU` 在 crash 前触发可捕获导致崩溃的帧
+4. 检查 `Log.txt` 中的 `LogRHI` 和 `LogD3D12` 条目
+5. 启用 `r.GPUCrashDebugging.Aftermath` 系列 CVar 获取详细 GPU 状态
 
-## 卡片 10：性能调优 — Overdraw 优化
+**常见原因**：
+- Shader 编译错误导致非法 PSO → 检查 `r.DumpShaderDebugInfo`
+- VRAM 耗尽 → 检查 `r.FastVRAM.Dump` 输出
+- 无效 RHI 资源（已释放的 buffer/texture）→ D3D12 Debug Layer 捕获
+- 驱动未适配 UE 5.8 新特性 → 更新驱动
 
-**Nanite 最大的性能优势之一就是 Overdraw 消除**。
+### 3.3 内存泄漏（RHI 资源）
 
-**传统 VS PS 的 Overdraw**：
+**监控工具**：
 
-传统渲染中，每个像素可能被多个三角形写入。远处山 + 近处草 → 草覆盖山 → 山的像素白写。透明物体需要排序，每个像素写多次。Overdraw 率 1.5x ~ 5x 很常见。
+| CVar / 命令 | 作用 |
+|---|---|
+| `r.RHIResourceStats` | 显示 RHI 资源（buffer/texture）总数和内存占用 |
+| `r.RHIResourceStats.Show` | 分类显示各资源类型 |
+| `r.RHIResourceStats.Dump` | 导出 JSON 报告 |
+| `r.TexturePool` | 纹理池状态 |
+| `r.RenderTargetPool` | RT 池状态 |
+| `r.RenderTargetPool.Evict` | 手动清理 RT 池 |
+| `r.VRAM.Dump` | VRAM 分配报告 |
+| `r.FastVRAM.Dump` | Fast VRAM 分配报告 |
+| `r.DumpRHIResources` | 导出所有 RHI 资源列表 |
+| `r.DumpRHIResources.Detailed` | 详细版（含分配栈） |
 
-**Nanite 的解决办法**：
+**排查流程**：
+1. `r.RHIResourceStats` 观测基线
+2. 执行目标操作后再次查看，确认增长
+3. `r.DumpRHIResources.Detailed 1` 导出带分配栈的列表
+4. 对比两帧间的资源增量，找出未释放的分配
 
-1. **Visibility Buffer + Early Z**：第一遍 VS 写 Visibility Buffer 时，Early Z 自动丢弃被遮挡的 Cluster。越是后面的 Cluster，Early Z 越容易拒绝 → Overdraw 趋近于 1.0x
-2. **Hierarchical Z Buffer (Hi-Z) 剔除**：Nanite 用 Hi-Z Map 做 Cluster 级遮挡剔除。一个 Cluster 被前面的物体完全遮挡 → 整个 Cluster 跳过 → 零像素消耗
-3. **Persistent Thread Group 的光栅化优化**：一个 Thread Group 处理多个 Cluster 的 VS 输出，光栅化阶段自动合并相邻的微小三角形
+### 3.4 Shader 编译问题
 
-**结果**：Nanite 可以处理比传统渲染高 10x~100x 的三角形数量，Overdraw 接近 1.0x。
+| 工具 | 作用 |
+|---|---|
+| `r.ShaderDevelopmentMode 1` | 开启后 shader 编译错误即时上报 |
+| `r.DumpShaderDebugInfo 1` | 导出编译失败的 shader 源码和中间表示 |
+| `r.ShaderCompiler.Stats` | 显示 shader 编译统计 |
+| `r.ShaderCompiler.Cache` | Shader 缓存状态 |
+| `r.ShaderPipelineCache` | PSO 缓存状态 |
+| `r.ShaderPipelineCache.Log` | 导出 PSO 缓存日志 |
+| `r.ShaderPipelineCache.ToggleDebug` | 切换 PSO 缓存调试模式 |
 
----
-
-## 卡片 11：常见性能瓶颈
-
-| 瓶颈位置 | 症状 | 定位工具 | 调优方向 |
-|----------|------|----------|----------|
-| **GPU 剔除 (CullKernel)** | GPU 管线的 Compute 阶段耗时 | `r.Nanite.ShowStats` | `r.Nanite.Culling` 调整剔除策略 |
-| **Material Resolve** | PS 阶段耗时，高分辨率下明显 | `GPU Profiler` / `ProfileGPU` | 降低材质复杂度，用 `r.Nanite.MaterialResolve` 调整 |
-| **Page 加载** | 帧率突然卡顿（hitches） | `r.Nanite.Streaming.Log` | 增大 `r.Nanite.Streaming.PageSize`，预加载 |
-| **Page Pool 不足** | 帧率抖动，纹理模糊 | `r.Nanite.PagePoolStats` | 增大 `r.Nanite.PagePoolSize` |
-| **CPU 端 LOD 选择** | 大批量 Component 更新 | `stat Nanite` | 减少 Nanite Component 数量 |
-| **显存带宽** | 高分辨率下 Material Resolve 瓶颈 | `GPU Visualizer` | 降低分辨率，简化材质 |
-| **Hi-Z 构建** | 多 View 场景（分屏） | `r.Nanite.HiZB` | 减少分屏数量 |
-
-**`r.Nanite.ShowStats`** 是调试 Nanite 性能的第一入口——输出 GPU 各阶段耗时。
-
----
-
-## 卡片 12：关键配置参数 — `r.Nanite.*`
-
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `r.Nanite.VisibilityBuffer` | 1 | 启用 Nanite Visibility Buffer 路径 |
-| `r.Nanite.MaterialResolve` | 1 | Material Resolve 策略 (0=禁用, 1=标准) |
-| `r.Nanite.Culling` | 1 | 启用 Nanite GPU 剔除 |
-| `r.Nanite.Streaming` | 1 | 启用 Nanite 流式加载 |
-| `r.Nanite.Streaming.Async` | 1 | 异步加载 Page |
-| `r.Nanite.Streaming.PageSize` | 128 | Page 目标大小 (KB) |
-| `r.Nanite.PagePoolSize` | 2048 | GPU Page Pool 大小 (MB) |
-| `r.Nanite.MaxPageCount` | 65536 | 最大 Page 数 |
-| `r.Nanite.HiZB` | 1 | 启用 Hierarchical Z-Buffer |
-| `r.Nanite.AllowMovingNanite` | 1 | 允许动态物体走 Nanite |
-| `r.Nanite.FrustumCulling` | 1 | 启用视锥剔除 |
-| `r.Nanite.OcclusionCulling` | 1 | 启用遮挡剔除 |
-| `r.Nanite.OverdrawVisualization` | 0 | Overdraw 可视化调试 |
-| `r.Nanite.ShowStats` | 0 | 显示 Nanite 性能统计 |
-
----
-
-## 卡片 13：定制与扩展 — 自定义 Nanite 材质
-
-**Nanite 材质限制**：
-
-| 支持 | 不支持 |
-|------|--------|
-| 基础材质节点（Albedo, Normal, Roughness, Metallic, Emissive, OpacityMask） | World Position Offset |
-| 纹理采样（Texture Sample） | Pixel Depth Offset |
-| 材质函数（Material Functions） | 半透明（Translucent） |
-| 材质实例（Material Instances） | 自定义 UV 通道（仅 UV0） |
-| 顶点颜色（Vertex Color） | 双面渲染（Two-Sided） |
-| 分层材质（Landscape, Foliage） | 延迟着色（Decal, Light Function） |
-| 静态开关参数 | 自定义 Lighting Model |
-
-**自定义扩展路径**：
-
-1. **材质 Graph 内做**：在 `Material Editor` 里用标准节点，Nanite 自动编译兼容版
-2. **自定义 Shader 层**：`Engine/Shaders/Nanite/MaterialResolve.ush` 是 Material Resolve 的入口，可修改 resolve 逻辑
-3. **Custom Node**：材质编辑器里插 `Custom` 节点，写入 HLSL，但必须符合 Nanite 约束
-
-**`r.Nanite.MaterialOverride`**：调试用，替换所有 Nanite 材质为指定材质（用于定位性能问题）。
+**常见问题**：
+- Shader 编译失败 → 查 `r.DumpShaderDebugInfo` 输出的 HLSL 源码
+- Shader 编译卡顿 → `r.ShaderCompiler.Stats` 看编译队列
+- 材质编译错误 → Editor 中打开材质编辑器，查看编译日志面板
+- PSO 缓存缺失 → `r.ShaderPipelineCache.Log` 导出缺失的 PSO 列表
 
 ---
 
-## 卡片 14：定制与扩展 — 自定义 Pass 交互
+## 4. Validation 层
 
-**Nanite 与自定义 Pass 的交互方式**：
+### 4.1 D3D12 Debug Layer
 
-**方式 1 — 读 Visibility Buffer**：
+**启用方式**：
 
-```cpp
-// 在自定义 Pass 中访问 Nanite 的 Visibility Buffer
-FRDGBufferRef VisibilityBuffer = GraphBuilder.RegisterExternalBuffer(
-    View.NaniteVisibilityBuffer, TEXT("CustomNaniteVisibility"));
-
-// 在 Shader 中读取
-// uint2 VisData = VisibilityBuffer[PixelIndex];
-// uint ClusterId = VisData.x;
-// uint TriangleId = VisData.y;
+```cmd
+UE 启动参数：-d3d12debug
+// 或通过环境变量
+set D3D12_DEBUG=1
+// 或代码中
+ID3D12Debug5* DebugInterface;
+D3D12GetDebugInterface(IID_PPV_ARGS(&DebugInterface));
+DebugInterface->EnableDebugLayer();
 ```
 
-**方式 2 — 读 Nanite G-Buffer**：
-- Nanite 的 Material Resolve 写入标准 G-Buffer
-- 自定义 Pass 读 G-Buffer 时，Nanite 物体与非 Nanite 物体无区别
+**UE 5.8 相关 CVar**：
 
-**方式 3 — 自定义 Nanite 剔除回调**：
+| CVar | 作用 |
+|---|---|
+| `r.D3D12.EnableDebugLayer` | 运行时启用 D3D12 Debug Layer |
+| `r.D3D12.EnableGPUBasedValidation` | 启用 GPU-based validation |
+| `r.D3D12.EnableAutoSerialization` | 自动序列化调试 |
+| `r.D3D12.ValidationLevel` | 0=Minimal, 1=Basic, 2=Full |
+| `r.D3D12.BreakOnError` | 在 D3D12 错误时中断（调试器 attach） |
+| `r.D3D12.BreakOnWarning` | 在 D3D12 警告时中断 |
 
-```cpp
-// 通过 Nanite::FProcessor 的 AddCallback 注册自定义剔除处理
-// 在 Nanite 剔除管道中插入自定义 Compute Shader
+**性能影响**：D3D12 Debug Layer 性能开销极大（帧率可能掉到 1-5 FPS），只用于诊断阶段。
+
+**启用 GPU-Based Validation**：
+```
+r.D3D12.EnableGPUBasedValidation 1
+r.D3D12.ValidationLevel 2
+```
+这会在 GPU 侧验证资源状态、屏障正确性等，但需要 Debug Layer 已启用。
+
+### 4.2 Vulkan Validation Layers
+
+**启用方式**：
+
+```cmd
+UE 启动参数：-vulkan -vulkanvalidation
+// 或通过环境变量
+set VK_LAYER_PATH=<path-to-layers>
 ```
 
-**方式 4 — 使用 Nanite 渲染结果**：
-- `NaniteRendering.cpp` 的 `RenderNanite()` 函数是整个入口
-- 可在 `RenderNanite` 之前或之后插入自定义 Pass
-- 通过 `FViewInfo` 的 `NaniteResources` 访问 Nanite 数据
+**UE 5.8 相关设置**：
+
+| CVar / 配置 | 作用 |
+|---|---|
+| `r.Vulkan.EnableValidation` | 运行时启用 Vulkan Validation |
+| `r.Vulkan.EnableValidationLayers` | 启用 Standard Validation |
+| `r.Vulkan.EnableGPUBasedValidation` | GPU-based validation |
+| `r.Vulkan.BreakOnError` | 错误时 debug break |
+| `r.Vulkan.DumpValidation` | 导出 validation 输出到文件 |
+| `r.Vulkan.OptimalValidation` | 启用所有推荐的 validation 功能 |
+
+**要求**：
+- Vulkan SDK 安装（`VK_LAYER_KHRONOS_validation`）
+- 或系统已安装 Vulkan validation layers
+
+### 4.3 UE 内置 RHI 与 RDG Validation
+
+| CVar | 作用 |
+|---|---|
+| `r.RHI.EnableValidation` | 全局 RHI Validation 开关（UE 5.8 新增改进） |
+| `r.RHI.ValidationLevel` | 0=Off, 1=Basic, 2=Detailed, 3=Full |
+| `r.RHI.BreakOnRHIError` | RHI 错误时调用 `DebugBreak` |
+| `r.RHI.BreakOnRHIWarning` | RHI 警告时调用 `DebugBreak` |
+| `r.RHI.LogResourceLeaks` | 在 shutdown 时报告未释放的 RHI 资源 |
+| `r.RHI.ValidateResourceStates` | 验证资源状态转换 |
+| `r.RHI.ValidateBindings` | 验证资源绑定合法性 |
+| `r.RHI.ValidatePipeline` | 验证 PSO 状态 |
+| `r.RHI.DumpValidation` | 导出 validation 结果到日志文件 |
+
+**RDG Validation 与 Debug 工具**：
+
+| CVar | 作用 |
+|---|---|
+| `r.RDG.Validation` | RDG 资源生命周期验证（默认 1=开启） |
+| `r.RDG.ImmediateMode` | 立即执行 pass（crash 时保留 wiring 调用栈） |
+| `r.RDG.ClobberResources` | 分配时用指定颜色清除 RT/UAV（0=关, 1=1000, 2=NaN, 3=+INF） |
+| `r.RDG.TransitionLog` | 日志记录资源屏障转换 |
+| `r.RDG.Debug.FlushGPU` | 每 pass 后 flush GPU（禁用 async compute 和 parallel execute） |
+| `r.RDG.Debug.ExtendResourceLifetimes` | 延长资源生命周期（防止 transient aliasing 干扰调试） |
+| `r.RDG.Debug.DisableTransientResources` | 禁用 transient 分配器，配合 `r.RDG.Debug.ResourceFilter` 使用 |
+| `r.RDG.Debug.GraphFilter` | 按 graph 名称过滤 debug 事件 |
+| `r.RDG.Debug.PassFilter` | 按 pass 名称过滤 debug 事件 |
+| `r.RDG.Debug.ResourceFilter` | 按资源名称过滤 debug 事件 |
+
+**层级说明**：
+
+| Level | 内容 | 性能影响 |
+|---|---|---|
+| 0 (Off) | 无验证 | 无 |
+| 1 (Basic) | 资源空检查、类型匹配、边界检查 | 轻微 |
+| 2 (Detailed) | 状态跟踪、屏障验证、绑定一致性 | 中等 |
+| 3 (Full) | 所有检查 + 资源生命周期的完整跟踪 | 显著 |
 
 ---
 
-## 卡片 15：已知限制
+## 5. 关键 CVar 与命令汇总
 
-| 限制 | 原因 | 影响范围 | 工作区 |
-|------|------|----------|--------|
-| **不支持半透明** | Visibility Buffer 第一遍无法处理半透明排序 | 玻璃、水、UI 等 | 半透明物体回退到传统路径 |
-| **不支持 World Position Offset** | Nanite 的 Cluster 预计算包围盒 / 剔除数据不随 WPO 变化 | 动画特效、植被弯曲 | 需要 WPO 的物体禁用 Nanite |
-| **不支持 Custom UV** | Cluster 顶点格式固定，仅 UV0 | 需要多 UV 的材质（如 lightmap） | 材质层扩展受限 |
-| **不支持 Decal 接收** | Decal 读 G-Buffer，但 Nanite 物体在 Resolve 前不在 G-Buffer | Decal 不覆盖 Nanite 物体 | 用材质层模拟 decal |
-| **不支持 Nanite 实例化骨骼网格** | 非静态骨骼，Cluster 绑定在静态 LOD 层级 | 角色、动画物体 | 骨骼网格走传统渲染 |
-| **不支持 Ray Tracing 的 Nanite 加速** | 需 Fallback 到传统几何 | RTX 场景 | 参考 `r.RayTracing.Nanite` |
-| **不支持 Split Depth** | 与 VR 立体渲染的深度分裂冲突 | VR 项目 | 关闭 Nanite 或禁用 Split Depth |
-| **不支持 Instance Culling 中剔除** | 非 Nanite 的 Instance Culling 与 Nanite 管线的交互不完整 | 大量实例化物体 | 用 Nanite 的 Component 实例化 |
+### 帧捕获与截图
+
+| CVar / 命令 | 描述 |
+|---|---|
+| `r.DumpGPU <n>` | 捕获第 n 帧的 GPU 状态 |
+| `r.DumpGPU.FrameCount <n>` | 连续捕获帧数 |
+| `r.DumpGPU.FrameDelay <n>` | 延迟 N 帧后开始捕获 |
+| `r.DumpGPU.Delay <s>` | 延迟 N 秒后开始捕获 |
+| `r.DumpGPU.Root <path>` | 输出目录 / pass 过滤 |
+| `r.DumpGPU.Texture <0/1/2>` | 纹理导出级别 |
+| `r.DumpGPU.Buffer <0/1/2>` | Buffer 导出级别 |
+| `r.DumpGPU.Screenshot <0/1>` | 同时截图 |
+| `r.DumpGPU.PassParameters <0/1>` | 导出 pass 参数 |
+| `r.DumpGPU.MaxStagingSize <MB>` | Staging 资源上限 |
+| `r.DumpGPU.Stream <0/1>` | 异步回读模式 |
+| `r.DumpGPU.CameraCut <0/1>` | 首帧 camera cut |
+| `r.ScreenShot` | 截图 |
+| `r.ScreenShot.Mode <0/1/2>` | 截图模式 |
+
+### 可视化模式
+
+| CVar / ShowFlag | 描述 |
+|---|---|
+| `r.VisualizeBuffer <0-16>` | GBuffer 通道可视化 |
+| `r.VisualizeHDR <0-2>` | HDR 可视化 |
+| `ShowFlag.VisualizeMotionBlur <0/1>` | 运动模糊速度场（ShowFlag） |
+| `r.VisualizeSSR <0-3>` | SSR 可视化 |
+| `r.VisualizeDOF <0/1>` | 景深 CoC 可视化 |
+| `r.ShaderComplexity <0/1>` | 着色复杂度 |
+| `r.QuadComplexity <0/1>` | 瓦片复杂度 |
+| `r.Wireframe <0/1>` | 线框模式 |
+
+### Shader 调试
+
+| CVar | 描述 |
+|---|---|
+| `r.ShaderDevelopmentMode <0/1>` | Shader 开发模式 |
+| `r.DumpShaderDebugInfo <0/1>` | 导出 shader 调试信息 |
+| `r.DumpShaderDebugInfo.CompileMode <0/1>` | 编译模式（0=仅失败, 1=总是） |
+| `r.ShaderCompiler.Stats` | 编译统计 |
+| `r.ShaderPipelineCache.Log` | PSO 缓存日志 |
+| `r.ShaderPipelineCache.ToggleDebug` | 缓存调试模式 |
+
+### GPU 诊断
+
+| CVar | 描述 |
+|---|---|
+| `r.GPUCrashDebugging <0/1>` | GPU crash 调试 |
+| `r.GPUCrashDebugging.Aftermath` | NVIDIA Aftermath 集成 |
+| `r.GPUCrashDebugging.Aftermath.Markers` | GPU 事件标记 |
+| `r.GPUCrashDebugging.Aftermath.Callstack` | GPU callstack 捕获 |
+| `r.GPUCrashDebugging.Aftermath.ResourceTracking` | 资源状态追踪 |
+| `r.GPUCrashDebugging.Aftermath.ShaderErrorReporting` | Shader 错误报告 |
+| `r.GPUCrashDebugging.Aftermath.DumpShaderDebugInfo` | Crash 时导出 shader 信息 |
+| `r.RHIResourceStats` | RHI 资源统计 |
+| `r.RHIResourceStats.Dump` | 导出资源统计报告 |
+| `r.RenderTargetPool` | RT 池状态 |
+| `r.RenderTargetPool.Evict` | 清理 RT 池 |
+| `r.VRAM.Dump` | VRAM 报告 |
+| `r.FastVRAM.Dump` | Fast VRAM 报告 |
+| `r.DumpRHIResources` | 导出所有 RHI 资源 |
+
+### Validation
+
+| CVar | 描述 |
+|---|---|
+| `r.RHI.EnableValidation <0/1>` | RHI Validation 开关 |
+| `r.RHI.ValidationLevel <0-3>` | Validation 级别 |
+| `r.RHI.BreakOnRHIError <0/1>` | 错误时中断 |
+| `r.RHI.LogResourceLeaks <0/1>` | 资源泄漏检测 |
+| `r.RHI.ValidateResourceStates` | 资源状态验证 |
+| `r.RDG.Validation <0/1>` | RDG 验证（默认开启） |
+| `r.RDG.ImmediateMode <0/1>` | 立即执行 pass |
+| `r.RDG.ClobberResources <0-3>` | 资源清除覆盖 |
+| `r.RDG.Debug.FlushGPU <0/1>` | 每 pass 后 flush GPU |
+| `r.RDG.Debug.ExtendResourceLifetimes <0/1>` | 延长资源生命周期 |
+| `r.RDG.Debug.DisableTransientResources <0/1>` | 禁用 transient 资源 |
+| `r.RDG.Debug.GraphFilter <string>` | Graph 过滤 |
+| `r.RDG.Debug.PassFilter <string>` | Pass 过滤 |
+| `r.RDG.Debug.ResourceFilter <string>` | 资源过滤 |
+| `r.D3D12.EnableDebugLayer <0/1>` | D3D12 Debug Layer |
+| `r.D3D12.EnableGPUBasedValidation` | GPU-based validation |
+| `r.Vulkan.EnableValidation <0/1>` | Vulkan Validation |
+
+### 性能分析
+
+| CVar | 描述 |
+|---|---|
+| `r.GPUTrace <0/1>` | GPU Time trace |
+| `r.GPUTrace.SampleCount <n>` | 采样帧数 |
+| `r.GPUTrace.Output` | 输出路径 |
+| `r.ProfileGPU <0/1>` | GPU 性能分析 |
+| `r.ProfileGPU.ShowEventHistory` | 事件历史 |
+| `r.ProfileGPU.ShowEvents` | 显示 GPU 事件 |
+| `r.ProfileGPU.Trimmed` | 精简输出 |
+| `stat gpu` | 实时 GPU 统计 |
+| `stat rdg` | RDG 统计 (5.8) |
+| `stat rhi` | RHI 统计 |
+| `stat memory` | 内存统计 |
 
 ---
 
-## 卡片 16：关键源码文件索引
+## 6. 调试工作流速查
 
-| 文件路径 | 核心职责 |
-|----------|----------|
-| `Engine/Source/Runtime/Engine/Public/NaniteDefinitions.h` | Nanite 数据结构定义（Cluster, Page, Group 等） |
-| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteRendering.cpp` | Nanite 渲染主入口，`RenderNanite()` 函数，VS/PS 配置 |
-| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteStreaming.cpp` | `FNaniteStreamingManager`，Page 加载/卸载/LOD 选择 |
-| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteCull.cpp` | GPU 剔除 Kernel（视锥/遮挡/Hi-Z） |
-| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteVisualize.cpp` | 可视化调试工具（Overdraw/LOD/Page 驻留） |
-| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteMaterialResolve.cpp` | Visibility Buffer → G-Buffer 的 Material Resolve |
-| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteCluster.cpp` | Cluster 创建/合并/压缩逻辑 |
-| `Engine/Shaders/Nanite/NaniteCull.usf` | GPU 剔除的 Compute Shader |
-| `Engine/Shaders/Nanite/NaniteMaterialResolve.ush` | Material Resolve 的 Shader 入口 |
-| `Engine/Shaders/Nanite/NaniteVS.usf` | Nanite 的 Vertex Shader |
-| `Engine/Shaders/Nanite/NanitePS.usf` | Nanite 的 Pixel Shader（Visibility Buffer 写入） |
-| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteClusterCull.usf` | Cluster 级剔除的 Shader 变体 |
-| `Engine/Source/Programs/NaniteCook/NaniteCook.cpp` | 离线 Cook 工具（Cluster 生成/压缩） |
-| `Engine/Source/Runtime/Engine/Private/Nanite/NaniteResources.cpp` | 资源加载/序列化 |
+### 帧率/性能问题 → GPU 瓶颈定位
 
-**调试入口**：
-- `r.Nanite.ShowStats 1` — 实时显示 Nanite 各阶段耗时
-- `r.Nanite.Visualize 1` — 可视化 Nanite 剔除结果
-- `r.Nanite.Streaming.Log 1` — 流式加载日志
-- `r.Nanite.PagePoolLog 1` — Page Pool 状态日志
+```
+stat gpu            → 查看每个 pass 耗时
+r.GPUTrace 1        → 捕获详细 GPU trace
+r.ProfileGPU 1      → 看 CPU 端 submit 耗时
+r.ProfileGPU.Trimmed 1 → 精简输出
+```
 
----
+### 渲染错误/画面异常 → 逐层隔离
 
-## 卡片 17：Nanite Cook 与构建管线
+```
+r.VisualizeBuffer 0 → 看 GBuffer 各层
+r.ShaderComplexity 1 → 看哪个像素最贵
+r.TemporalAASamples 1 → 关闭 TAA
+r.TSR 0            → 关闭 TSR
+r.Lumen.DiffuseIndirect.Allow 0 → 关闭 Lumen
+```
 
-**Nanite 资产的构建流程**：
+### GPU Crash → 取证
 
-Static Mesh 源 → Nanite Cook（UE Cooker）→ 输出：
+```
+r.GPUCrashDebugging 1
+r.GPUCrashDebugging.Aftermath 1
+r.DumpGPU -1        → 捕获 crash 帧
+r.D3D12.EnableDebugLayer 1 → 用 validation 复现
+r.RHI.LogResourceLeaks 1
+```
 
-- `.ubulk`（Nanite Bulk Data）：Cluster 顶点 / 索引数据
-- `.uptnl`（Nanite 可选数据）：预计算剔除数据
-- `.nkp`（Nanite Page 数据）：按 Page 打包的 Cluster 压缩数据
+### Shader 问题 → 编译诊断
 
-**Cook 关键步骤**：
+```
+r.ShaderDevelopmentMode 1
+r.DumpShaderDebugInfo 1
+r.DumpShaderDebugInfo.CompileMode 1
+```
 
-1. **Simplify** — 化简原始网格，生成 Cluster 层级
-2. **Cluster 生成** — 128 三角一组，计算包围盒 / 法线锥 / 误差
-3. **Page 打包** — 按空间局部性把 Cluster 打包进 Page
-4. **压缩** — 顶点位置用 16-bit 量化，索引用 Group ID 编码
-5. **LOD 层级表生成** — 预计算每个 SSE 阈值的 Cluster 可见性
+### 内存泄漏 → 资源追踪
 
-**`r.Nanite.Cook.ForceSingle`**：强制单线程 Cook（调试用）。
-
----
-
-## 卡片 18：Project Settings 中 Nanite 相关配置
-
-| 设置路径 | 选项 | 默认值 |
-|----------|------|--------|
-| `Project Settings > Rendering > Nanite` | 启用 Nanite | True |
-| | Adaptive Level of Detail | True |
-| | Allow Async Compute | True |
-| | Percentage of Triangles Allowed | 100% |
-| `Mesh Settings > Nanite` | 启用 Nanite | True（可 per-mesh 关闭） |
-| | Fallback LOD Mode | 回退到传统 LOD |
-| | Position Precision | 16-bit / 32-bit |
-
-**最佳实践**：
-- 静态建筑 / 环境 → 全部启用 Nanite
-- 角色 / 动画物体 → 走传统骨骼网格
-- 植被 → 启用 Nanite（Foliage 有特别优化路径）
-- 半透明 / Decal → 关闭 Nanite
+```
+r.RHIResourceStats
+r.DumpRHIResources.Detailed 1
+启动参数 -d3d12debug → D3D12 Debug Layer 报告泄漏
+r.RHI.LogResourceLeaks 1
+```
 
 ---
 
-以上知识卡片覆盖了 UE 5.8 Nanite 虚拟几何体系统的核心架构、渲染流程、流式加载、性能调优、定制扩展和关键源码文件。如需深入某个具体主题的详细分析，请告知。
+**Sources**：本卡片基于 UE 5.8 引擎源码（`Engine/Source/Runtime/RenderCore/`, `Engine/Source/Runtime/D3D12RHI/`, `Engine/Source/Runtime/VulkanRHI/`, `Engine/Source/Runtime/RenderGraph/`, `Engine/Source/Runtime/Engine/`）中 ConsoleVariables 和 Debug 功能的实现，以及 UE 官方文档（`docs.unrealengine.com`）中关于渲染调试工具链的内容综合整理。
