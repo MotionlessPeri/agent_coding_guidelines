@@ -117,6 +117,8 @@ Guidelines are grouped by topic under `guidelines/`:
 > 条件域 techniques 不 eager `@`-import——`techniques/ci-deploy-to-p4.md`（P4 + Windows CI 部署链）与 `techniques/claude-code-autonomous-permissions.md`（Claude Code permission list 配置）随对应 guidelines 子目录懒加载，触发场景见上 Guidelines 段末 P4 / CI / Claude-Code 说明。`context-budget-audit` 已转成 skill（审计常驻成本时自动触发），见下 Skills 段。（2026-07-19 audit S2 Tier D）
 >
 > `techniques/cpp-coverage-and-crap-measurement.md`（C++ per-function 覆盖率 / CRAP 测量：lizard + gcov/gcovr + OpenCppCoverage，含 OpenCppCoverage 盘符 bug 等 pitfall）同样不 eager `@`-import——**只在 C++ 项目要拿覆盖率 / 算 CRAP 时按需读**，常驻侧的指标使用认知在 `guidelines/code/complexity-coverage-metrics.md`。（2026-07-24）
+>
+> `techniques/blackbox-api-characterization.md`（黑箱刻画第三方 API 的**参数语义**：扫了没反应的**五种原因**及各自指纹 / 比较维度不独立时拆混淆变量 / 自证阈值要给浮点噪声留余量 / 数量级不合理先查场景 / 优先找"不是你写的判官"——厂商返回值与库自己填好的对应关系）同样不 eager `@`-import——**只在要搞清一个闭源或无文档库的参数到底控制什么时按需读**。跟 `adversarial-verification.md`（常驻，管"我改的东西对不对"）是**对称的另一半**：本条管"别人的黑箱是什么语义"。比 skill `reverse-maya-closed-nodes` 轻且框架无关（那条覆盖 Ghidra / 汇编且 Maya 专属）——先用本条，不够再上那条。**单项目验证**（其中"五种原因"该项目内 5 次独立复现、每次真因不同），未满足两击规则，apply-and-refine。（2026-07-29 从 HumanIK 闭源库参数刻画提升）
 
 ---
 

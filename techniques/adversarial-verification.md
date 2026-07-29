@@ -208,3 +208,4 @@ Before reporting verification complete:
 - See `guidelines/code/validation.md` for the declarative principles behind this technique.
 - [`techniques/enumerate-then-adjudicate.md`](enumerate-then-adjudicate.md) —— "选可信 check" 的一个具体落地：把"让 LLM 找全所有 X"这个静默失败换成"机械枚举候选 + LLM 逐条裁决"。
 - [`techniques/coordination-patterns.md`](coordination-patterns.md) —— 无 oracle 时怎么隔离一个独立 checker（fresh worker / 从契约推导）。
+- [`techniques/blackbox-api-characterization.md`](blackbox-api-characterization.md) —— **对称的另一半**（懒加载）：本份管"我改的东西对不对"，那份管"别人的闭源黑箱是什么语义"。上面「metric 选错」那节是那份「扫了没反应的五种原因」里的第 5 种（也是最危险的一种，因为它给出**反向**结论）；「四要素」的 Independent 在那边落成"优先找厂商自己的返回值 / 库自己填好的对应关系,别急着做因果实验"。
