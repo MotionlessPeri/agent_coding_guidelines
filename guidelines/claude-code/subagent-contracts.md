@@ -10,6 +10,8 @@
 2. **subagent 的 context 隔离是不对称的。** 每个 subagent 起于一个**全新、隔离**的 context window：它**看不到**你的对话历史、你已调用的 skill、Claude 已读过的文件。它的初始 context 只有 = 它自己的 system prompt + 你派活那段 delegation message + CLAUDE.md 层级 + git-status 快照 + 预加载的 skills。反向：**只有 subagent 的 final message 回到 parent**，中间每一次 tool call / 文件读 / 测试输出都留在 subagent 自己的 context 里。
    - **例外**：设了 `CLAUDE_CODE_FORK_SUBAGENT=1` 的 fork subagent **会**继承 parent 对话（"memory"指 subagent 自己配置的 memory，不是 parent 的 auto-memory）。
    - **推论**：派活的 delegation prompt 必须**自包含**——把 subagent 需要的信息全塞进去（这正是 [`../../techniques/worker-instructions.md`](../../techniques/worker-instructions.md) 讲的，本条给了机制上的"为什么"）。
+3. **Workflow 子 agent 的 model 继承父会话，不指定则自动继承。** 在 workflow 脚本里调用 `agent(prompt, {model: 'sonnet'})` 时，如果当前会话不是 sonnet（如 Kimi K3），所有子 agent 会 403 失败。**子 agent 的 model 字段只应在需要明确降级/升级模型时设置，且必须确认该模型在当前会话可用。** 安全做法：不填 model，让子 agent 继承父会话。
+4. **Workflow `resumeFromRunId` 的 cache 陷阱。** `resumeFromRunId` 回放已完成 agent 的缓存结果。如果首次运行因模型权限 / API 错误等原因全部失败（返回空结果或 null），resume 会回放这些空结果，下游 agent 拿到 null 继续跑，全链仍然是废的。**修复：失败后先读 `journal.jsonl` 确认结果不为空。如果全是空结果，直接清 cache 目录重跑，不要 resume。** 清 cache 的方法：`rm -rf <transcript_dir>`（由 workflow 返回的 `Transcript dir` 路径给出），然后不带 `resumeFromRunId` 重新调用 Workflow。`
 
 ## 版本翻转的行为（记结论 + 记版本，别当 timeless）
 
