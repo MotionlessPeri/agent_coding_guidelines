@@ -32,11 +32,17 @@
 | 断言类型 | 例子 | 怎么核 |
 |---|---|---|
 | **源码路径** | `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteRendering.cpp` | 直接看文件在不在。不在就按 basename 全树搜真实位置 |
+<!-- verify:ignore-start -->
 | **CVar 名** | `r.Nanite.PagePoolSize` | 在引擎源码里搜这个字面量。搜不到就是不存在 |
+<!-- verify:ignore-end -->
+<!-- verify:ignore-start -->
 | **符号名**（类 / 函数 / 宏） | `FNaniteStreamingManager` | 在引擎源码里搜这个 token |
+<!-- verify:ignore-end -->
 
 三类都有同一个失败模式：**编造出来的名字读起来完全合理**。`NaniteRendering.cpp`、
+<!-- verify:ignore-start -->
 `RHIBuffer.h`、`r.VisualizeBuffer`、`FGPUCrashDebugging` 都是实测的假名字，看着都像真的。
+<!-- verify:ignore-end -->
 靠读发现不了，跑一遍就现形。
 
 ---
@@ -83,7 +89,9 @@ python scripts/verify-ue-rendering-refs.py --paths-only
 客户在邮件里给了个 CVar，先确认它存在：
 
 ```bash
+<!-- verify:ignore-start -->
 python scripts/ue-cvar-dump.py --check r.Nanite.MaxPixelsPerEdge r.Nanite.PagePoolSize
+<!-- verify:ignore-end -->
 ```
 
 存在的会给出声明位置和引擎自己的帮助文本；不存在的会尝试给近亲。

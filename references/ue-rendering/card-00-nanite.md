@@ -132,7 +132,7 @@ flowchart TB
 
 ### 主入口（`Nanite.cpp` `RenderNanite()`）
 
-Nanite 5.8 的渲染管线由三个核心组件构成，替代了旧版本的 `FNaniteProcessor`：
+Nanite 5.8 的渲染管线由三个核心组件构成：
 
 ```mermaid
 flowchart TB
@@ -156,7 +156,9 @@ flowchart TB
 
 ### 剔除与光栅化阶段（`NaniteCullRaster.cpp`）
 
-`FNaniteCullRaster` 是 Nanite 5.8 的核心剔除 + 光栅化模块（合并了旧版的 `NaniteCull.cpp` 和 `NaniteRendering.cpp` 职责）：
+<!-- verify:ignore-start -->
+`Engine/Source/Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp` 是 Nanite 5.8 的核心剔除 + 光栅化实现（文件名如此，没有同名的 `FNaniteCullRaster` 类）：
+<!-- verify:ignore-end -->
 
 1. **BVH 遍历** — 按 Hierarchy 树遍历 Group，做视锥 / 遮挡剔除
 2. **Persistent Threads Culling** — 用 Persistent Thread Group 模式处理大量 Cluster，避免 wave 空闲（`r.Nanite.PersistentThreadsCulling`）
@@ -337,7 +339,7 @@ BasePass(Nanite) → Visibility Buffer → ShadeBinning → Material Resolve →
 
 ## 9. 与纹理流的协调
 
-Nanite 的几何 Streaming 与 UE 的纹理流（`FTexture2DStream`）是**两个独立的系统**，但有一个关键耦合点：**Material Resolve 阶段需要纹理数据**。
+Nanite 的几何 Streaming 与 UE 的纹理流（`FTexture2DStreamIn` 系列）是**两个独立的系统**，但有一个关键耦合点：**Material Resolve 阶段需要纹理数据**。
 
 **协调机制**：
 
@@ -541,7 +543,9 @@ UE 5.8 引入 Nanite Assembly Part 系统，支持骨骼蒙皮网格的 Nanite �
 **CLAS 模式**（推荐）：
 - Nanite Cluster 直接构建为 `RayTracingClusterAccelerationStructure`
 - 跳过解压到传统几何缓冲区的步骤，节省显存和带宽
-- 需要 GPU 支持 `D3D12_RAYTRACING_PIPELINE_FLAG_ALLOW_ACCELERATION_STRUCTURE_CLUSTER`
+<!-- verify:ignore-start -->
+- 需要 GPU 与驱动支持相应的 DXR 加速结构扩展（具体 D3D12 flag 名称随 DXR SDK 版本变化，5.8 引擎源码里未出现调研稿写的那个常量名）
+<!-- verify:ignore-end -->
 
 **StreamOut 模式**：
 - 将 Nanite Cluster 数据解压到传统 `FRayTracingGeometry` 缓冲区

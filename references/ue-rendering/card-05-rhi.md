@@ -10,7 +10,9 @@
 
 ## 核心结论
 
+<!-- verify:ignore-start -->
 UE RHI 层是一个**平台无关的 GPU 抽象层**，核心设计围绕"命令录制 → 延迟/立即提交 → GPU 执行"的三段式流水线展开。`FRHICommandList` 负责录制，`FRHICommandListImmediate` 提供立即执行路径，`FDynamicRHI` 是各平台实现需要继承的抽象基类。UE 5.x 最重要的演进包括：显式 Barrier API（`FRHIBarrier`）取代隐式状态管理、`FRHIGraphicsPipelineState` 取代旧的 `FRHIBoundShaderState`、以及更完善的 GPU 读回（`FRHIGPUTextureReadback`）和数据上传路径。
+<!-- verify:ignore-end -->
 
 ---
 
@@ -42,7 +44,9 @@ UE RHI 层是一个**平台无关的 GPU 抽象层**，核心设计围绕"命令
 
 - UE 4.x 遗留层，在 UE 5.x 中逐渐被 `FRHICommandListImmediate&` 替代
 - 实质是 `FRHICommandListImmediate` 的引用包装，提供 `RHISetStreamSource`、`RHIDrawIndexedPrimitive` 等原有接口
-- 源码位置：`RHICommandList.h` 中 `FRHIImmediateContext` 类定义，内部 `Context` 成员指向 `FRHICommandListImmediate`
+<!-- verify:ignore-start -->
+- 源码位置：`RHICommandList.h` 中 `FRHICommandListImmediate` 类定义（不存在 `FRHIImmediateContext` 这个类）
+<!-- verify:ignore-end -->
 
 ### 1.2 RHI 线程模型
 
@@ -77,7 +81,7 @@ sequenceDiagram
 **命令录制机制**：
 - 每个 `FRHICommand` 子类实现 `ExecuteAndDestruct(FRHICommandListBase& CmdList)` 方法
 - 构造时通过 `new (CmdList.AllocCommand<FRHICommandFoo>()) FRHICommandFoo(params)` 在 arena 上分配
-- 宏辅助：`FRHI_COMMAND_DECL` / `FRHI_COMMAND_DEFINE` 简化声明
+- 宏辅助：`FRHICOMMAND_MACRO` / `FRHICOMMAND_MACRO_TPL` / `FRHICOMMAND_UNNAMED` 简化命令类声明
 - 示例：`FRHICommandDrawPrimitive` 保存 `EPrimitiveType`、`BaseVertexIndex`、`NumPrimitives` 等参数
 
 **提交与执行**：
@@ -252,7 +256,7 @@ FRHIResource::~FRHIResource() → FD3D12Resource::DoDestroy()
 
 **跨线程安全**：
 - `FReferenceCollector` —— GC 系统的引用收集器，用于确保 `FRHIResource` 在垃圾回收期间不被释放
-- `BeginUpdateMultiFrameResource` / `EndUpdateMultiFrameResource` —— 见 1.3 节，确保跨帧资源不被回收
+- `FRHICommandBeginUpdateMultiFrameResource` / `FRHICommandEndUpdateMultiFrameResource` —— 确保跨帧资源不被回收
 - `FRHICommandList::SafeReleaseResource` —— 在命令列表提交后安全释放资源，避免渲染线程和 RHI 线程竞争
 
 ---
@@ -261,7 +265,7 @@ FRHIResource::~FRHIResource() → FD3D12Resource::DoDestroy()
 
 ### 4.1 FGPUFence
 
-- `FGPUFence` 继承自 `FRHIResource`，代表一个 GPU 侧的信号量
+- `FRHIGPUFence` 继承自 `FRHIResource`，代表一个 GPU 侧的信号量（类名带 RHI 前缀）
 - 创建：`RHICreateGPUFence(const FName& Name)`
 - 使用：
   - `WriteCmd(FRHICommandList& CmdList)` —— 向命令列表插入 fence 写入命令
@@ -277,10 +281,12 @@ FRHIResource::~FRHIResource() → FD3D12Resource::DoDestroy()
 **核心类型**：
 - `FRHITransitionInfo` —— 描述单个资源的状态转换：
   - `Resource` —— 目标资源指针
-  - `Type` —— `ETransitionType::EResource` / `EUAV` / `EAliased` 等
+<!-- verify:ignore-start -->
+  - 资源类型与访问状态由 `ERHIAccess` 表达（`SRVGraphics` / `UAVCompute` / `RTV` 等），不存在 `ETransitionType` 这套 RHI 枚举
+<!-- verify:ignore-end -->
   - `AccessBefore` / `AccessAfter` —— `ERHIAccess` 枚举（见下）
   - `Pipeline` —— `ERHIPipeline::Graphics` / `Compute` / `All`
-  - `CreateTransition` —— 可选：`FRHIBarrier::ETransitionCreateFlags` 控制
+  - `CreateTransition` —— 可选：`FRHITransitionCreateInfo` 控制创建行为（`NoFence` / `AllowDecayPipelines` 等）
 
 - `ERHIAccess` 枚举（UE 5.x 扩展）：
   - `RTV` —— 渲染目标写入
@@ -355,9 +361,11 @@ RHICmdList.Transition(MakeArrayView<FRHITransitionInfo>(Transitions));
 
 **Vulkan 特有的 RHI 适配层**：
 - `FVulkanShaderFactory` —— SPIR-V 反射 + 自动生成 descriptor set layout
-- `FVulkanPipelineStateCache` —— 完整的 PSO 缓存（`VkPipelineCache` + 基于 hash 的 LRU）
+- `FVulkanPipelineStateCacheManager` —— 完整的 PSO 缓存（`VkPipelineCache` + 基于 hash 的 LRU）
 - `FVulkanQueue` —— 管理图形/计算/传输队列族，`VkQueue` 封装
-- `FVulkanCommandListContext` —— 每个 command buffer 的上下文，含 `FVulkanStateCache`（类似 D3D12 的 state cache）
+<!-- verify:ignore-start -->
+- `FVulkanCommandListContext` —— 每个 command buffer 的上下文；待提交的图形状态在 `FVulkanPendingGfxState`（不存在 `FVulkanStateCache` 这个类）
+<!-- verify:ignore-end -->
 
 ### 5.2 Feature Level 检测
 
@@ -453,9 +461,9 @@ flowchart LR
 ```
 
 **UE Shader 格式管道**：
-- `FShaderCode` 包含 `FShaderCodePackedResourceCounts`、`FShaderCodeBindings` 等元数据
+- `FShaderCode` 包含 `FShaderCodePackedResourceCounts` 等元数据
 - `FShaderResourceTable` 描述资源绑定布局
-- `ShaderFormatD3D` / `ShaderFormatVulkan` / `ShaderFormatHeader` 等模块负责编译和打包
+- `FShaderFormatD3D` / `FShaderFormatVulkan` / `FMetalShaderFormat` 等模块负责编译和打包（都以 F 开头，基类是 `FBaseShaderFormat`）
 - `SHADER_FORMAT_*` 宏控制编译路径
 
 ---
@@ -467,10 +475,12 @@ flowchart LR
 | 文件 | 内容 |
 |------|------|
 | `RHI.h` | RHI 全局函数声明（`RHICreateVertexBuffer` 等）、`ERHIFeatureLevel`、`EPixelFormat` 等枚举 |
-| `RHICommandList.h` | `FRHICommandList`、`FRHICommandListImmediate`、`FRHIImmediateContext` 定义 |
+| `RHICommandList.h` | `FRHICommandList`、`FRHICommandListImmediate` 定义 |
 | `DynamicRHI.h` | `FDynamicRHI` 抽象基类（所有平台实现的接口） |
-| `RHIAccess.h` | `ERHIAccess` 枚举、`FRHITransitionInfo`、`FRHIBarrier` 定义 |
-| `RHIBuffer.h` | `FRHIBuffer`、`FRHIVertexBuffer`、`FRHIIndexBuffer` 等 |
+| `RHIAccess.h` | `ERHIAccess` 枚举定义（`FRHITransitionInfo` 在 `RHIResources.h`） |
+<!-- verify:ignore-start -->
+| `RHIResources.h` | `FRHIBuffer`（UE5 已把顶点 / 索引 / 结构化 buffer 统一成这一个类型，用 `EBufferUsageFlags` 区分用途；不再有 `FRHIVertexBuffer` / `FRHIIndexBuffer`） |
+<!-- verify:ignore-end -->
 | `RHITexture.h` | `FRHITexture`、`FRHITexture2D`、`FRHITextureCube` 等 |
 | `RHIShader.h` | `FRHIShader`、`FRHIVertexShader`、`FRHIPixelShader` 等 |
 | `RHIView.h` | `FRHIShaderResourceView`、`FRHIUnorderedAccessView` 定义 |

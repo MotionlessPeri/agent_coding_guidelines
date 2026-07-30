@@ -496,11 +496,11 @@
 - `Engine/Source/Runtime/RenderCore/Public/RenderGraphBuilder.h` — `FRDGBuilder` 核心 API
 - `Engine/Source/Runtime/RenderCore/Public/RenderGraphResources.h` — `FRDGTexture` / `FRDGBuffer`
 - `Engine/Source/Runtime/RenderCore/Public/RenderGraphPass.h` — `ERDGPassFlags` / Pass 类型
-- `Engine/Source/Runtime/RHI/Public/RHIAccess.h` — `ERHIAccess` / `FRHIBarrier` / `FRHITransitionInfo`
+- `Engine/Source/Runtime/RHI/Public/RHIAccess.h` — `ERHIAccess`；transition 结构在 `RHIResources.h` 的 `FRHITransitionInfo`
 - `Engine/Source/Runtime/Renderer/Private/PostProcess/PostProcessing.cpp` — 后处理链的 RDG 编排参考
 
 **要实操的内容**：
-1. 写一个简单的全屏后处理 Pass（如灰度/反色/自定义色调映射），挂接到 `FPostProcessing::Process` 链中
+1. 写一个简单的全屏后处理 Pass（如灰度/反色/自定义色调映射），挂接到后处理链（走后处理材质或 `ISceneViewExtension::SubscribeToPostProcessingPass`，见 card-12）
 2. 使用 `FRDGTexture` 创建临时 RT，在 Pass 之间传递
 3. 使用 `FGlobalShader` + `SHADER_PARAMETER_STRUCT` 声明 Shader 参数
 4. 用 `r.DumpShaderDebugInfo` 验证生成的 HLSL 正确性
@@ -518,7 +518,9 @@
 - `Engine/Source/Runtime/Renderer/Private/Lumen/LumenSceneRendering.cpp` — `ShouldRenderLumen()`、`RenderLumenScene()`
 - `Engine/Source/Runtime/Renderer/Private/Lumen/LumenReflections.cpp` — `CompositeLumenReflections()`
 - `Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp` — `RenderNanite()`
-- `Runtime/Engine/Private/Rendering/NaniteStreamingManager.cpp` — `FNaniteStreamingManager`
+<!-- verify:ignore-start -->
+- `Engine/Source/Runtime/Engine/Private/Rendering/NaniteStreamingManager.cpp` — Nanite Page 流送管理（类名在 `Nanite` 命名空间下，不是全局的 `FNaniteStreamingManager`）
+<!-- verify:ignore-end -->
 - `Engine/Source/Runtime/RHI/Private/GPUProfiler.cpp` — GPU Profiler 内部机制
 
 **要实操的内容**：

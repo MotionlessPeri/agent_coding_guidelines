@@ -73,6 +73,7 @@ SYMBOL_RE = re.compile(
 # 这些是通用词或本仓库自造的说明性标识，不是引擎符号，不参与判定。
 SYMBOL_IGNORE = {
     "TODO", "FIXME", "README", "AGENTS", "MEMORY", "SKILL",
+    "UE_ROOT",   # 本仓库脚本用的环境变量名，不是引擎符号
 }
 
 # 引擎源码里的标识符 token。判定标准是"作为 token 出现过"——比只认声明处更保守，

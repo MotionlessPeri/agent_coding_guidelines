@@ -134,7 +134,9 @@ flowchart TB
 | **并行度** | 默认按 CPU 核心数起 SCW 进程；数量由引擎 ini 的 shader 编译线程配置控制，不存在 `r.ShaderCompileWorker.NumWorkers` 这个 CVar。分布式编译开关是 `r.ShaderCompiler.AllowDistributedCompilation` |
 <!-- verify:ignore-end -->
 | **通信方式** | 命名管道（Windows）/ 文件映射（跨平台）— 见 `ShaderCompilerCommon.cpp` |
-| **分布式编译** | 5.4+ 支持 `ShaderCompilerServer` — 局域网多机器共享编译队列 |
+<!-- verify:ignore-start -->
+| **分布式编译** | 由 `r.ShaderCompiler.AllowDistributedCompilation` 开关控制（后端是 XGE / UBA 一类的分布式构建系统，引擎里没有名为 `ShaderCompilerServer` 的组件） |
+<!-- verify:ignore-end -->
 | **编译优先级** | `FShaderCompileJob` 有优先级（`EShaderCompileJobPriority::High/Normal/Low/None`），影响出队顺序 |
 | **异步加载** | Cooking 阶段 `-ShaderCompile` 产出 `.ushaderbytecode`；运行时 `SerializeShaderMap` 加载 |
 
@@ -168,11 +170,13 @@ flowchart TB
 
 | 维度 | 来源 | 典型取值数 |
 |------|------|-----------|
-| **VertexFactory** | `FLocalVertexFactory`、`FGPUVertexFactory`、`FNiagaraVFXFactory` 等 | 5–15 |
+| **VertexFactory** | `FLocalVertexFactory` 及各子系统自己的 vertex factory（Niagara / 水体 / 骨骼蒙皮等，类型枚举见 `EVertexFactoryFlags`） | 5–15 |
 | **ShaderStage** | VS、PS、GS、DS、HS、CS | 3–6 |
 | **FeatureLevel** | SM5、SM6、ES31、VulkanSM5、MetalSM5 | 3–5 |
 | **QualityLevel** | Low、Medium、High、Epic、Cinematic | 3–5 |
-| **静态开关** | `ALLOW_STATIC_LIGHTING`、`bUsedWithSkeletalMesh`、`MATERIAL_SHADING_MODEL_LIT` 等 | 100+ |
+<!-- verify:ignore-start -->
+| **静态开关** | `ALLOW_STATIC_LIGHTING`、`bUsedWithSkeletalMesh`、`MATERIAL_SHADINGMODEL_DEFAULT_LIT` 等（注意是 `SHADINGMODEL` 不是 `SHADING_MODEL`） | 100+ |
+<!-- verify:ignore-end -->
 | **材质属性** | ShadingModel、BlendMode、DecalResponse 等 | 10+ |
 
 > 实际爆炸远小于笛卡尔积，因为很多组合语义上互斥（如 `bUsedWithSkeletalMesh=false` 时 LocalVertexFactory 的 Skeletal VF 分支被裁剪）。
@@ -183,9 +187,9 @@ flowchart TB
 |------|------|----------|
 | **`bUsedWith*` 开关** | `UMaterial` 的 `bUsedWithSkeletalMesh` 等 bool 字段，未启用时对应 VF 的 Permutation 不编译 | `Material.cpp` `SetMaterialUsage` |
 | **`AllowStaticLighting`** | `ALLOW_STATIC_LIGHTING` 宏控制光照贴图相关代码，不开启则裁剪 | `MaterialShared.h` |
-| **`QualityLevel`** | `MATERIAL_QUALITY_LEVEL` 宏，影响品质相关代码分支 | `ShaderCore.h` |
-| **`FeatureLevel`** | `PLATFORM_MAX_FEATURE_LEVEL` 决定支持的 SM 级别 | 平台文件 |
-| **`ShaderPermutationBool`** | 编译期 `bool` 模板参数，`FShaderPermutationBool` 控制是否编译 | `ShaderPermutation.h` |
+| **`QualityLevel`** | `EMaterialQualityLevel` 枚举，影响品质相关代码分支 | `SceneTypes.h` |
+| **`FeatureLevel`** | 由 `FDataDrivenShaderPlatformInfo` 按平台查询能力决定 | `DataDrivenShaderPlatformInfo.h` |
+| **`FShaderPermutationBool`** | 编译期 `bool` 模板参数，控制是否编译 | `ShaderPermutation.h` |
 | **`SHADER_PERMUTATION_BOOL`** | 在 Shader 类声明中定义 bool 型 Permutation 维度，对应 HLSL 宏 | `Shader.h` 等 |
 | **`SHADER_PERMUTATION_INT`** | 在 Shader 类声明中定义 int 型 Permutation 维度，指定枚举范围 | `Shader.h` 等 |
 
@@ -459,7 +463,7 @@ void MainCS(
 
 | 错误信息 | 根因 | 排查方向 |
 |----------|------|----------|
-| `FShaderRecompiler: Failed to compile shader` | HLSL 语法错误 | 开 `UE_SaveShaderDebugInfo` 查看生成的 HLSL |
+| `FShaderRecompiler: Failed to compile shader` | HLSL 语法错误 | 开 `r.DumpShaderDebugInfo` 查看生成的 HLSL |
 | `Error: X3501: 'main': entrypoint not found` | 入口点与 C++ 声明不一致 | 检查 `IMPLEMENT_GLOBAL_SHADER` 的入口点参数 |
 | `Error: X3000: syntax error: unexpected token '}'` | HLSL 宏展开错误 | 检查模板文件中的 `#if`/`#endif` 匹配 |
 | `FShaderCompilerOutput: Compiled with errors` | 参数类型不匹配 | 检查 `C++ FParameters` 与 `.usf` 参数声明 |
@@ -505,7 +509,7 @@ UE 5.8 的 Shader 编译管线已经是一个非常成熟的工业化系统：
 
 1. **材质系统** — 表达式节点图 → HLSL 生成 → 多 VF 展开 → 模板填充的流水线非常稳定
 2. **编译管线** — SCW 外部进程模型避免 Editor OOM，DDC 多级缓存大幅减少重复编译
-3. **Permutation 系统** — 组合爆炸是现实约束，但通过 `bUsedWith*`、`QualityLevel`、`ShaderPermutationBool`、`SHADER_PERMUTATION_BOOL/INT` 等机制裁剪控制
+3. **Permutation 系统** — 组合爆炸是现实约束，但通过 `bUsedWith*`、`QualityLevel`、`FShaderPermutationBool`、`SHADER_PERMUTATION_BOOL/INT` 等机制裁剪控制
 4. **Substrate** — 5.x 的重点方向，5.8 新增 Glint 微闪、Toon 卡通着色、Stochastic Lighting 随机化光照、Async Classification 异步材质分类等特性
 5. **自定义 Shader** — `FGlobalShader` + `SHADER_PARAMETER_STRUCT` + RDG `AddPass` 模式清晰，模板化编写
-6. **调试** — 工具链完善（`r.ShaderDevelopmentMode`、`UE_SaveShaderDebugInfo`、`ProfileGPU`、`r.Substrate.Debug.*`）
+6. **调试** — 工具链完善（`r.ShaderDevelopmentMode`、`r.DumpShaderDebugInfo`、`ProfileGPU`、`r.Substrate.Debug.*`）

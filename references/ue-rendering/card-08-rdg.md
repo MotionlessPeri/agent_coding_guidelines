@@ -423,7 +423,9 @@ FRDGPass（基类）
 └── FRDGSentinelPass                                        // Prologue / Epilogue Pass（框架内部）
 ```
 
+<!-- verify:ignore-start -->
 UE 5.8 不再提供 `FRDGPipelineStatePass`、`FRDGAsyncComputePass`、`FRDGPostProcessPass` 等具名 Pass 基类。所有用户自定义 Pass 通过 `AddPass` / `AddDispatchPass` 模板函数以 Lambda 形式注册。
+<!-- verify:ignore-end -->
 
 ### 3.7 Lambda Pass vs Dispatch Pass
 
@@ -719,7 +721,9 @@ flowchart LR
     class A,B,C,D step
 ```
 
+<!-- verify:ignore-start -->
 UE 5.8 RDG 使用 `FRDGTransitionInfo` 描述 Barrier 信息，在 Compile 阶段通过 `FRDGTransitionCreateQueue` 生成 `FRHITransition` 对象。Barrier 类型由 `ERHIAccess` 的 before/after 状态推导，不再使用 `ERHITransitionType::Translate` / `CrossQueue` 等旧枚举。
+<!-- verify:ignore-end -->
 
 ### 5.9 手动 Barrier 覆盖
 
@@ -1372,7 +1376,9 @@ void SetPassWorkload(FRDGPass* Pass, uint32 Workload);
 | `Engine/Source/Runtime/RenderCore/Private/RenderGraphAllocator.cpp` | Transient 资源分配器、别名优化 |
 | `Engine/Source/Runtime/RenderCore/Private/RenderGraphValidation.cpp` | Debug 验证（`-rdgimmediate` 资源泄漏检测） |
 | `Engine/Source/Runtime/Renderer/Private/PostProcess/PostProcessing.cpp` | 后处理链 RDG 实现，`AddPostProcessingPasses` 入口 |
+<!-- verify:ignore-start -->
 | `Engine/Source/Runtime/Renderer/Private/DeferredShadingRenderer.cpp` | `FDeferredShadingRenderer::Render` 完整渲染管线 |
+<!-- verify:ignore-end -->
 | `Engine/Source/Runtime/Renderer/Private/SceneRendering.cpp` | `FRDGBuilder` 创建位置、`RenderGraph` 初始化 |
 | `Engine/Source/Runtime/RHI/Public/RHICommandList.h` | `FRHICommandList`、`Transition` 等底层 Barrier |
 | `Engine/Source/Runtime/RenderCore/Public/ShaderParameterMacros.h` | `BEGIN_SHADER_PARAMETER_STRUCT`、`RDG_TEXTURE_ACCESS` 等宏定义 |
@@ -1420,7 +1426,9 @@ END_SHADER_PARAMETER_STRUCT()
 | `RDG_GPU_MASK_SCOPE` | `Engine/Source/Runtime/RenderCore/Public/RenderGraphBuilder.h` | 多 GPU 掩码作用域 |
 | `RDG_REGISTER_BLACKBOARD_STRUCT` | `Engine/Source/Runtime/RenderCore/Public/RenderGraphBlackboard.h` | 注册黑板结构 |
 
+<!-- verify:ignore-start -->
 调研稿里出现过的 `RDG_RECORD_AND_TRACK_RESOURCE` 和 `RDG_DEBUG_MARKER` 在 5.8 中不存在，已剔除。
+<!-- verify:ignore-end -->
 
 ---
 
@@ -1544,5 +1552,7 @@ classDiagram
 | 在 `Execute` 之后调用 `CreateTexture` | 崩溃（Graph 已锁定） | 所有资源声明必须在 `Execute` 之前完成 |
 | 多个 Pass 写入同一资源不加 UAV Barrier | 数据竞争、不可预测结果 | 使用 `ERDGPassFlags::NeverCull` 手动管理或依赖自动推导 |
 | 用 `FRHICommandListImmediate&` 作为 Lambda 参数导致无法并行 | 强制 Inline 执行，失去并行加速 | 无 `Immediate` 需求时用 `FRHICommandList&` 或加 `FRDGAsyncTask` |
+<!-- verify:ignore-start -->
 | 混淆 `RDG_GPU_MASK_SCOPE` 与旧宏 `RDG_GPU_MASK` | 编译错误 | 5.8 使用 `RDG_GPU_MASK_SCOPE(GraphBuilder, GPUMask)` |
+<!-- verify:ignore-end -->
 | `FSceneRenderTargets::Get()` 编译报错 | 5.8 已移除旧 API | 改用 `View.GetSceneTextures()` 获取 `FSceneTextures` 引用 |

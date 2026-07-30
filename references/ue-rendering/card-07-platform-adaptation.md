@@ -80,7 +80,7 @@ flowchart TD
 - **RHI**：`FD3D12DynamicRHI`
 - **Feature Level**：SM6 (DX12 Ultimate)
 - **核心特性**：Ray Tracing (DXR 1.1), Mesh Shader (SM 6.6+), VRS Tier 2, Sampler Feedback
-- **Shader 模型**：`SF_SM6` 或 `SF_SM6_WIN64`
+- **Shader Platform**：`SP_PCD3D_SM6`（枚举 `EShaderPlatform`）
 - **初始化**：`D3D12RHI.cpp` -> `FD3D12DynamicRHI::Init()`
 - **UE 5.8 变化**：要求 D3D12 Agility SDK 1.618.5 以上（`D3D12_SDK_VERSION` 618），支持 Shader Model 6.8（WaveSize/IsFinite 等新 intrinsic）；Agility SDK 运行时检测通过 `CheckIfAgilitySDKLoaded()` 在启动时记录
 
@@ -120,7 +120,7 @@ flowchart TD
 - **RHI**：`FOpenGLDynamicRHI`
 - **Feature Level**：`ES3_1`
 - **核心限制**：无 Compute Shader, 无 Tessellation, 极少 UAV
-- **Shader 模型**：`SF_SM5` (ES 3.1 HLSL 子集)
+- **Shader Platform**：`SP_PCD3D_SM5`；移动端是 `SP_PCD3D_ES3_1` / 各平台自己的 ES3_1 变体
 - **初始化**：`Engine/Source/Runtime/OpenGLDrv/Private/Android/AndroidOpenGL.cpp`
 - **UE 5.8 变化**：OpenGL ES 3.1 路径继续维护但不再增加新功能；Vulkan 是 Android 推荐路径
 
@@ -243,7 +243,7 @@ if (Scene->GetFeatureLevel() <= ERHIFeatureLevel::ES3_1)
 
 ### 编译时裁剪
 
-通过 `UDERIVED_DATA` 和虚拟着色器（`ShaderPermutation`）实现：
+通过 shader permutation 机制（`FShaderPermutationBool` 等，见 `ShaderPermutation.h`）实现：
 
 ```cpp
 // 平台相关 shader define
@@ -280,13 +280,13 @@ bool FMyShader::ShouldCompilePermutation(const FShaderPermutationParameters& Par
 
 | Shader Feature | SM6 | SM5 | ES3_1 |
 |---|---|---|---|
-| `USE_RAY_TRACING` | 1 | 0 | 0 |
-| `USE_MESH_SHADER` | 1 | 0 | 0 |
-| `USE_VRS` | 1 | 0 | 0 |
-| `USE_COMPUTE_SHADER` | 1 | 1 | 0 |
-| `USE_TESSELLATION` | 1 | 1 | 0 |
-| `MOBILE_FORWARD_SHADING` | 0 | 0 | 1 |
-| `SUPPORT_PIXEL_UAV` | 1 | 0 | 0 |
+| 光追支持 | 1 | 0 | 0 |
+| Mesh Shader 支持（引擎查询用 `SupportsMeshShadersTier0/Tier1`） | 1 | 0 | 0 |
+| 可变速率着色（VRS） | 1 | 0 | 0 |
+| Compute Shader 支持 | 1 | 1 | 0 |
+| 曲面细分 | 1 | 1 | 0 |
+| 移动端前向着色 | 0 | 0 | 1 |
+| 像素着色器 UAV 写入 | 1 | 0 | 0 |
 
 ### 运行时 Shader 裁剪
 
@@ -331,7 +331,7 @@ Mobile 路径使用 `QualityLevel` 系统在渲染前降级材质：
 
 ### 机制
 
-Instanced Stereo 通过 `FRHIDrawIndexedPrimitive` 的 `InstanceCount` 参数，对左右眼各绘制一次，减少 Draw Call 数量。
+Instanced Stereo 通过 draw 命令的 `InstanceCount` 参数（RHI 侧是 `FRHICommandDrawIndexedPrimitive`）对左右眼各绘制一次，减少 Draw Call 数量。
 
 **启用方式**：`vr.InstancedStereo 1`
 

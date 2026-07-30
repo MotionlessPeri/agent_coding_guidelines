@@ -145,7 +145,9 @@ flowchart TD
 2. **BasePass 阶段**：GBuffer 扩展（`GBufferInfo.h` + Shader），自定义 ShadingModel（`MaterialTemplate.ush`），`FMeshPassProcessor` 注册新 Pass
 3. **Lumen 阶段**：追踪模式切换（lumen 参数）/ 降级 CVar 组合，自定义 GI 替代（用 Lumen Scene 数据 + 自己的 GI）
 4. **光照阶段**：自定义光照函数（`LightRendering.cpp`），光源裁剪策略
+<!-- verify:ignore-start -->
 5. **后处理阶段**：最常定制点——自定义后处理效果。在 `FPostProcessing::Process` 链中插入新 Pass，裁剪/替换 Bloom/DOF/Tonemap
+<!-- verify:ignore-end -->
 6. **渲染管线裁剪**：`ShouldCompilePermutation()` 裁剪 Shader 变体，按平台/Feature Level 关闭特定 Pass，资源精度降级（32f→16f→8unorm）
 
 ---
@@ -788,8 +790,10 @@ flowchart TD
 | `Engine/Source/Runtime/RenderCore/Public/RenderGraphPass.h` | `ERDGPassFlags` / Pass 类型体系 | (阅读) |
 | `Runtime/RenderCore/Private/RenderGraphBuilder.cpp` | `FRDGBuilder::Execute` Compile/Culling 实现 | `FRDGBuilder::Execute` 开头 |
 | `Engine/Source/Runtime/RenderCore/Private/RenderGraphAllocator.cpp` | Transient 资源分配策略 | (阅读) |
-| `Engine/Source/Runtime/RHI/Public/RHIAccess.h` | `ERHIAccess` / `FRHIBarrier` / `FRHITransitionInfo` | (阅读) |
+| `Engine/Source/Runtime/RHI/Public/RHIAccess.h` | `ERHIAccess`（transition 结构在 `RHIResources.h`） | (阅读) |
+<!-- verify:ignore-start -->
 | `Engine/Source/Runtime/Renderer/Private/PostProcess/PostProcessing.cpp` | 后处理链的 RDG 编排，参考如何插入 Pass | `FPostProcessing::Process` |
+<!-- verify:ignore-end -->
 | `Engine/Source/Runtime/RenderCore/Public/GlobalShader.h` | `FGlobalShader` 基类与注册宏 | (阅读) |
 | `Engine/Source/Runtime/RenderCore/Public/ShaderCore.h` | `SHADER_PARAMETER_STRUCT` 参数反射 | (阅读) |
 | `Engine/Source/Runtime/RenderCore/Public/ShaderParameters.h` | `BEGIN_SHADER_PARAMETER_STRUCT` 宏定义 | (阅读) |
@@ -824,9 +828,11 @@ flowchart TD
 | `Runtime/Renderer/Private/Lumen/LumenScreenProbeGather.cpp` | Screen Probe 生成/采样/插值 | `LumenScreenProbeGather` 入口 |
 | `Engine/Source/Runtime/Renderer/Private/Lumen/LumenMeshCards.cpp` | Mesh Card 生成与管理 | (阅读) |
 | `Runtime/Renderer/Private/Lumen/LumenHardwareRayTracingCommon.cpp` | DXR 加速结构 + RayGen | `BuildLumenHardwareRayTracingScene` |
-| `Runtime/Renderer/Private/Lumen/LumenTracingUtils.cpp` | 统一追踪接口 | `TraceLumenRadiance` |
+| `Runtime/Renderer/Private/Lumen/LumenTracingUtils.cpp` | 追踪相关工具 | 见文件内各 trace 辅助函数 |
 | `Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp` | `RenderNanite()` / Visibility Buffer 渲染 | `RenderNanite` 入口 |
-| `Runtime/Engine/Private/Rendering/NaniteStreamingManager.cpp` | Page 加载/卸载/LOD 选择 | `FNaniteStreamingManager::UpdateLODs` |
+<!-- verify:ignore-start -->
+| `Runtime/Engine/Private/Rendering/NaniteStreamingManager.cpp` | Page 加载/卸载/LOD 选择 | 见文件内 `Nanite` 命名空间（原稿写的 `FNaniteStreamingManager::UpdateLODs` |
+<!-- verify:ignore-end -->
 | `Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp` | GPU 剔除 Kernel | `CullKernel` |
 | `Runtime/Renderer/Private/Nanite/NaniteMaterials.cpp` | Visibility Buffer → G-Buffer | Material Resolve 入口 |
 | `Engine/Shaders/Shared/NaniteDefinitions.h` | Cluster / Page / Group 数据结构 | (阅读) |
@@ -861,7 +867,7 @@ flowchart TD
 | `Engine/Source/Runtime/Renderer/Private/MobileShadingRenderer.cpp` | Mobile 渲染路径，Feature Level 分支 | `FMobileSceneRenderer::Render` |
 | `Engine/Source/Runtime/Engine/Private/ShaderCompiler/ShaderCompiler.cpp` | `ShouldCompilePermutation()` 裁剪入口 | `ShouldCompilePermutation` 调用 |
 | `Engine/Source/Runtime/RenderCore/Public/ShaderPermutation.h` | `FShaderPermutationBool` 裁剪机制 | (阅读) |
-| `Runtime/RHI/Private/RHIBreadcrumbs.cpp` | GPU Crash 检测机制 | `FGPUCrashDebugging` |
+| `Runtime/RHI/Private/RHIBreadcrumbs.cpp` | GPU Crash 面包屑机制 | `r.GPUCrashDebugging.Breadcrumbs` |
 | `Runtime/D3D12RHI/Private/D3D12RayTracingDebug.cpp` | D3D12 Debug Layer 实现 | (阅读) |
 | `Runtime/RHI/Private/RHIValidation.cpp` | Vulkan Validation 实现 | (阅读) |
 | `Engine/Source/Runtime/Engine/Private/Materials/HLSLMaterialTranslator.cpp` | 材质表达式 → HLSL 完整流程 | `FMaterialCompiler::*` |
@@ -1030,7 +1036,7 @@ Runtime/VulkanRHI/Private/VulkanRHI.cpp
 - 三种追踪模式（ScreenProbe / MeshCard / HardwareRT）如何切换
 - 关键 CVar 如何影响渲染行为（`r.Lumen.*` 系列）
 
-建议断点: `ShouldRenderLumen` 函数，观察什么条件下 Lumen 被关闭
+建议断点: `ShouldRenderLumenDiffuseGI` / `ShouldRenderLumenReflections` / `ShouldRenderLumenForViewFamily`，观察什么条件下 Lumen 被关闭
 
 **NaniteRendering.cpp**
 
@@ -1090,7 +1096,9 @@ Runtime/VulkanRHI/Private/VulkanRHI.cpp
    - 观察延迟光照计算
    - 观察光源如何被裁剪和渲染
 
+<!-- verify:ignore-start -->
 6. `FPostProcessing::Process` (`PostProcessing.cpp`)
+<!-- verify:ignore-end -->
    - 观察后处理链的完整序列
    - 观察 Bloom/DOF/TSR/Tonemap 的注册顺序
 

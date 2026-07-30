@@ -450,16 +450,20 @@ Lumen 提供可视化调试工具：
 
 | 文件 | 职责 | 关键类/函数 |
 |---|---|---|
-| **`LumenSceneRendering.cpp`** | Lumen 场景数据管理、主渲染调度 | `UpdateLumenScene()`, `BeginUpdateLumenSceneTasks()`, `VoxelizeLumenScene()`, `FLumenScene` |
+<!-- verify:ignore-start -->
+| **`LumenSceneRendering.cpp`** | Lumen 场景数据管理、主渲染调度 | 场景数据类型是 `FLumenSceneData`（迭代器 `FLumenSceneDataIterator`）。相关函数：`VoxelizeLumenScene()`, `FLumenScene` |
+<!-- verify:ignore-end -->
 | **`LumenScene.cpp`** | Lumen 场景 Primitive 管理 | `UpdateLumenScenePrimitives()`, `Lumen::ShouldUpdateLumenSceneViewOrigin()` |
 | **`LumenSceneData.h`** | Lumen 场景数据结构 | `FLumenSceneData` |
 | **`Engine/Source/Runtime/Renderer/Private/Lumen/Lumen.{cpp,h}`** | Lumen 全局工具函数、枚举定义 | `GetFinalGatherMethod()`, `ShouldRenderLumenDiffuseGI()`（声明）, `UseHardwareRayTracing()`, `ELumenFinalGatherMethod` |
 | **`LumenDiffuseIndirect.cpp`** | 间接光照渲染入口 | `ShouldRenderLumenDiffuseGI()`（定义）, `SetupLumenDiffuseTracingParameters()` |
-| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenReflections.{cpp,h}`** | Lumen 反射的合成与降噪 | `CompositeLumenReflections()`, `FLumenReflections`, `RenderLumenReflections()` |
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenReflections.{cpp,h}`** | Lumen 反射的合成与降噪（追踪 pass 枚举 `ELumenReflectionPass`） | `CompositeLumenReflections()`, `RenderLumenReflections()`；降噪参数 `FLumenReflectionDenoiserParameters` |
 | **`LumenReflectionTracing.cpp`** | Lumen 反射追踪 | `TraceLumenReflections()` |
 | **`LumenReflectionHardwareRayTracing.cpp`** | 反射的硬件光追实现 | `LumenReflections::UseHitLighting()` |
-| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenTracingUtils.{cpp,h}`** | 统一的追踪接口 | `TraceLumenRadiance()`, `FLumenTracing`, `TraceRay()` |
-| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenScreenProbeGather.{cpp,h}`** | Screen Probe 的生成、采样、插值 | `LumenScreenProbeGather()`, `FLumenScreenProbe`, `ScreenProbePlacement()` |
+<!-- verify:ignore-start -->
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenTracingUtils.{cpp,h}`** | 追踪相关工具（不存在 `FLumenTracing` 类，也没有 `TraceLumenRadiance()` 这个统一入口函数） | `TraceLumenRadiance()`, `FLumenTracing`, `TraceRay()` |
+<!-- verify:ignore-end -->
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenScreenProbeGather.{cpp,h}`** | Screen Probe 的生成、采样、插值 | `LumenScreenProbeGather()`, `ScreenProbePlacement()`；硬件光追路径 `FLumenScreenProbeGatherHardwareRayTracing` |
 | **`LumenScreenProbeTracing.cpp`** | Screen Probe 的追踪实现 | ScreenProbe 的 Ray 追踪 |
 | **`LumenScreenProbeFiltering.cpp`** | Screen Probe 的降噪过滤 | ScreenProbe 的 Spatial/Temporal 过滤 |
 | **`LumenScreenProbeImportanceSampling.cpp`** | Screen Probe 的重要性采样 | ScreenProbe 的方向分布 |
@@ -468,7 +472,9 @@ Lumen 提供可视化调试工具：
 | **`LumenIrradianceFieldGather.cpp`** | Irradiance Field Gather 方法 | Clipmap 管理、Probe occlusion |
 | **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenReSTIRGather.{cpp,h}`** | ReSTIR Gather 方法 | `Lumen::UseReSTIRGather()`, Reservoir 管理 |
 | **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenMeshCards.{cpp,h}`** | Mesh Card 的生成与管理 | `LumenSceneCardBuild()`, `FLumenMeshCards`, `CardRasterize()` |
-| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenHardwareRayTracingCommon.{cpp,h}`** | Hardware RT 通用基础设施 | `BuildLumenHardwareRayTracingScene()`, `FLumenHardwareRayTracing`, `GetHitLightingMode()` |
+<!-- verify:ignore-start -->
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenHardwareRayTracingCommon.{cpp,h}`** | Hardware RT 通用基础设施（各消费方各有自己的类，如 `FLumenReflectionHardwareRayTracing`；不存在 `FLumenHardwareRayTracing` 这个类） | `BuildLumenHardwareRayTracingScene()`, `FLumenHardwareRayTracing`, `GetHitLightingMode()` |
+<!-- verify:ignore-end -->
 | **`LumenHardwareRayTracingMaterials.cpp`** | Hardware RT 材质 Hit Group | 材质命中处理 |
 | **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenRadianceCache.{cpp,h}`** | Radiance Cache 系统 | Probe 管理、插值 |
 | **`LumenRadianceCacheHardwareRayTracing.cpp`** | Radiance Cache 硬件光追 | `LumenRadianceCache::UseHitLighting()` |

@@ -18,7 +18,7 @@
 **一句话定义**：UE 将一帧的渲染工作分散到三个线程，每一级生产下一级消费的 command batch，流水线并行。
 
 **关键源码/类名**：
-- `FRenderThread` — 启动于 `StartRenderingThread()`（`RenderingThread.cpp`）
+- 渲染线程启动于 `StartRenderingThread()`（`RenderingThread.cpp`）；线程内数据在 `FRenderThreadData`，栅栏是 `FRenderThreadFence`
 - `RHI Thread` — 启动于 `RHIInit()`（`RHICommandList.cpp`）
 - `FGraphEventRef` — Render → RHI 同步的原语
 - `FRenderCommandFence` — 主线程等渲染线程完成
@@ -158,7 +158,7 @@ flowchart TB
 
 **概念名**：`Visibility Culling`
 
-**一句话定义**：`InitViews` 对场景中所有 Primitive 做视锥体裁剪、遮挡查询（Occlusion Culling）和移动性分类，产出 `FVisibleSceneView` 的 Primitive 可见数据。
+**一句话定义**：`InitViews` 对场景中所有 Primitive 做视锥体裁剪、遮挡查询（Occlusion Culling）和移动性分类，产出每个 `FViewInfo` 的 Primitive 可见数据。
 
 **关键源码/类名**：
 - `FSceneRenderer::InitViews` — `SceneVisibility.cpp`
@@ -193,7 +193,9 @@ flowchart TB
 - `FBasePassMeshProcessor` — `BasePassRendering.cpp`，Mesh draw 处理器
 - `FGBufferInfo` — `GBufferInfo.h`，GBuffer 布局定义
 - `FGBufferBinding` — 各 GBuffer 目标的 Shader binding
-- `ESceneColorFormatType` — `SceneRendering.h`，GBuffer 格式选择（`SCF_Default`/`SCF_FloatRGBA` 等）
+<!-- verify:ignore-start -->
+- Scene color 格式由 CVar `r.SceneColorFormat` 决定（不存在 `ESceneColorFormatType` 这个枚举）
+<!-- verify:ignore-end -->
 
 **关系**：BasePass 输出（GBuffer）：
 
@@ -210,7 +212,7 @@ flowchart TB
 **常见坑**：
 - GBuffer 布局在 `r.GBufferFormat` 影响下变化，`1`=half / `5`=max，自定义 Shader 消费 GBuffer 时不能硬编码 format。
 - `ShadingModelID` 存在 GBuffer 的某一个 channel 中，开发自定义 Shading Model 需要在此预留位。
-- `FBasePassMeshProcessor` 在 `DrawRenderState` 中根据材质 Blend Mode 决定是否走 BasePass——`BLEND_Translucent` 不走 BasePass，走 `FTranslucencyPass`。
+- `FBasePassMeshProcessor` 在 `DrawRenderState` 中根据材质 Blend Mode 决定是否走 BasePass——`BLEND_Translucent` 不走 BasePass，走半透明渲染路径（pass 类型枚举 `ETranslucencyPass`）。
 - 移动端 `FMobileSceneRenderer` 的 BasePass 写入不同的 GBuffer 布局（更少 RT），与 Deferred 不兼容。
 
 ---
@@ -225,7 +227,7 @@ flowchart TB
 - `FDeferredShadingSceneRenderer::RenderLights` — `LightRendering.cpp`
 - `FDeferredShadingSceneRenderer::RenderDeferredDecals` — `DecalRendering.cpp`
 - `FDeferredShadingSceneRenderer::RenderShadowDepthMaps` — `ShadowRendering.cpp`
-- `FDeferredLightSceneInfo` — `LightSceneInfo.h`，光源场景信息
+- `FLightSceneInfo` — `LightSceneInfo.h`，光源场景信息（紧凑版是 `FLightSceneInfoCompact`）
 - `FProjectedShadowInfo` — `ShadowRendering.cpp`，阴影投影信息
 
 **关系**：`FDeferredShadingSceneRenderer::Render` 内部子阶段顺序：
@@ -265,12 +267,14 @@ flowchart TB
 
 **关键源码/类名**：
 - `FSceneRenderer::FinishRender` — 最终后处理入口
-- `FPostProcessing::Process` — `PostProcessing.cpp`
+<!-- verify:ignore-start -->
+- `AddPostProcessingPasses` — `PostProcessing.cpp` 的后处理链入口（不存在 `FPostProcessing::Process` 这个函数）
+<!-- verify:ignore-end -->
 - `FSceneViewState::BloomSetupData` — Bloom 中间数据
-- `FTonemapperOutputs` — Tonemapping 输出
+- `ETonemapperOutputDevice` — Tonemapping 的输出设备类型
 - `FSceneViewState::TemporalAASetup` — TSR 时序数据
 
-**关系**：`FPostProcessing::Process` 内部管线：
+**关系**：`AddPostProcessingPasses` 内部管线：
 
 ```mermaid
 flowchart TB
@@ -292,7 +296,7 @@ flowchart TB
 - TSR 上采样输入的是 Half-Res 的 SceneColor，输出 Full-Res。如果自定义 Pass 需要在全分辨率上操作，必须在 TSR 之后挂接。
 - PostProcessing 默认在 `r.PostProcessing.Enable=1` 时全部执行，`=0` 会跳过包括 Tonemapping 在内的所有后处理，输出 HDR LogLuv——这对调试 diag 有用，但画面看起来"灰白"。
 - `r.BloomQuality` / `r.DepthOfFieldQuality` 等 cvar 可以单独关闭某个效果，但 `Process` 内部还是走通道，只是 shader 内跳过。
-- 自定义后处理效果的正确挂接点是通过 `IPostProcessMaterial` 接口（`PostProcessMaterial.h`），不要直接修改 `PostProcessing.cpp`。
+- 自定义后处理效果的正确挂接点：后处理材质（走 `FPostProcessMaterialChain`，输入类型见 `EPostProcessMaterialInput`）或 `ISceneViewExtension::SubscribeToPostProcessingPass`，不要直接改 `PostProcessing.cpp`。选点见 [`card-12-pipeline-extension.md`](card-12-pipeline-extension.md)。
 
 ---
 
@@ -348,7 +352,7 @@ flowchart TB
 **关键源码/类名**：
 - 已迁移：`BasePassRendering.cpp`、`LightRendering.cpp`、`PostProcessing.cpp`、`ShadowRendering.cpp`、`TranslucencyRendering.cpp`
 - 保留传统路径：`HairRendering.cpp`（部分）、`CustomDepthRendering.cpp`（部分）
-- `RDG_DEBUG` — 调试宏定义
+- RDG 调试由 `r.RDG.Debug.*` 系列 CVar 控制，不是编译期宏，见 [`card-08-rdg.md`](card-08-rdg.md) §8
 
 **迁移状态（UE 5.8）**：
 
@@ -445,7 +449,7 @@ Engine/Source/Runtime/Renderer/Private/
 
 **常见坑**：
 - 渲染器模块逻辑在 `Runtime/Renderer` 下，**不在** `Runtime/Engine` 下。第一次找渲染代码的人容易先去 `Engine/Source/Runtime/Engine/` 翻。
-- `SceneRendering.cpp` 中的 `FSceneRenderer::Draw` 是纯渲染线程函数，不要在内部调用 `GET_ACTIVE_VIEWPORT` 等主线程接口。
+- `SceneRendering.cpp` 中的 `FSceneRenderer::Draw` 是纯渲染线程函数，不要在内部调用只能在主线程用的接口（游戏线程状态、UObject 访问等）。
 - 大量 Pass 以 `Rendering.cpp` 后缀存在于 `Runtime/Renderer/Private`，但 `Runtime/Renderer/Public` 只有接口声明。
 
 ---
@@ -540,7 +544,7 @@ Engine/Source/Runtime/RenderCore/
 | BasePass | `BasePassRendering.cpp` | `RenderBasePass` |
 | Light Pass | `LightRendering.cpp` | `RenderLights` |
 | Shadow Map | `ShadowRendering.cpp` | `RenderShadowDepthMaps` |
-| PostProcessing | `PostProcessing.cpp` | `FPostProcessing::Process` |
+| PostProcessing | `PostProcessing.cpp` | `AddPostProcessingPasses` |
 | RDG 构建 | `RenderGraphBuilder.h` | `FRDGBuilder::AddPass` |
 | RDG 资源 | `RenderGraphResources.h` | `FRDGTexture` / `FRDGBuffer` |
 | Lumen | `LumenSceneRendering.cpp` | `RenderLumenScene` |
