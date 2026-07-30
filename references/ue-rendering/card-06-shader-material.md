@@ -4,7 +4,7 @@
 
 ---
 
-## 卡片 1：材质系统架构链条
+## 1. 材质系统架构链条
 
 ### Material → MaterialResource → MaterialShaderMap → FShader
 
@@ -50,7 +50,7 @@ flowchart TB
 
 ---
 
-## 卡片 2：HLSL 生成机制
+## 2. HLSL 生成机制
 
 ### 表达式编译
 
@@ -88,7 +88,7 @@ flowchart TB
 
 ---
 
-## 卡片 3：Shader 编译管线 — 调度与外部进程模型
+## 3. Shader 编译管线 — 调度与外部进程模型
 
 ### FShaderCompileWorker（SCW）外部进程模型
 
@@ -149,7 +149,7 @@ flowchart TB
 
 ---
 
-## 卡片 4：Shader Permutation — 爆炸原因与裁剪
+## 4. Shader Permutation — 爆炸原因与裁剪
 
 ### 爆炸根源
 
@@ -216,7 +216,7 @@ class FMyCustomShader : public FGlobalShader
 
 ---
 
-## 卡片 5：Substrate 材质系统
+## 5. Substrate 材质系统
 
 ### 设计目标
 
@@ -322,7 +322,7 @@ Substrate 提供 `FSubstrateVisualizationData` 调试可视化系统，通过以
 
 ---
 
-## 卡片 6：Global Shader 与自定义 Shader 编写
+## 6. Global Shader 与自定义 Shader 编写
 
 ### FGlobalShader 注册与使用
 
@@ -422,7 +422,7 @@ void MainCS(
 
 ---
 
-## 卡片 7：Shader 调试
+## 7. Shader 调试
 
 ### 查看生成的 HLSL
 
@@ -467,7 +467,7 @@ void MainCS(
 
 ---
 
-## 卡片 8：关键源码文件索引
+## 8. 关键源码文件索引
 
 | 文件 | 路径 | 内容 |
 |------|------|------|

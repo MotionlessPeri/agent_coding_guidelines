@@ -90,14 +90,23 @@ def build_source_index(ue_root: Path) -> dict[str, list[str]]:
     return index
 
 
-def build_cvar_index(ue_root: Path) -> set[str]:
+def build_cvar_index(ue_root: Path, cache: Path | None = None) -> set[str]:
     """收集引擎源码里所有 `TEXT("...")` 形式的点分名字面量。
 
     只要文档里的 CVar 名在引擎源码里作为字面量出现过就算存在——不追究它是
     TAutoConsoleVariable 还是别的注册方式，因为我们要答的问题只是"这个名字是不是真的"。
+
+    扫全量引擎源码要几分钟，所以结果落盘缓存。引擎换版本时删掉缓存文件即可。
     """
+    if cache and cache.exists():
+        data = json.loads(cache.read_text(encoding="utf-8"))
+        if data.get("ue_root") == str(ue_root):
+            print(f"  复用缓存 {cache.name}（{len(data['names'])} 个名字）")
+            return set(data["names"])
+
     names: set[str] = set()
     engine_dir = ue_root / "Engine" / "Source"
+    scanned = 0
     for root, dirs, files in os.walk(engine_dir):
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
         for fn in files:
@@ -108,6 +117,13 @@ def build_cvar_index(ue_root: Path) -> set[str]:
             except OSError:
                 continue
             names.update(CVAR_LITERAL_RE.findall(text))
+            scanned += 1
+    print(f"  扫了 {scanned} 个源码文件")
+    if cache:
+        cache.write_text(
+            json.dumps({"ue_root": str(ue_root), "names": sorted(names)}, ensure_ascii=False),
+            encoding="utf-8",
+        )
     return names
 
 
@@ -251,6 +267,7 @@ def main() -> int:
     ap.add_argument("--ue", help="引擎根目录（含 Engine/ 的那一层）")
     ap.add_argument("--paths-only", action="store_true", help="跳过较慢的 CVar 扫描")
     ap.add_argument("--structure-only", action="store_true", help="只跑 markdown 结构 lint，不碰引擎源码")
+    ap.add_argument("--cvar-cache", help="CVar 名索引的缓存文件（扫全量引擎源码要几分钟，换引擎版本时删掉）")
     ap.add_argument("--json", help="把完整结果写到指定 JSON 文件")
     args = ap.parse_args()
 
@@ -308,7 +325,7 @@ def main() -> int:
     cvar_missing: list[tuple[str, set[str]]] = []
     if not args.paths_only:
         print("\n正在扫描引擎源码里的 CVar 字面量（较慢）…")
-        known = build_cvar_index(ue_root)
+        known = build_cvar_index(ue_root, Path(args.cvar_cache) if args.cvar_cache else None)
         print(f"  已收集 {len(known)} 个点分名字面量\n")
         for name in sorted(cvars):
             if name not in known:

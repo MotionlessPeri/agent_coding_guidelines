@@ -2,7 +2,7 @@
 
 ---
 
-## 卡片 1: ERHIFeatureLevel 系统
+## 1. ERHIFeatureLevel 系统
 
 | Feature Level | 代号 | 目标平台 | 最低 SM | 核心限制 |
 |---|---|---|---|---|
@@ -33,7 +33,7 @@ flowchart TD
 
 ---
 
-## 卡片 2: 各 Feature Level 支持的渲染功能对照
+## 2. 各 Feature Level 支持的渲染功能对照
 
 | 渲染功能 | ES3_1 | SM5 | SM6 |
 |---|---|---|---|
@@ -67,7 +67,7 @@ flowchart TD
 
 ---
 
-## 卡片 3: 平台特定渲染路径 —— Desktop
+## 3. 平台特定渲染路径 —— Desktop
 
 ### D3D12 (默认 Desktop 路径)
 
@@ -107,7 +107,7 @@ flowchart TD
 
 ---
 
-## 卡片 4: 平台特定渲染路径 —— Mobile
+## 4. 平台特定渲染路径 —— Mobile
 
 ### OpenGL ES 3.1 (Android)
 
@@ -167,7 +167,7 @@ flowchart TD
 
 ---
 
-## 卡片 5: Console 平台特定优化
+## 5. Console 平台特定优化
 
 ### PlayStation 5 (UE 5.8)
 
@@ -193,7 +193,7 @@ flowchart TD
 
 ---
 
-## 卡片 6: 渲染管线裁剪 —— 按平台裁剪 Pass
+## 6. 渲染管线裁剪 —— 按平台裁剪 Pass
 
 ### 裁剪机制
 
@@ -246,7 +246,7 @@ if (Scene->GetFeatureLevel() <= ERHIFeatureLevel::ES3_1)
 
 ---
 
-## 卡片 7: 渲染管线裁剪 —— 按硬件能力裁剪 Shader Feature
+## 7. 渲染管线裁剪 —— 按硬件能力裁剪 Shader Feature
 
 ### Shader Permutation 系统
 
@@ -286,7 +286,7 @@ bool FMyShader::ShouldCompilePermutation(const FShaderPermutationParameters& Par
 
 ---
 
-## 卡片 8: 渲染管线裁剪 —— 按内存限制裁剪资源精度
+## 8. 渲染管线裁剪 —— 按内存限制裁剪资源精度
 
 ### 纹理精度裁剪
 
@@ -317,7 +317,7 @@ Mobile 路径使用 `QualityLevel` 系统在渲染前降级材质：
 
 ---
 
-## 卡片 9: VR 渲染 —— Instanced Stereo Rendering
+## 9. VR 渲染 —— Instanced Stereo Rendering
 
 ### 机制
 
@@ -339,7 +339,7 @@ Instanced Stereo 通过 `FRHIDrawIndexedPrimitive` 的 `InstanceCount` 参数，
 
 ---
 
-## 卡片 10: VR 渲染 —— Fixed Foveated Rendering
+## 10. VR 渲染 —— Fixed Foveated Rendering
 
 ### 机制
 
@@ -368,7 +368,7 @@ Fixed Foveated Rendering (FFR) 降低屏幕边缘 (peripheral) 的着色率，�
 
 ---
 
-## 卡片 11: VR 渲染 —— 多视口渲染
+## 11. VR 渲染 —— 多视口渲染
 
 ### 多视口架构
 
@@ -413,7 +413,7 @@ flowchart TB
 
 ---
 
-## 卡片 12: 关键源码文件索引
+## 12. 关键源码文件索引
 
 | 文件路径 | 内容 |
 |---|---|
@@ -447,7 +447,7 @@ flowchart TB
 
 ---
 
-## 卡片 13: 平台适配总结 —— 决策树
+## 13. 平台适配总结 —— 决策树
 
 ```mermaid
 flowchart TD
