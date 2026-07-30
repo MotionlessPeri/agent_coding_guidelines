@@ -143,7 +143,9 @@ flowchart TB
 ### 关键源码
 
 - `Engine/Source/Runtime/Engine/Public/ShaderCompiler.h` — `FShaderCompileJob`、`FShaderCompileJobCollection`
-- `Engine/Source/Programs/ShaderCompileWorker/Private/ShaderCompileWorker.cpp` — 外部进程入口（安装版引擎裁掉了 `Source/Programs/`，要看这个文件需源码版引擎）
+<!-- verify:ignore-start -->
+- `Engine/Source/Programs/ShaderCompileWorker/Private/ShaderCompileWorker.cpp` — 外部进程入口（安装版引擎裁掉了 `Source/Programs/`，要看这个文件需源码版引擎；本机 5.8 安装版与公司 Perforce 版都不带这个目录）
+<!-- verify:ignore-end -->
 - `Engine/Source/Runtime/Engine/Private/ShaderCompiler/ShaderCompiler.cpp` — 主进程编译调度
 - `Engine/Source/Developer/ShaderFormatOpenGL/` — 各平台 Shader 编译后端
 

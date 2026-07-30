@@ -777,7 +777,7 @@ flowchart TD
 | `Engine/Source/Runtime/RenderCore/Public/RenderGraphBuilder.h` | `FRDGBuilder` 核心 API，`AddPass` / `CreateTexture` / `Execute` | `FRDGBuilder::AddPass` 入口 |
 | `Engine/Source/Runtime/RenderCore/Public/RenderGraphResources.h` | `FRDGTexture` / `FRDGBuffer` 资源声明 | (阅读) |
 | `Engine/Source/Runtime/RenderCore/Public/RenderGraphPass.h` | `ERDGPassFlags` / Pass 类型体系 | (阅读) |
-| `Runtime/RenderCore/Private/RenderGraph.cpp` | `FRDGBuilder::Execute` Compile/Culling 实现 | `FRDGBuilder::Execute` 开头 |
+| `Runtime/RenderCore/Private/RenderGraphBuilder.cpp` | `FRDGBuilder::Execute` Compile/Culling 实现 | `FRDGBuilder::Execute` 开头 |
 | `Engine/Source/Runtime/RenderCore/Private/RenderGraphAllocator.cpp` | Transient 资源分配策略 | (阅读) |
 | `Engine/Source/Runtime/RHI/Public/RHIAccess.h` | `ERHIAccess` / `FRHIBarrier` / `FRHITransitionInfo` | (阅读) |
 | `Engine/Source/Runtime/Renderer/Private/PostProcess/PostProcessing.cpp` | 后处理链的 RDG 编排，参考如何插入 Pass | `FPostProcessing::Process` |
@@ -812,14 +812,14 @@ flowchart TD
 |------|--------|---------|
 | `Engine/Source/Runtime/Renderer/Private/Lumen/LumenSceneRendering.cpp` | `ShouldRenderLumen()` / `RenderLumenScene()` / 体素化 | `RenderLumenScene` 入口 |
 | `Engine/Source/Runtime/Renderer/Private/Lumen/LumenReflections.cpp` | `CompositeLumenReflections()` / `RenderLumenReflections()` | `RenderLumenReflections` 入口 |
-| `Runtime/Renderer/Private/Lumen/LumenScreenProbe.cpp` | Screen Probe 生成/采样/插值 | `LumenScreenProbeGather` 入口 |
+| `Runtime/Renderer/Private/Lumen/LumenScreenProbeGather.cpp` | Screen Probe 生成/采样/插值 | `LumenScreenProbeGather` 入口 |
 | `Engine/Source/Runtime/Renderer/Private/Lumen/LumenMeshCards.cpp` | Mesh Card 生成与管理 | (阅读) |
-| `Runtime/Renderer/Private/Lumen/LumenHardwareRayTracing.cpp` | DXR 加速结构 + RayGen | `BuildLumenHardwareRayTracingScene` |
-| `Runtime/Renderer/Private/Lumen/LumenTracing.cpp` | 统一追踪接口 | `TraceLumenRadiance` |
-| `Runtime/Renderer/Private/Nanite/NaniteRendering.cpp` | `RenderNanite()` / Visibility Buffer 渲染 | `RenderNanite` 入口 |
-| `Runtime/Renderer/Private/Nanite/NaniteStreaming.cpp` | Page 加载/卸载/LOD 选择 | `FNaniteStreamingManager::UpdateLODs` |
-| `Runtime/Renderer/Private/Nanite/NaniteCull.cpp` | GPU 剔除 Kernel | `CullKernel` |
-| `Runtime/Renderer/Private/Nanite/NaniteMaterialResolve.cpp` | Visibility Buffer → G-Buffer | Material Resolve 入口 |
+| `Runtime/Renderer/Private/Lumen/LumenHardwareRayTracingCommon.cpp` | DXR 加速结构 + RayGen | `BuildLumenHardwareRayTracingScene` |
+| `Runtime/Renderer/Private/Lumen/LumenTracingUtils.cpp` | 统一追踪接口 | `TraceLumenRadiance` |
+| `Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp` | `RenderNanite()` / Visibility Buffer 渲染 | `RenderNanite` 入口 |
+| `Runtime/Engine/Private/Rendering/NaniteStreamingManager.cpp` | Page 加载/卸载/LOD 选择 | `FNaniteStreamingManager::UpdateLODs` |
+| `Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp` | GPU 剔除 Kernel | `CullKernel` |
+| `Runtime/Renderer/Private/Nanite/NaniteMaterials.cpp` | Visibility Buffer → G-Buffer | Material Resolve 入口 |
 | `Engine/Shaders/Shared/NaniteDefinitions.h` | Cluster / Page / Group 数据结构 | (阅读) |
 
 **实操练习**：
@@ -852,14 +852,14 @@ flowchart TD
 | `Engine/Source/Runtime/Renderer/Private/MobileShadingRenderer.cpp` | Mobile 渲染路径，Feature Level 分支 | `FMobileSceneRenderer::Render` |
 | `Engine/Source/Runtime/Engine/Private/ShaderCompiler/ShaderCompiler.cpp` | `ShouldCompilePermutation()` 裁剪入口 | `ShouldCompilePermutation` 调用 |
 | `Engine/Source/Runtime/RenderCore/Public/ShaderPermutation.h` | `FShaderPermutationBool` 裁剪机制 | (阅读) |
-| `Runtime/RenderCore/Private/GPUCrashDebugging.cpp` | GPU Crash 检测机制 | `FGPUCrashDebugging` |
-| `Runtime/D3D12RHI/Private/D3D12Debug.cpp` | D3D12 Debug Layer 实现 | (阅读) |
-| `Runtime/VulkanRHI/Private/VulkanValidation.cpp` | Vulkan Validation 实现 | (阅读) |
+| `Runtime/RHI/Private/RHIBreadcrumbs.cpp` | GPU Crash 检测机制 | `FGPUCrashDebugging` |
+| `Runtime/D3D12RHI/Private/D3D12RayTracingDebug.cpp` | D3D12 Debug Layer 实现 | (阅读) |
+| `Runtime/RHI/Private/RHIValidation.cpp` | Vulkan Validation 实现 | (阅读) |
 | `Engine/Source/Runtime/Engine/Private/Materials/HLSLMaterialTranslator.cpp` | 材质表达式 → HLSL 完整流程 | `FMaterialCompiler::*` |
 | `Engine/Source/Runtime/Engine/Public/MaterialShared.h` | `FMaterialShaderMap` 编译调度 | (阅读) |
 | `Engine/Source/Runtime/Renderer/Private/MeshPassProcessor.cpp` | `FMeshPassProcessor` 注册机制 | `FMeshPassProcessor::AddMeshBatch` |
-| `Shaders/Private/Substrate/SubstrateBSDF.ush` | Substrate BSDF 计算 | (阅读) |
-| `Shaders/Private/Substrate/SubstrateDeferredShading.ush` | Substrate Deferred 路径 | (阅读) |
+| `Shaders/Private/Substrate/Substrate.ush` | Substrate BSDF 计算 | (阅读) |
+| `Shaders/Private/Substrate/SubstrateDeferredLighting.ush` | Substrate Deferred 路径 | (阅读) |
 
 **实操练习**：
 
