@@ -1,106 +1,331 @@
 # UE 5.8 渲染调试与诊断工具链 — 知识卡片
 
----
+> **验证状态**：本文档的 CVar 表由 `scripts/ue-cvar-dump.py` 从 UE 5.8.0 源码
+> （`H:/Epic Games/UE_5.8`）直接生成，名称与作用说明取自引擎自己的帮助文本，**逐条存在**。
+> 外部工具（Nsight / RGP / PIX）一节讲的是第三方工具用法，不含引擎符号断言，未经工具校验。
+> 重新生成：`python scripts/ue-cvar-dump.py r.DumpGPU --md`
 
-## 1. 内置调试工具
+## 目录
 
-### 1.1 帧捕获与截图
-
-| 命令 | 作用 | 用法 |
-|---|---|---|
-| `r.DumpGPU` | 将当前帧的所有 GPU 指令、资源、PSO 导出为 JSON + 图像，供离线分析 | `r.DumpGPU -1`（当前帧）/ `r.DumpGPU <FrameNum>` |
-| `r.DumpGPU.FrameCount` | 指定 DumpGPU 连续捕获的帧数 | `r.DumpGPU.FrameCount 3`（默认 1） |
-| `r.DumpGPU.FrameDelay` | 延迟 N 帧后开始捕获 | `r.DumpGPU.FrameDelay 5` |
-| `r.DumpGPU.Delay` | 延迟 N 秒后开始捕获（浮点数） | `r.DumpGPU.Delay 2.0` |
-| `r.DumpGPU.Root` | 指定输出目录，可过滤 pass 树（通配符匹配） | 默认 `ProjectSavedDir/DumpGPU/` |
-| `r.DumpGPU.Texture` | 是否导出纹理：0=忽略, 1=仅描述, 2=描述+二进制（默认） | `r.DumpGPU.Texture 1` |
-| `r.DumpGPU.Buffer` | 是否导出 buffer：0=忽略, 1=仅描述, 2=描述+二进制（默认） | `r.DumpGPU.Buffer 1` |
-| `r.DumpGPU.Screenshot` | 是否同时截取画面截图 | `r.DumpGPU.Screenshot 1`（默认 1） |
-| `r.DumpGPU.PassParameters` | 是否导出 pass 参数 | `r.DumpGPU.PassParameters 1` |
-| `r.DumpGPU.MaxStagingSize` | staging 资源最大 MB 数 | `r.DumpGPU.MaxStagingSize 64` |
-| `r.DumpGPU.Stream` | 异步回读模式：0=同步（默认），1=异步（可能 OOM） | `r.DumpGPU.Stream 1` |
-| `r.DumpGPU.CameraCut` | 首帧是否触发 camera cut | `r.DumpGPU.CameraCut 1` |
-| `r.DumpGPU.RedumpInputs` | 重新捕获输入资源（防中间 pass 原地修改） | `r.DumpGPU.RedumpInputs 1` |
-| `r.ScreenShot` | 截取当前画面并保存 | `r.ScreenShot`（保存到 `Screenshots/`） |
-| `r.ScreenShot.Mode` | 截图模式：0=标准, 1=HDR(exr), 2=立体 | `r.ScreenShot.Mode 1` |
-
-**`r.DumpGPU` 输出结构**（每个捕获帧生成一个子目录）：
-
-```
-DumpGPU/
-  Frame_0001/
-    frame.json          — 完整 draw call 列表、状态、资源绑定
-    <PassName>_<RT>.png — 各 RT 的渲染结果
-    resources/          — 所有 buffer / texture 的导出（由 Texture/Buffer CVar 控制）
-```
-
-**关键限制**：`r.DumpGPU` 对性能影响极大，只适合捕获单个帧做离线分析。UE 5.8 中其 JSON 输出结构略有调整（RenderGraph 节点命名更规范），但基本机制不变。
-
-### 1.2 可视化模式
-
-| CVar / ShowFlag | 作用 | 典型值 |
-|---|---|---|
-| `r.VisualizeBuffer` | 可视化 GBuffer 各通道 | 0=关, 1=BaseColor, 2=Specular, 3=Normal, 4=Metallic, 5=Roughness, 6=SubsurfaceColor, ... |
-| `r.VisualizeHDR` | HDR 亮度可视化 | 0=关, 1=亮度分布, 2=区域直方图 |
-| `ShowFlag.VisualizeMotionBlur` | 运动模糊可视化（ShowFlag，非 CVar） | `ShowFlag.VisualizeMotionBlur 1`（速度矢量） |
-| `r.VisualizeSSR` | 屏幕空间反射的可视化 | 0=关, 1=粗糙度, 2=光线数, 3=命中率 |
-| `r.VisualizeDOF` | 景深可视化 | 0=关, 1=CoC 圆 |
-| `r.ShaderComplexity` | 着色器复杂度（像素着色时间） | 1=开启（色彩映射到复杂度） |
-| `r.ShaderComplexity.Accumulate` | 是否累计多重采样 | 0=关, 1=开 |
-| `r.QuadComplexity` | 瓦片着色复杂度 | 1=开启 |
-| `r.LOD` | LOD 可视化 | 0=全细节, 其他值=强制LOD级别 |
-| `r.Wireframe` | 线框模式 | 1=开启 |
-| `r.ShowMaterialDrawEvents` | 在 draw event 中显示材质名 | 1=开启（对 RenderDoc 捕获有用） |
-
-### 1.3 Shader 开发模式
-
-| CVar | 作用 |
+| 节 | 内容 |
 |---|---|
-| `r.ShaderDevelopmentMode=1` | 开启 Shader 开发模式。启用后：DoFD（Detail of Failure Diagnostics）默认开启，Shader 编译错误在 Editor 中即时弹窗，不静默回退。所有 LogShaders 日志消息显示为 Warning 级别 |
-| `r.DumpShaderDebugInfo` | 导出 shader 中间表示（HLSL → DXIL/SPIR-V）到 Saved 目录 |
-| `r.DumpShaderDebugInfo.CompileMode` | 0=仅失败时, 1=总是 |
-| `r.DumpShaderDebugInfo.WorkingDirectory` | 指定输出目录 |
-
-**`r.ShaderDevelopmentMode` 的副作用**：
-- 编译速度变慢（DoFD 增加编译时间）
-- 日志中 shader 信息量大幅增加
-- Editor 中 shader 编译错误会弹窗而非静默回退（在亚稳态渲染分支上排查时有用）
-
-### 1.4 其他调试 CVar
-
-| CVar | 作用 |
-|---|---|
-| `r.ScreenPercentage` | 分辨率缩放，可用于调试 LOD / 纹理分辨率问题 |
-| `r.ScreenPercentage.Force` | 强制覆盖渲染分辨率 |
-| `r.Tonemapper.GrainQuantization` | 禁用颗粒噪声以调试后处理 |
-| `r.PostProcessing.PropagateAlpha` | 后处理中保留 alpha 通道 |
-| `r.FastVRAM.Dump` | 导出 VRAM 分配报告 |
-| `r.RHICmdBypass` | 跳过 RHI 命令队列，直接执行（调试 draw call 排序） |
-| `r.RHICmdBypass.NoDrawEvents` | 跳过 draw events 以减少开销 |
+| [1. 三种控制机制](#1-三种控制机制cvar--showflag--viewmode) | CVar / ShowFlag / viewmode 的区别——最常踩的坑 |
+| [2. 帧捕获与 GPU Dump](#2-帧捕获与-gpu-dump) | `r.DumpGPU.*` 全 25 个 + 输出结构 |
+| [3. GPU 性能剖析](#3-gpu-性能剖析) | `r.ProfileGPU.*` 全 13 个 |
+| [4. GPU 崩溃取证](#4-gpu-崩溃取证) | `r.GPUCrashDebugging.*` 全 19 个（Breadcrumbs / Aftermath / Intel） |
+| [5. 平台 Validation](#5-平台-validation) | D3D12 debug layer / Vulkan validation / RHI validation |
+| [6. Shader 调试与符号](#6-shader-调试与符号) | 开发模式 / 调试信息导出 / 符号生成 |
+| [7. 外部工具](#7-外部工具) | RenderDoc（`renderdoc.*` 全 16 个）/ Nsight / RGP / PIX |
+| [8. 时序与 temporal 问题](#8-时序与-temporal-问题) | `r.Test.*` 冻结历史等 |
+| [9. 诊断决策树](#9-诊断决策树) | 症状 → 该开哪个开关 |
+| [10. 关键源码文件索引](#10-关键源码文件索引) | |
+| [附录：不存在的 CVar 对照表](#附录不存在的-cvar-对照表) | 调研稿里出现过、5.8 中并不存在的名字及其真实对应物 |
 
 ---
 
-## 2. 外部调试工具
+## 1. 三种控制机制：CVar / ShowFlag / viewmode
 
-### 2.1 RenderDoc
+这是最容易搞错的一点，也是调研稿里出错最多的地方——把 ShowFlag 和 viewmode 写成了
+`r.*` 开头的 CVar。客户照着敲会直接得到 unknown command。
 
-**集成方式**：
-- UE 5.x 内置 RenderDoc 插件（`Editor/Plugins/RenderDoc`），默认启用
-- 快捷键：`Ctrl+Alt+F12` 触发捕获（Editor 中）
-- 命令行：调用 `FViewDebugInfo::CaptureNextFrame()` C++ 函数触发捕获
-- 支持 Vulkan 和 D3D12
+| 机制 | 语法 | 例子 | 特点 |
+|---|---|---|---|
+| **CVar** | `<名字> <值>` | `r.DumpGPU.FrameCount 3` | 有默认值、可写 ini、可 per-platform 覆盖 |
+| **ShowFlag** | `ShowFlag.<名字> <0/1>` | `ShowFlag.VisualizeMotionBlur 1` | 布尔开关，挂在 `FEngineShowFlags` 上，per-view |
+| **viewmode** | `viewmode <名字>` | `viewmode shadercomplexity` | 整体切换视图模式，互斥 |
 
-**实用技巧**：
-- 在 RenderDoc 中查看 UE 的 Event 标记（需 `r.ShowMaterialDrawEvents 1` 和 `r.RHISetDebugMarker 1`）
-- 使用 RenderDoc 的 Pipeline State Viewer 查看 PSO 状态
-- 原生支持 UE 5.8 RDG（Render Graph）的 Pass 命名，pass 名称在 Event Browser 中可见
-- 对 Nanite 和 Lumen 的 draw call 有独立标记，但内部细节因 Mesh shader 而部分不透明
+判断某个名字属于哪一类：**能在 `scripts/ue-cvar-dump.py --check <名字>` 里查到的才是 CVar**，
+查不到就去看它是不是 ShowFlag（`FEngineShowFlags` 里的成员）或 viewmode。
 
-**限制**：
-- UE 5.8 的 Nanite 使用 Mesh Shader 路径，RenderDoc 对 Mesh Shader 的顶点数据查看支持有限（需 2024+ 版本）
-- Lumen 的 indirect dispatch 和 compute shader 链在 RenderDoc 中较难追踪
+具体地说，下面这些**不是 CVar**（调研稿曾把它们写成 `r.` 开头的 CVar）：
 
-### 2.2 NVIDIA Nsight
+<!-- verify:ignore-start -->
+
+- 缓冲区可视化 → `ShowFlag.VisualizeBuffer` + 用 `r.BufferVisualizationOverviewTargets` 配置显示哪些通道
+- 线框 → `viewmode wireframe` / `ShowFlag.Wireframe`
+- Shader 复杂度 → `viewmode shadercomplexity`；`r.ShaderComplexity.Baseline.*`
+  这组 CVar 只调可视化的**刻度基准**，不是开关
+- Quad overdraw → `viewmode quadoverdraw`
+- LOD 着色 → `viewmode lodcoloration`
+<!-- verify:ignore-end -->
+
+**可视化配置相关的真 CVar**（共 3 个）：
+
+| CVar | 作用 |
+|---|---|
+| `r.BufferVisualizationDumpFrames` | When screenshots or movies dumps are requested, also save out dumps of the current buffer visualization materials 0:off (default) 1:on |
+| `r.BufferVisualizationDumpFramesAsHDR` | When saving out buffer visualization materials in a HDR capable format 0: Do not override default save format. 1: Force HDR format for buffer visualization materials. |
+| `r.BufferVisualizationOverviewTargets` | BaseColor,Specular,SubsurfaceColor,WorldNormal,SeparateTranslucencyRGB,,,WorldTangent,SeparateTranslucencyA,,,Opacity,SceneDepth,Roughness,Metallic,ShadingModel,,SceneDepthWorldUnits,SceneColor,PreTonemapHDRColor,PostTon… |
+
+| CVar | 作用 |
+|---|---|
+| `r.VisualizeOccludedPrimitives` | Draw boxes for all occluded primitives. 0: Do not draw bounding boxes for occluded primitives (default). 1: Draw the primitive bounding boxes for all occluded primitives. 2: Draw the primitive bounding boxes for all… |
+| `r.ShowMaterialDrawEvents` | Whether to emit a draw event around every mesh draw call with information about the assets used. Introduces severe CPU and GPU overhead when enabled, but useful for debugging. |
+
+---
+
+## 2. 帧捕获与 GPU Dump
+
+控制台执行 `r.DumpGPU` 把一帧的 RDG pass、资源、参数导出到磁盘供离线分析。**对性能
+影响极大**，只适合抓单帧。
+
+下面这组 `r.DumpGPU.*` CVar（控制它的行为）逐条核实存在，声明在
+`Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp`。**触发命令 `r.DumpGPU` 本身的
+注册位置我没在源码里定位到**——它不以 `FAutoConsoleCommand` 的常见形式出现在 RenderCore
+或 `DumpGPUServices` 插件里。命令可用（这是长期文档化的用法），但如果要精确引用注册处，
+请自行再查一次。
+
+### 2.1 全部 `r.DumpGPU.*`（25 个）
+
+| CVar | 作用 | 声明位置 |
+|---|---|---|
+| `r.DumpGPU.Buffer` | Whether to dump buffer. 0: Ignores all buffers 1: Dump only buffers' descriptors 2: Dump buffers' descriptors and binaries (default) | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:75` |
+| `r.DumpGPU.CameraCut` | Whether to issue a camera cut on the first frame of the dump. | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:114` |
+| `r.DumpGPU.ConsoleVariables` | Whether to dump rendering console variables (enabled by default). | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:148` |
+| `r.DumpGPU.Delay` | Delay in seconds before dumping the frame. | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:99` |
+| `r.DumpGPU.Directory` | Directory to dump to. | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:163` |
+| `r.DumpGPU.Draws` | Whether to dump resource after each individual draw call (disabled by default). | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:133` |
+| `r.DumpGPU.DumpOnScreenshotTest` | Allows to filter the tree when using r.DumpGPU command, the pattern match is case sensitive. | `Engine/Source/Developer/FunctionalTesting/Private/ScreenshotFunctionalTestBase.cpp:29` |
+| `r.DumpGPU.EnableLogWrite` | Enables writing the log file to disk. 0: Does not write log file to disk 1: Logging writes are enabled (default) | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:187` |
+| `r.DumpGPU.Explore` | Whether to open file explorer to where the GPU dump on completion (enabled by default). | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:143` |
+| `r.DumpGPU.FixedTickRate` | Override the engine's tick rate to be fixed for every dumped frames (default=0). | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:119` |
+| `r.DumpGPU.FrameCount` | Number of consecutive frames to dump (default=1). | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:109` |
+| `r.DumpGPU.FrameDelay` | Delay in frames before dumping the frame. | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:104` |
+| `r.DumpGPU.Mask` | Whether to include GPU mask in the name of each Pass (has no effect unless system has multiple GPUs). | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:138` |
+| `r.DumpGPU.MaxStagingSize` | Maximum size of stating resource in MB (default=64). | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:83` |
+| `r.DumpGPU.PassParameters` | Whether to dump the pass parameters. | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:88` |
+| `r.DumpGPU.RedumpInputs` | Re-capture input resources at the point they are read, breaking linkage to any prior (stale) version. Useful when r.DumpGPU.Root excludes intermediate passes that modify a resource in-place. This would increase dumped… | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:93` |
+| `r.DumpGPU.Root` | * Allows to filter the tree when using r.DumpGPU command, the pattern match is case sensitive. | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:61` |
+| `r.DumpGPU.Screenshot` | Whether to take a final screenshot. | `Engine/Source/Runtime/Engine/Private/UnrealEngine.cpp:286` |
+| `r.DumpGPU.Stream` | Asynchronously readback from GPU to disk. | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:124` |
+| `r.DumpGPU.Test.EnableDiskWrite` | Main switch whether any files should be written to disk, used for r.DumpGPU automation tests to not fill up workers' hard drive. | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:153` |
+| `r.DumpGPU.Test.PrettifyResourceFileNames` | Whether the resource file names should include resource name. May increase the likelyness of running into Windows' filepath limit. | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:158` |
+| `r.DumpGPU.Texture` | Whether to dump textures. 0: Ignores all textures 1: Dump only textures' descriptors 2: Dump textures' descriptors and binaries (default) | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:67` |
+| `r.DumpGPU.Upload` | Allows to upload the GPU dump automatically if set-up. | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:168` |
+| `r.DumpGPU.Upload.CompressResources` | Whether to compress resource binary. 0: Disabled (default) 1: Zlib 2: GZip | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:173` |
+| `r.DumpGPU.Viewer.Visualize` | Name of RDG output resource to automatically open in the dump viewer. | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp:182` |
+
+### 2.2 常用组合
+
+```ini
+; 抓当前帧，只导出描述不导出二进制（快得多，够看 pass 结构和资源尺寸）
+r.DumpGPU.Texture 1
+r.DumpGPU.Buffer 1
+r.DumpGPU
+
+; 抓连续 3 帧，延迟 5 帧后开始（等场景稳定）
+r.DumpGPU.FrameCount 3
+r.DumpGPU.FrameDelay 5
+r.DumpGPU
+
+; 逐 draw call 导出——量极大，只在定位"哪一次 draw 写坏了"时开
+r.DumpGPU.Draws 1
+r.DumpGPU
+```
+
+注意 `r.DumpGPU.FrameCount` 是**连续捕获的帧数**（引擎原文 "Number of consecutive
+frames to dump"），不是"抓第 N 帧"。要延后开始用 `r.DumpGPU.FrameDelay` 或
+`r.DumpGPU.Delay`（秒）。
+
+输出目录由 `r.DumpGPU.Directory` 决定，过滤 pass 树用 `r.DumpGPU.Root`。
+
+---
+
+## 3. GPU 性能剖析
+
+`ProfileGPU` 控制台命令出一份按 pass 的耗时树。下面这组 CVar 控制它的输出形态——
+默认输出很长，调这几个能直接把注意力压到热点上。
+
+| CVar | 作用 | 声明位置 |
+|---|---|---|
+| `r.ProfileGPU.Root` | * Allows to filter the tree when using ProfileGPU, the pattern match is case sensitive. | `Engine/Source/Runtime/RHI/Private/GPUProfiler.cpp:45` |
+| `r.ProfileGPU.ShowEmptyQueues` | When true, GPU queues without any registered work are still displayed in the report tables. | `Engine/Source/Runtime/RHI/Private/GPUProfiler.cpp:81` |
+| `r.ProfileGPU.ShowExclusive` | When true, exclusive GPU times are shown. | `Engine/Source/Runtime/RHI/Private/GPUProfiler.cpp:105` |
+| `r.ProfileGPU.ShowHeader` | When true, prints a summary of the profileGPU settings before the report table in the log. | `Engine/Source/Runtime/RHI/Private/GPUProfiler.cpp:75` |
+| `r.ProfileGPU.ShowInclusive` | When true, inclusive GPU times are shown. | `Engine/Source/Runtime/RHI/Private/GPUProfiler.cpp:99` |
+| `r.ProfileGPU.ShowLeafEvents` | Allows profileGPU to display event-only leaf nodes with no draws associated. | `Engine/Source/Runtime/RHI/Private/GPUProfiler.cpp:69` |
+| `r.ProfileGPU.ShowPercentColumn` | When true, a column showing the relative portion of time each stat takes as a percentage is displayed, including a visual unicode bar when unicode output is enabled. | `Engine/Source/Runtime/RHI/Private/GPUProfiler.cpp:93` |
+| `r.ProfileGPU.ShowStats` | When true, additional stat columns are shown in the report (numbers of draws, dispatches, vertices and primitives). | `Engine/Source/Runtime/RHI/Private/GPUProfiler.cpp:87` |
+| `r.ProfileGPU.ShowUI` | Whether the user interface profiler should be displayed after profiling the GPU. The results will always go to the log/console. | `Engine/Source/Runtime/RHI/Private/GPUProfiler.cpp:111` |
+| `r.ProfileGPU.Sort` | Sorts the TTY Dump independently at each level of the tree in various modes. 0 : Chronological 1 : By time elapsed 2 : By number of prims 3 : By number of verts | `Engine/Source/Runtime/RHI/Private/GPUProfiler.cpp:35` |
+| `r.ProfileGPU.TableFormatting` | When enabled, the output results will be formatted in a table with many secondary stats. When disabled, only inclusive times and event names are printed in an indented list for compactness. | `Engine/Source/Runtime/RHI/Private/GPUProfiler.cpp:57` |
+| `r.ProfileGPU.ThresholdPercent` | Percent of the total execution duration the event needs to be larger than to be printed. | `Engine/Source/Runtime/RHI/Private/GPUProfiler.cpp:51` |
+| `r.ProfileGPU.UnicodeOutput` | When enabled, the output results will be formatted in a unicode table. | `Engine/Source/Runtime/RHI/Private/GPUProfiler.cpp:63` |
+
+排查思路：先 `r.ProfileGPU.ThresholdPercent` 把小项过滤掉，再
+`r.ProfileGPU.Sort` 按耗时排序，`r.ProfileGPU.ShowExclusive 1` 看自身耗时（排除子节点）
+才能找出真正的热点 pass。
+
+---
+
+## 4. GPU 崩溃取证
+
+GPU 崩溃（TDR / device removed）的取证分**厂商无关**和**厂商特定**两条路。厂商无关的
+先开——它跨卡都能用，且开销低。
+
+### 4.1 总开关与厂商无关的 Breadcrumbs
+
+| CVar | 作用 |
+|---|---|
+| `r.GPUCrashDebugging` | Enable vendor specific GPU crash analysis tools |
+| `r.GPUCrashDebugging.Breadcrumbs` | Enable RHI breadcrumbs, a vendor-agnostic method for determining which passes were active when a GPU crash occurs |
+
+Breadcrumbs 是判断"崩在哪个 pass"的第一手段，不依赖厂商 SDK。
+
+### 4.2 NVIDIA Aftermath（12 个）
+
+| CVar | 作用 |
+|---|---|
+| `r.GPUCrashDebugging.Aftermath` | Enables or disables Nvidia Aftermath. |
+| `r.GPUCrashDebugging.Aftermath.Callstack` | Enable callstack capture in Aftermath dumps |
+| `r.GPUCrashDebugging.Aftermath.DumpProcessWaitTime` | Amount of time (in seconds) to wait for Aftermath to finish processing GPU crash dumps. |
+| `r.GPUCrashDebugging.Aftermath.DumpShaderDebugInfo` | Dump shader debug info (.nvdbg) alongside the crash dump. |
+| `r.GPUCrashDebugging.Aftermath.DumpStartWaitTime` | Amount of time (in seconds) to wait for Aftermath to start processing GPU crash dumps. |
+| `r.GPUCrashDebugging.Aftermath.LateShaderAssociations.FrameLimit` | Max last since used number of frames to consider when collecting pipelines |
+| `r.GPUCrashDebugging.Aftermath.LateShaderAssociations.TimeLimit` | Time limit (s) before the late associations are stopped |
+| `r.GPUCrashDebugging.Aftermath.Markers` | Enable draw event markers in Aftermath dumps |
+| `r.GPUCrashDebugging.Aftermath.ResourceTracking` | Enable resource tracking for Aftermath dumps |
+| `r.GPUCrashDebugging.Aftermath.ShaderErrorReporting` | Enable shader error reporting for Aftermath dumps |
+| `r.GPUCrashDebugging.Aftermath.ShaderRegistration` | Enable registration of shaders and pipelines in Aftermath. |
+| `r.GPUCrashDebugging.Aftermath.TrackAll` | Enable maximum tracking for Aftermath dumps |
+
+`r.GPUCrashDebugging.Aftermath.TrackAll` 是"全开"快捷方式，代价是明显的运行时开销；
+定位阶段可以开，交付前要关。
+
+### 4.3 Intel Crash Dumps（5 个）
+
+| CVar | 作用 |
+|---|---|
+| `r.GPUCrashDebugging.IntelCrashDumps` | Enable/disable Intel GPU Crash Dumps. |
+| `r.GPUCrashDebugging.IntelCrashDumps.Callstack` | Enable callstack capture in the GPU Crash Dumps. |
+| `r.GPUCrashDebugging.IntelCrashDumps.DumpWaitTime` | Intel Breadcrumbs GPU crash dumps processing timeout. |
+| `r.GPUCrashDebugging.IntelCrashDumps.Markers` | Enable event markers in the GPU Crash Dumps. |
+| `r.GPUCrashDebugging.IntelCrashDumps.ResourceTracking` | Enable resource tracking in the GPU Crash Dumps. |
+
+---
+
+## 5. 平台 Validation
+
+Validation 层抓的是"API 用法不合规"，跟渲染结果对不对是两件事。开着跑很慢，只在排查
+诡异行为时开。
+
+### 5.1 D3D12
+
+| CVar | 作用 |
+|---|---|
+| `r.D3D12.EnableD3DDebug` | 0 to disable d3ddebug layer (default) 1 to enable error logging (-d3ddebug) 2 to enable error & warning logging (-d3dlogwarnings) 3 to enable breaking on errors & warnings (-d3dbreakonwarning) 4 to enable CONTINUING on… |
+| `r.D3D12.DXR.RaytracingValidation` | Enables NVAPI Raytracing validation. |
+| `r.D3D12.DXR.RaytracingValidation.IgnoreList` | List of warnings or errors to ignore to prevent spam from NVAPI Raytracing validation. For instance: warning1;warning2 etc |
+| `r.D3D12.RayTracing.GPUValidation` | Whether to perform validation of ray tracing geometry and other structures on the GPU. Requires Shader Model 6. (default = 0) |
+
+`r.D3D12.EnableD3DDebug` 也可以用命令行 `-d3ddebug` 打开（引擎帮助文本里写了）。
+
+### 5.2 Vulkan
+
+| CVar | 作用 |
+|---|---|
+| `r.Vulkan.EnableValidation` | 0 to disable validation layers 1 to enable errors 2 to enable errors & warnings 3 to enable errors, warnings & performance warnings 4 to enable errors, warnings, performance & information messages 5 to enable all… |
+| `r.Vulkan.DebugMarkers` | 0 to disable all debug markers 1 to enable debug names for resources 2 to enable debug labels for commands 3 to enable debug resource names command labels 4 to automatically enable markers depending on tool detection… |
+| `r.Vulkan.DebugBarrier` | Forces a full barrier for debugging. This is a mask/bitfield (so add up the values)! 0: Don't (default) 1: Enable heavy barriers after EndRenderPass() 2: Enable heavy barriers after every dispatch 4: Enable heavy… |
+| `r.Vulkan.DebugVsync` | Whether to print vulkan vsync data |
+
+真名是 `r.Vulkan.EnableValidation`。它是**分级**的（0 关 / 1 只报错 / 2 报错+警告），
+不是布尔。调研稿里那个带 `Layers` 后缀的写法不存在。
+
+`r.Vulkan.DebugBarrier` 强制全屏障，用来判断"是不是屏障漏了"——如果强制全屏障后症状
+消失，问题就在屏障推导上。
+
+### 5.3 RHI 层
+
+| CVar | 作用 |
+|---|---|
+| `r.RHIValidation.DebugBreak.Transitions` | Controls whether the debugger should break when a validation error is encountered. 0: disabled; 1: break in the debugger if a validation error is encountered. |
+| `r.RHICmdBypass` | Whether to bypass the rhi command list and send the rhi commands immediately. 0: Disable (required for the multithreaded renderer) 1: Enable (convenient for debugging low level graphics API calls, can suppress artifacts… |
+
+`r.RHICmdBypass` 绕过 RHI 命令队列直接提交，用来排除"命令排序/并行录制"这一层的影响。
+
+---
+
+## 6. Shader 调试与符号
+
+| CVar | 作用 |
+|---|---|
+| `r.ShaderDevelopmentMode` | 0: Default, 1: Enable various shader development utilities, such as the ability to retry on failed shader compile, and extra logging as shaders are compiled. |
+| `r.DumpShaderDebugInfo` | Dumps debug info for compiled shaders to GameName/Saved/ShaderDebugInfo When set to 1, debug info is dumped for all compiled shader When set to 2, it is restricted to shaders with compilation errors When set to 3, it is… |
+| `r.Shaders.Validation` | Enabled shader compiler validation warnings and errors. |
+
+`r.ShaderDevelopmentMode` 的副作用要知道：编译变慢，日志量大增，编辑器里 shader 编译
+错误会弹窗而不是静默回退。排查亚稳态渲染分支时正是要这个行为。
+
+### 6.1 符号生成（图形调试器里看 shader 源码的前提）
+
+| CVar | 作用 |
+|---|---|
+| `r.Shaders.SymbolFileNameOverride` | Override base file name for shader symbol related aggregate outputs (.zip, .info). '{Platform}' will be replaced with the shader platform string. '{DLC}' will be replaced with the DLC name if there is one. '{?DLC-}'… |
+| `r.Shaders.SymbolPathOverride` | Override output location of shader symbols. If the path contains the text '{Platform}', that will be replaced with the shader platform string. Empty: use default location Saved/ShaderSymbols/{Platform} This setting can… |
+| `r.Shaders.Symbols` | Enables debugging of shaders in platform specific graphics debuggers. This will generate and write shader symbols. This enables the behavior of both r.Shaders.GenerateSymbols and r.Shaders.WriteSymbols. Enables shader… |
+| `r.Shaders.SymbolsInfo` | In lieu of a full set of platform shader PDBs, save out a slimmer ShaderSymbols.Info which contains shader platform hashes and shader debug info. An option for when it is not practical to save PDBs for shaders all the… |
+
+| CVar | 作用 |
+|---|---|
+| `r.Shaders.GenerateSymbols` | Enables generation of data for shader debugging when compiling shaders. This explicitly does not write any shader symbols to disk. This setting can be overriden in any Engine.ini under the [ShaderCompiler] section. |
+| `r.Shaders.WriteSymbols` | Enables writing shader symbols to disk for platforms that support that. This explicitly does not enable generation of shader symbols. This setting can be overriden in any Engine.ini under the [ShaderCompiler] section. |
+| `r.Shaders.WriteSymbols.Zip` | 0: Export as loose files. 1: Export as an uncompressed archive. 2: Export as a compressed archive. |
+| `r.Shaders.AllowUniqueSymbols` | When enabled, this tells supported shader compilers to generate symbols based on source files. Enabling this can cause a drastic increase in the number of symbol files, enable only if absolutely necessary. This setting… |
+
+要在 RenderDoc / Nsight 里按源码单步 shader，得先让这些符号生成打开并重编 shader——
+只开捕获工具是不够的。
+
+---
+
+## 7. 外部工具
+
+### 7.1 RenderDoc
+
+UE 自带 RenderDoc 插件，位置是 `Engine/Plugins/Developer/RenderDocPlugin`。
+
+**触发捕获**：控制台命令 `renderdoc.CaptureFrame`（抓下一帧并启动 RenderDoc）或
+`renderdoc.CapturePIE`（起一个 PIE 会话并从头抓若干帧）。这两个是插件注册的
+`FAutoConsoleCommand`，声明在 `Engine/Plugins/Developer/RenderDocPlugin/Source/RenderDocPlugin/Private/RenderDocPluginModule.cpp`。
+
+<!-- verify:ignore-start -->
+**注意**：调研稿里写的那个 `r.CaptureNextFrame` CVar 在 5.8 中不存在，
+`FViewDebugInfo::CaptureNextFrame()` 这个函数也不存在——两者都是生成的产物，仅作反面对照，勿引用。
+<!-- verify:ignore-end -->
+
+<!-- verify:ignore-start -->
+（上面两个名字仅作反面对照，勿引用。）
+<!-- verify:ignore-end -->
+
+**全部 `renderdoc.*` CVar**（16 个，注意前缀没有 `r.`）：
+
+| CVar | 作用 |
+|---|---|
+| `renderdoc.AutoAttach` | RenderDoc will attach on startup. |
+| `renderdoc.BinaryPath` | Path to the main RenderDoc executable to use. |
+| `renderdoc.CaptureAllActivity` | 0 - RenderDoc will only capture data from the current viewport. 1 - RenderDoc will capture all activity, in all viewports and editor windows for the entire frame. |
+| `renderdoc.CaptureCallstacks` | 0 - Callstacks will not be captured by RenderDoc. 1 - Capture callstacks for each API call. |
+| `renderdoc.CaptureDelay` | If > 0, RenderDoc will trigger the capture only after this amount of time (or frames, if CaptureDelayInSeconds is false) has passed. |
+| `renderdoc.CaptureDelayInSeconds` | 0 - Capture delay's unit is in frames. 1 - Capture delay's unit is in seconds. |
+| `renderdoc.CaptureFrame` | Captures the rendering commands of the next frame and launches RenderDoc |
+| `renderdoc.CaptureFrameCount` | If > 0, the RenderDoc capture will encompass more than a single frame. Note: this implies that all activity in all viewports and editor windows will be captured (i.e. same as CaptureAllActivity) |
+| `renderdoc.CapturePIE` | Starts a PIE session and captures the specified number of frames from the start. |
+| `renderdoc.EnableCrashHandler` | 0 - Crash handling is completely delegated to the engine. 1 - The RenderDoc crash handler will be used (Only use this if you know the problem is with RenderDoc and you want to notify the RenderDoc developers!). |
+| `renderdoc.ReferenceAllResources` | 0 - Only include resources that are actually used. 1 - Include all rendering resources in the capture, even those that have not been used during the frame. Please note that doing this will significantly increase capture… |
+| `renderdoc.SaveAllInitials` | 0 - Disregard initial states of resources. 1 - Always capture the initial state of all rendering resources. Please note that doing this will significantly increase capture size. |
+| `renderdoc.ShowHelpOnStartup` | 0 - Greeting has been shown and will not appear on startup. 1 - Greeting will be shown during next startup. |
+| `renderdoc.TextureGraph_CaptureNextBatch` | Captures the next Job Batch and launches RenderDoc |
+| `renderdoc.TextureGraph_CaptureNextBatchHistogram` | Captures the next Job Batch producing histogram and launches RenderDoc |
+| `renderdoc.TextureGraph_CapturePrevBatch` | Captures the previous Job Batch and launches RenderDoc |
+
+实用组合：`renderdoc.CaptureCallstacks 1` 让每个 API 调用带调用栈（找"谁发的这条命令"）；
+`renderdoc.ReferenceAllResources 1` 连未使用的资源也纳入（排查"资源没绑上"）；
+`renderdoc.CaptureFrameCount` > 1 抓跨帧，用于 temporal 相关问题。
+
+配合 `r.ShowMaterialDrawEvents 1` 和 `r.Vulkan.DebugMarkers`（Vulkan）/
+`r.D3D12.EnableD3DDebug`（D3D12），RenderDoc 的 Event Browser 里才能看到有意义的名字。
+
+### 7.2 NVIDIA Nsight
 
 **集成方式**：
 - Nsight Graphics：独立安装，需与 UE 配合
@@ -119,7 +344,7 @@ DumpGPU/
 3. 使用 GPU Trace 分析 draw call 耗时
 4. 使用 Shader Debugger 单步执行 shader
 
-### 2.3 AMD Radeon GPU Profiler (RGP)
+### 7.3 AMD Radeon GPU Profiler (RGP)
 
 **集成方式**：
 - 独立工具，需要 UE 以特定方式运行
@@ -136,7 +361,7 @@ DumpGPU/
 - 着色器优化（ALU 占用 vs 内存延迟）
 - 异步计算队列分析
 
-### 2.4 PIX (Windows)
+### 7.4 PIX (Windows)
 
 **集成方式**：
 - Microsoft PIX 独立工具，支持 D3D12
@@ -157,357 +382,123 @@ DumpGPU/
 
 ---
 
-## 3. 常见渲染问题诊断
-
-### 3.1 闪烁（Temporal 抖动、Z-Fighting）
-
-| 症状 | 可能原因 | 排查方法 |
-|---|---|---|
-| 画面高频闪烁 | Temporal 累积（TAA / TSR）历史帧匹配失败 | `r.TemporalAASamples 1` 关闭 TAA；`r.TSR 0` 关闭 Temporal Super Resolution |
-| 几何面闪烁/交替 | Z-Fighting | 调整摄像机近远平面；`r.DepthOfField.MaxDepth 0`（排除 DOF 影响）；`r.Shadow.CSM.ZFightingMethod` |
-| 阴影闪烁 | Shadow map 精度不足 | `r.ShadowQuality 5` 最高；`r.Shadow.MaxCSMResolution` 增加 |
-| 间接光照闪烁 | Lumen 逐帧收敛不一致 | `r.Lumen.DiffuseIndirect.Allow 0` 关闭 Lumen 隔离；`r.Lumen.ProbeGrid.SpatialFilter` 调整 |
-| SSR 闪烁 | 屏幕空间反射历史帧匹配 | `r.SSR.Quality 0` 关闭 SSR 隔离 |
-
-**Temporal 抖动排查流程**：
-1. 关闭所有 temporal 效果：`r.TemporalAASamples 1` + `r.TSR 0` + `r.Lumen.DiffuseIndirect.Allow 0` + `r.SSR.Quality 0`
-2. 逐项开启，观察哪项引入闪烁
-3. 对定位到的功能，进一步调整其 temporal 参数
-
-### 3.2 GPU Crash（TDR、Timeout）
-
-**TDR（Timeout Detection and Recovery）**：
-- Windows 默认：2 秒 GPU 无响应 → TDR 触发 → UE 崩溃
-- 调整 TDR 超时以允许调试（注册表）：
-
-```reg
-[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\GraphicsDrivers]
-"TdrDelay"=dword:00000008    ; 8 秒
-"TdrDdiDelay"=dword:00000008
-```
-
-**UE 端 TDR 相关设置**：
-
-| CVar / 设置 | 作用 |
-|---|---|
-| `r.GPUCrashDebugging` | 启用 GPU crash 调试（5.8 默认开启） |
-| `r.GPUCrashDebugging.Aftermath` | NVIDIA Aftermath 集成（需 NVIDIA GPU） |
-| `r.GPUCrashDebugging.Aftermath.Markers` | 自动插入 GPU 事件标记 |
-| `r.GPUCrashDebugging.Aftermath.Callstack` | Crash 时捕获 GPU callstack |
-| `r.GPUCrashDebugging.Aftermath.ResourceTracking` | 追踪 GPU 资源状态 |
-| `r.GPUCrashDebugging.Aftermath.ShaderErrorReporting` | 报告 shader 错误 |
-| `r.GPUCrashDebugging.Aftermath.DumpShaderDebugInfo` | Crash 时导出 shader 调试信息 |
-| `r.FastVRAM.Dump` | VRAM 错误时触发导出 |
-
-**GPU Crash 分析步骤**：
-1. 检查 `Saved/Crashes/` 下的 crash 报告
-2. 查看 GPU 相关行：`GPU Crash: ...`、`Last draw: ...`、`Last RHI command: ...`
-3. `r.DumpGPU` 在 crash 前触发可捕获导致崩溃的帧
-4. 检查 `Log.txt` 中的 `LogRHI` 和 `LogD3D12` 条目
-5. 启用 `r.GPUCrashDebugging.Aftermath` 系列 CVar 获取详细 GPU 状态
-
-**常见原因**：
-- Shader 编译错误导致非法 PSO → 检查 `r.DumpShaderDebugInfo`
-- VRAM 耗尽 → 检查 `r.FastVRAM.Dump` 输出
-- 无效 RHI 资源（已释放的 buffer/texture）→ D3D12 Debug Layer 捕获
-- 驱动未适配 UE 5.8 新特性 → 更新驱动
-
-### 3.3 内存泄漏（RHI 资源）
-
-**监控工具**：
-
-| CVar / 命令 | 作用 |
-|---|---|
-| `r.RHIResourceStats` | 显示 RHI 资源（buffer/texture）总数和内存占用 |
-| `r.RHIResourceStats.Show` | 分类显示各资源类型 |
-| `r.RHIResourceStats.Dump` | 导出 JSON 报告 |
-| `r.TexturePool` | 纹理池状态 |
-| `r.RenderTargetPool` | RT 池状态 |
-| `r.RenderTargetPool.Evict` | 手动清理 RT 池 |
-| `r.VRAM.Dump` | VRAM 分配报告 |
-| `r.FastVRAM.Dump` | Fast VRAM 分配报告 |
-| `r.DumpRHIResources` | 导出所有 RHI 资源列表 |
-| `r.DumpRHIResources.Detailed` | 详细版（含分配栈） |
-
-**排查流程**：
-1. `r.RHIResourceStats` 观测基线
-2. 执行目标操作后再次查看，确认增长
-3. `r.DumpRHIResources.Detailed 1` 导出带分配栈的列表
-4. 对比两帧间的资源增量，找出未释放的分配
-
-### 3.4 Shader 编译问题
-
-| 工具 | 作用 |
-|---|---|
-| `r.ShaderDevelopmentMode 1` | 开启后 shader 编译错误即时上报 |
-| `r.DumpShaderDebugInfo 1` | 导出编译失败的 shader 源码和中间表示 |
-| `r.ShaderCompiler.Stats` | 显示 shader 编译统计 |
-| `r.ShaderCompiler.Cache` | Shader 缓存状态 |
-| `r.ShaderPipelineCache` | PSO 缓存状态 |
-| `r.ShaderPipelineCache.Log` | 导出 PSO 缓存日志 |
-| `r.ShaderPipelineCache.ToggleDebug` | 切换 PSO 缓存调试模式 |
-
-**常见问题**：
-- Shader 编译失败 → 查 `r.DumpShaderDebugInfo` 输出的 HLSL 源码
-- Shader 编译卡顿 → `r.ShaderCompiler.Stats` 看编译队列
-- 材质编译错误 → Editor 中打开材质编辑器，查看编译日志面板
-- PSO 缓存缺失 → `r.ShaderPipelineCache.Log` 导出缺失的 PSO 列表
-
 ---
 
-## 4. Validation 层
+## 8. 时序与 temporal 问题
 
-### 4.1 D3D12 Debug Layer
-
-**启用方式**：
-
-```cmd
-UE 启动参数：-d3d12debug
-// 或通过环境变量
-set D3D12_DEBUG=1
-// 或代码中
-ID3D12Debug5* DebugInterface;
-D3D12GetDebugInterface(IID_PPV_ARGS(&DebugInterface));
-DebugInterface->EnableDebugLayer();
-```
-
-**UE 5.8 相关 CVar**：
+TAA / TSR / Lumen 都带时间累积，"闪烁""拖影""收敛慢"这类问题必须能把时间维度冻住才好查。
+`r.Test.*` 这组就是干这个的：
 
 | CVar | 作用 |
 |---|---|
-| `r.D3D12.EnableDebugLayer` | 运行时启用 D3D12 Debug Layer |
-| `r.D3D12.EnableGPUBasedValidation` | 启用 GPU-based validation |
-| `r.D3D12.EnableAutoSerialization` | 自动序列化调试 |
-| `r.D3D12.ValidationLevel` | 0=Minimal, 1=Basic, 2=Full |
-| `r.D3D12.BreakOnError` | 在 D3D12 错误时中断（调试器 attach） |
-| `r.D3D12.BreakOnWarning` | 在 D3D12 警告时中断 |
+| `r.Test.Aplha.OpaqueLerpWorldRange` | Sets the gradient length in world unit on which opaque pixel are lerped to translucent for testing purposes. |
+| `r.Test.Aplha.OpaqueWorldDistance` | Sets the world distance beyond which the opaque pixel are lerped to translucent for testing purposes. |
+| `r.Test.CameraCut` | Force enabling camera cut for testing purposes. |
+| `r.Test.ConstrainedView` | Allows to test different viewport rectangle configuations (in game only) as they can happen when using cinematics/Editor. 0: off(default) 1..7: Various Configuations |
+| `r.Test.DynamicResolutionHell` | Override the screen percentage interface for all view family with dynamic resolution hell. |
+| `r.Test.EditorConstrainedView` | Allows to test different viewport rectangle configuations (in game only) as they can happen when using cinematics/Editor. 0: off(default) 1..7: Various Configuations |
+| `r.Test.EditorViewGPUMirror` | Tests FSceneViewStateInterface system memory mirror functionality in the editor viewport for debugging. Mirroring is used for Movie Render Queue high resolution tiled rendering, but debugging it there can be difficult,… |
+| `r.Test.ForceBlackVelocityBuffer` | Force the velocity buffer to have no motion vector for debugging purpose. |
+| `r.Test.FreezeTemporalHistories` | Freezes all temporal histories as well as the temporal sequence. |
+| `r.Test.FreezeTemporalHistories.Progress` | Progress the temporal histories by one frame when modified. |
+| `r.Test.FreezeTemporalSequences` | Freezes all temporal sequences. |
+| `r.Test.OverrideTimeMaterialExpressions` | Value to freeze time material expressions with. |
+| `r.Test.PrimaryScreenPercentageMethodOverride` | Override the screen percentage method for all view family. 0: view family's screen percentage interface choose; (default) 1: old fashion upscaling pass at the very end right before before UI; 2: TemporalAA upsample. |
+| `r.Test.SecondaryUpscaleOverride` | Override the secondary upscale. 0: disabled; (default) 1: use secondary view fraction = 0.5 with nearest secondary upscale. |
+| `r.Test.ViewRectOffset` | Moves the view rect within the renderer's internal render target. |
+| `r.Test.ViewRollAngle` | Roll the camera in degrees, for testing motion vector upscaling precision. (disabled by default) |
 
-**性能影响**：D3D12 Debug Layer 性能开销极大（帧率可能掉到 1-5 FPS），只用于诊断阶段。
+`r.Test.FreezeTemporalHistories 1` 冻结所有 temporal 历史：冻住之后如果画面就稳了，
+问题在累积/重投影；如果依旧闪，问题在当帧生成。这是分离"当帧 vs 历史"最快的一刀。
 
-**启用 GPU-Based Validation**：
-```
-r.D3D12.EnableGPUBasedValidation 1
-r.D3D12.ValidationLevel 2
-```
-这会在 GPU 侧验证资源状态、屏障正确性等，但需要 Debug Layer 已启用。
-
-### 4.2 Vulkan Validation Layers
-
-**启用方式**：
-
-```cmd
-UE 启动参数：-vulkan -vulkanvalidation
-// 或通过环境变量
-set VK_LAYER_PATH=<path-to-layers>
-```
-
-**UE 5.8 相关设置**：
-
-| CVar / 配置 | 作用 |
-|---|---|
-| `r.Vulkan.EnableValidation` | 运行时启用 Vulkan Validation |
-| `r.Vulkan.EnableValidationLayers` | 启用 Standard Validation |
-| `r.Vulkan.EnableGPUBasedValidation` | GPU-based validation |
-| `r.Vulkan.BreakOnError` | 错误时 debug break |
-| `r.Vulkan.DumpValidation` | 导出 validation 输出到文件 |
-| `r.Vulkan.OptimalValidation` | 启用所有推荐的 validation 功能 |
-
-**要求**：
-- Vulkan SDK 安装（`VK_LAYER_KHRONOS_validation`）
-- 或系统已安装 Vulkan validation layers
-
-### 4.3 UE 内置 RHI 与 RDG Validation
-
-| CVar | 作用 |
-|---|---|
-| `r.RHI.EnableValidation` | 全局 RHI Validation 开关（UE 5.8 新增改进） |
-| `r.RHI.ValidationLevel` | 0=Off, 1=Basic, 2=Detailed, 3=Full |
-| `r.RHI.BreakOnRHIError` | RHI 错误时调用 `DebugBreak` |
-| `r.RHI.BreakOnRHIWarning` | RHI 警告时调用 `DebugBreak` |
-| `r.RHI.LogResourceLeaks` | 在 shutdown 时报告未释放的 RHI 资源 |
-| `r.RHI.ValidateResourceStates` | 验证资源状态转换 |
-| `r.RHI.ValidateBindings` | 验证资源绑定合法性 |
-| `r.RHI.ValidatePipeline` | 验证 PSO 状态 |
-| `r.RHI.DumpValidation` | 导出 validation 结果到日志文件 |
-
-**RDG Validation 与 Debug 工具**：
-
-| CVar | 作用 |
-|---|---|
-| `r.RDG.Validation` | RDG 资源生命周期验证（默认 1=开启） |
-| `r.RDG.ImmediateMode` | 立即执行 pass（crash 时保留 wiring 调用栈） |
-| `r.RDG.ClobberResources` | 分配时用指定颜色清除 RT/UAV（0=关, 1=1000, 2=NaN, 3=+INF） |
-| `r.RDG.TransitionLog` | 日志记录资源屏障转换 |
-| `r.RDG.Debug.FlushGPU` | 每 pass 后 flush GPU（禁用 async compute 和 parallel execute） |
-| `r.RDG.Debug.ExtendResourceLifetimes` | 延长资源生命周期（防止 transient aliasing 干扰调试） |
-| `r.RDG.Debug.DisableTransientResources` | 禁用 transient 分配器，配合 `r.RDG.Debug.ResourceFilter` 使用 |
-| `r.RDG.Debug.GraphFilter` | 按 graph 名称过滤 debug 事件 |
-| `r.RDG.Debug.PassFilter` | 按 pass 名称过滤 debug 事件 |
-| `r.RDG.Debug.ResourceFilter` | 按资源名称过滤 debug 事件 |
-
-**层级说明**：
-
-| Level | 内容 | 性能影响 |
-|---|---|---|
-| 0 (Off) | 无验证 | 无 |
-| 1 (Basic) | 资源空检查、类型匹配、边界检查 | 轻微 |
-| 2 (Detailed) | 状态跟踪、屏障验证、绑定一致性 | 中等 |
-| 3 (Full) | 所有检查 + 资源生命周期的完整跟踪 | 显著 |
+`r.Test.ForceBlackVelocityBuffer 1` 把速度缓冲清零，用来判断拖影是不是速度矢量算错。
 
 ---
 
-## 5. 关键 CVar 与命令汇总
+## 9. 诊断决策树
 
-### 帧捕获与截图
+```mermaid
+flowchart TD
+    A["渲染异常"] --> B什么症状？
 
-| CVar / 命令 | 描述 |
-|---|---|
-| `r.DumpGPU <n>` | 捕获第 n 帧的 GPU 状态 |
-| `r.DumpGPU.FrameCount <n>` | 连续捕获帧数 |
-| `r.DumpGPU.FrameDelay <n>` | 延迟 N 帧后开始捕获 |
-| `r.DumpGPU.Delay <s>` | 延迟 N 秒后开始捕获 |
-| `r.DumpGPU.Root <path>` | 输出目录 / pass 过滤 |
-| `r.DumpGPU.Texture <0/1/2>` | 纹理导出级别 |
-| `r.DumpGPU.Buffer <0/1/2>` | Buffer 导出级别 |
-| `r.DumpGPU.Screenshot <0/1>` | 同时截图 |
-| `r.DumpGPU.PassParameters <0/1>` | 导出 pass 参数 |
-| `r.DumpGPU.MaxStagingSize <MB>` | Staging 资源上限 |
-| `r.DumpGPU.Stream <0/1>` | 异步回读模式 |
-| `r.DumpGPU.CameraCut <0/1>` | 首帧 camera cut |
-| `r.ScreenShot` | 截图 |
-| `r.ScreenShot.Mode <0/1/2>` | 截图模式 |
+    B -->|"GPU 崩溃 / TDR"| C1["r.GPUCrashDebugging 1<br/>r.GPUCrashDebugging.Breadcrumbs 1"]
+    C1 --> C2["拿到崩溃 pass 名"]
+    C2 --> C3["NVIDIA 再开 Aftermath.TrackAll<br/>Intel 开 IntelCrashDumps"]
 
-### 可视化模式
+    B -->|"画面内容不对"| D1["先分清是哪一层"]
+    D1 --> D2["ShowFlag.VisualizeBuffer<br/>看 GBuffer 各通道"]
+    D2 --> D3GBuffer 就不对？
+    D3 -->|"是"| D4["问题在 BasePass 之前<br/>查材质 / 顶点 / 剔除"]
+    D3 -->|"否"| D5["问题在光照或后处理<br/>r.DumpGPU 抓帧看 pass"]
 
-| CVar / ShowFlag | 描述 |
-|---|---|
-| `r.VisualizeBuffer <0-16>` | GBuffer 通道可视化 |
-| `r.VisualizeHDR <0-2>` | HDR 可视化 |
-| `ShowFlag.VisualizeMotionBlur <0/1>` | 运动模糊速度场（ShowFlag） |
-| `r.VisualizeSSR <0-3>` | SSR 可视化 |
-| `r.VisualizeDOF <0/1>` | 景深 CoC 可视化 |
-| `r.ShaderComplexity <0/1>` | 着色复杂度 |
-| `r.QuadComplexity <0/1>` | 瓦片复杂度 |
-| `r.Wireframe <0/1>` | 线框模式 |
+    B -->|"闪烁 / 拖影"| E1["r.Test.FreezeTemporalHistories 1"]
+    E1 --> E2冻住就稳了？
+    E2 -->|"是"| E3["累积 / 重投影问题<br/>再试 ForceBlackVelocityBuffer"]
+    E2 -->|"否"| E4["当帧生成问题<br/>按内容不对那条走"]
 
-### Shader 调试
+    B -->|"API 用法可疑 / 间歇崩"| F1["r.D3D12.EnableD3DDebug 1<br/>或 r.Vulkan.EnableValidation 2"]
+    F1 --> F2["r.RHIValidation.DebugBreak.Transitions 1<br/>在状态转换错误处断下"]
+    F2 --> F3["仍不明确 → r.RHICmdBypass 1<br/>排除命令排序 / 并行录制"]
 
-| CVar | 描述 |
-|---|---|
-| `r.ShaderDevelopmentMode <0/1>` | Shader 开发模式 |
-| `r.DumpShaderDebugInfo <0/1>` | 导出 shader 调试信息 |
-| `r.DumpShaderDebugInfo.CompileMode <0/1>` | 编译模式（0=仅失败, 1=总是） |
-| `r.ShaderCompiler.Stats` | 编译统计 |
-| `r.ShaderPipelineCache.Log` | PSO 缓存日志 |
-| `r.ShaderPipelineCache.ToggleDebug` | 缓存调试模式 |
+    B -->|"Shader 编译或结果可疑"| G1["r.ShaderDevelopmentMode 1<br/>错误弹窗不静默回退"]
+    G1 --> G2["r.Shaders.Symbols 1 + 重编<br/>然后 renderdoc.CaptureFrame 单步"]
 
-### GPU 诊断
+    classDef entry fill:#e3f2fd,stroke:#1565c0,color:#000
+    classDef act fill:#fff3e0,stroke:#e65100,color:#000
+    class A,B,D3,E2 entry
+    class C1,C2,C3,D1,D2,D4,D5,E1,E3,E4,F1,F2,F3,G1,G2 act
+```
 
-| CVar | 描述 |
-|---|---|
-| `r.GPUCrashDebugging <0/1>` | GPU crash 调试 |
-| `r.GPUCrashDebugging.Aftermath` | NVIDIA Aftermath 集成 |
-| `r.GPUCrashDebugging.Aftermath.Markers` | GPU 事件标记 |
-| `r.GPUCrashDebugging.Aftermath.Callstack` | GPU callstack 捕获 |
-| `r.GPUCrashDebugging.Aftermath.ResourceTracking` | 资源状态追踪 |
-| `r.GPUCrashDebugging.Aftermath.ShaderErrorReporting` | Shader 错误报告 |
-| `r.GPUCrashDebugging.Aftermath.DumpShaderDebugInfo` | Crash 时导出 shader 信息 |
-| `r.RHIResourceStats` | RHI 资源统计 |
-| `r.RHIResourceStats.Dump` | 导出资源统计报告 |
-| `r.RenderTargetPool` | RT 池状态 |
-| `r.RenderTargetPool.Evict` | 清理 RT 池 |
-| `r.VRAM.Dump` | VRAM 报告 |
-| `r.FastVRAM.Dump` | Fast VRAM 报告 |
-| `r.DumpRHIResources` | 导出所有 RHI 资源 |
-
-### Validation
-
-| CVar | 描述 |
-|---|---|
-| `r.RHI.EnableValidation <0/1>` | RHI Validation 开关 |
-| `r.RHI.ValidationLevel <0-3>` | Validation 级别 |
-| `r.RHI.BreakOnRHIError <0/1>` | 错误时中断 |
-| `r.RHI.LogResourceLeaks <0/1>` | 资源泄漏检测 |
-| `r.RHI.ValidateResourceStates` | 资源状态验证 |
-| `r.RDG.Validation <0/1>` | RDG 验证（默认开启） |
-| `r.RDG.ImmediateMode <0/1>` | 立即执行 pass |
-| `r.RDG.ClobberResources <0-3>` | 资源清除覆盖 |
-| `r.RDG.Debug.FlushGPU <0/1>` | 每 pass 后 flush GPU |
-| `r.RDG.Debug.ExtendResourceLifetimes <0/1>` | 延长资源生命周期 |
-| `r.RDG.Debug.DisableTransientResources <0/1>` | 禁用 transient 资源 |
-| `r.RDG.Debug.GraphFilter <string>` | Graph 过滤 |
-| `r.RDG.Debug.PassFilter <string>` | Pass 过滤 |
-| `r.RDG.Debug.ResourceFilter <string>` | 资源过滤 |
-| `r.D3D12.EnableDebugLayer <0/1>` | D3D12 Debug Layer |
-| `r.D3D12.EnableGPUBasedValidation` | GPU-based validation |
-| `r.Vulkan.EnableValidation <0/1>` | Vulkan Validation |
-
-### 性能分析
-
-| CVar | 描述 |
-|---|---|
-| `r.GPUTrace <0/1>` | GPU Time trace |
-| `r.GPUTrace.SampleCount <n>` | 采样帧数 |
-| `r.GPUTrace.Output` | 输出路径 |
-| `r.ProfileGPU <0/1>` | GPU 性能分析 |
-| `r.ProfileGPU.ShowEventHistory` | 事件历史 |
-| `r.ProfileGPU.ShowEvents` | 显示 GPU 事件 |
-| `r.ProfileGPU.Trimmed` | 精简输出 |
-| `stat gpu` | 实时 GPU 统计 |
-| `stat rdg` | RDG 统计 (5.8) |
-| `stat rhi` | RHI 统计 |
-| `stat memory` | 内存统计 |
+主线是**先分层再深入**：崩溃走 breadcrumb 定 pass，画面走 GBuffer 定阶段，
+闪烁走冻结历史分当帧/历史，可疑用法走 validation。四条都先用低开销手段定位到"哪一层
+哪个 pass"，再开重开销的厂商工具。
 
 ---
 
-## 6. 调试工作流速查
+## 10. 关键源码文件索引
 
-### 帧率/性能问题 → GPU 瓶颈定位
+| 文件 | 内容 |
+|---|---|
+| `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp` | `r.DumpGPU.*` 全部声明 + `FRDGResourceDumpContext` 实现 |
+| `Engine/Source/Runtime/RenderCore/Private/RenderGraphPrivate.cpp` | `r.RDG.*` 调试与验证 CVar 声明 |
+| `Engine/Source/Runtime/RHI/Private/RHIBreadcrumbs.cpp` | 厂商无关的 breadcrumb 实现 |
+| `Engine/Source/Runtime/RHI/Private/RHIValidation.cpp` | RHI validation 层 |
+| `Engine/Source/Runtime/D3D12RHI/Private/D3D12RayTracingDebug.cpp` | DXR 验证 |
+| `Engine/Source/Runtime/VulkanRHI/Private/VulkanDevice.cpp` | Vulkan validation layer 启用逻辑 |
+| `Engine/Plugins/Developer/RenderDocPlugin/Source/RenderDocPlugin/Private/RenderDocPluginModule.cpp` | `renderdoc.*` CVar 与捕获命令 |
+| `Engine/Source/Runtime/Engine/Public/ShowFlags.h` | `FEngineShowFlags` —— 所有 ShowFlag 的定义处 |
 
-```
-stat gpu            → 查看每个 pass 耗时
-r.GPUTrace 1        → 捕获详细 GPU trace
-r.ProfileGPU 1      → 看 CPU 端 submit 耗时
-r.ProfileGPU.Trimmed 1 → 精简输出
-```
-
-### 渲染错误/画面异常 → 逐层隔离
-
-```
-r.VisualizeBuffer 0 → 看 GBuffer 各层
-r.ShaderComplexity 1 → 看哪个像素最贵
-r.TemporalAASamples 1 → 关闭 TAA
-r.TSR 0            → 关闭 TSR
-r.Lumen.DiffuseIndirect.Allow 0 → 关闭 Lumen
-```
-
-### GPU Crash → 取证
-
-```
-r.GPUCrashDebugging 1
-r.GPUCrashDebugging.Aftermath 1
-r.DumpGPU -1        → 捕获 crash 帧
-r.D3D12.EnableDebugLayer 1 → 用 validation 复现
-r.RHI.LogResourceLeaks 1
-```
-
-### Shader 问题 → 编译诊断
-
-```
-r.ShaderDevelopmentMode 1
-r.DumpShaderDebugInfo 1
-r.DumpShaderDebugInfo.CompileMode 1
-```
-
-### 内存泄漏 → 资源追踪
-
-```
-r.RHIResourceStats
-r.DumpRHIResources.Detailed 1
-启动参数 -d3d12debug → D3D12 Debug Layer 报告泄漏
-r.RHI.LogResourceLeaks 1
-```
+RDG 专属的调试手段（验证层、`r.RDG.Debug.*`、资源 dump 上下文）见
+[`card-08-rdg.md`](card-08-rdg.md) 的第 8 节。
 
 ---
 
-**Sources**：本卡片基于 UE 5.8 引擎源码（`Engine/Source/Runtime/RenderCore/`, `Engine/Source/Runtime/D3D12RHI/`, `Engine/Source/Runtime/VulkanRHI/`, `Engine/Source/Runtime/RenderGraph/`, `Engine/Source/Runtime/Engine/`）中 ConsoleVariables 和 Debug 功能的实现，以及 UE 官方文档（`docs.unrealengine.com`）中关于渲染调试工具链的内容综合整理。
+## 附录：不存在的 CVar 对照表
+
+这些名字在调研阶段的文档里出现过，但 5.8 源码里**不存在**。列出来是为了防止再被引用——
+它们读起来都很合理，这正是危险之处。
+
+<!-- verify:ignore-start -->
+
+| 调研稿里的名字 | 5.8 里的真实对应物 |
+|---|---|
+| `r.VisualizeBuffer` | `ShowFlag.VisualizeBuffer` + `r.BufferVisualizationOverviewTargets` |
+| `r.VisualizeHDR` / `r.VisualizeSSR` / `r.VisualizeDOF` | 对应的 `ShowFlag.*` / viewmode，不是 CVar |
+| `r.ShaderComplexity` | `viewmode shadercomplexity`；`r.ShaderComplexity.Baseline.*` 只调刻度 |
+| `r.ShaderComplexity.Accumulate` | 无对应物 |
+| `r.QuadComplexity` | `viewmode quadoverdraw` |
+| `r.Wireframe` | `viewmode wireframe` / `ShowFlag.Wireframe` |
+| `r.LOD` | `viewmode lodcoloration` |
+| `r.Vulkan.EnableValidationLayers` | `r.Vulkan.EnableValidation`（分级：0/1/2） |
+| `r.Vulkan.DumpValidation` / `r.Vulkan.OptimalValidation` / `r.Vulkan.BreakOnError` / `r.Vulkan.EnableGPUBasedValidation` | 无对应物；用 `r.Vulkan.EnableValidation 2` + `r.RHIValidation.DebugBreak.Transitions` |
+| `r.Nvidia.Aftermath` | `r.GPUCrashDebugging.Aftermath` |
+| `r.FastVRAM.Dump` / `r.VRAM.Dump` | 无对应物 |
+| `r.ScreenShot` / `r.ScreenShot.Mode` | 控制台命令 `Shot` / `HighResShot`，不是 CVar |
+| `r.CaptureNextFrame` | 控制台命令 `renderdoc.CaptureFrame` |
+| `r.RHISetDebugMarker` | `r.Vulkan.DebugMarkers`（Vulkan）/ `r.ShowMaterialDrawEvents`（通用 draw event） |
+| `r.DumpShaderDebugInfo.CompileMode` / `.WorkingDirectory` | `r.DumpShaderDebugInfo` 单个开关；路径见 `r.Shaders.SymbolPathOverride` |
+| `r.Tonemapper.GrainQuantization` | 无对应物（`r.Tonemapper.*` 家族里没有这个） |
+| `r.PostProcessing.PropagateAlpha` | 5.8 已改为项目设置里的 Alpha Channel 支持；不是这个 CVar |
+| `r.RHICmdBypass.NoDrawEvents` | 无对应物；`r.RHICmdBypass` 本身存在 |
+
+<!-- verify:ignore-end -->

@@ -1,0 +1,9 @@
+# 已知真实、但 ue-cvar-dump 的解析器抓不到的名字。每条必须写明理由。
+#
+# 加条目的门槛：你已经在引擎里确认它真实可用，只是它的注册形式不是
+# TAutoConsoleVariable / FAutoConsoleVariableRef 这类被解析器覆盖的形式。
+# 不确定的不要加——加进来就等于把它从 gate 里摘出去了。
+
+r.DumpGPU        # 控制台命令（不是 CVar）。r.DumpGPU.* 那组控制它的行为、已逐条核实；
+                 # 命令本身的注册位置未在 RenderCore / DumpGPUServices 中定位到，
+                 # 但用法长期文档化且可用。见 card-03 第 2 节的说明。

@@ -105,7 +105,10 @@ def build_cvar_index(ue_root: Path, cache: Path | None = None) -> set[str]:
             return set(data["names"])
 
     names: set[str] = set()
-    engine_dir = ue_root / "Engine" / "Source"
+    # 必须扫整个 Engine/ 而不只是 Engine/Source/——大量 CVar 声明在
+    # Engine/Plugins/*/Source/ 下（XR、各种 Runtime 插件）。只扫 Source 会把它们
+    # 全判成"不存在"，制造一批假阳性。
+    engine_dir = ue_root / "Engine"
     scanned = 0
     for root, dirs, files in os.walk(engine_dir):
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
@@ -136,12 +139,24 @@ def expand_combined(path: str) -> list[str]:
     return [f"{stem}.{first}", f"{stem}.{second}"]
 
 
+def strip_ignored(text: str) -> str:
+    """去掉 `<!-- verify:ignore-start -->` … `<!-- verify:ignore-end -->` 之间的内容。
+
+    文档里有时**故意**写出不存在的名字——比如「这些名字在调研稿里出现过但引擎里没有」
+    的对照表。这类段落不是断言而是反面教材，不该被当成缺陷统计。
+    """
+    return re.sub(
+        r"<!--\s*verify:ignore-start\s*-->.*?<!--\s*verify:ignore-end\s*-->",
+        "", text, flags=re.S,
+    )
+
+
 def collect_assertions(doc_dir: Path) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
     """从文档里收集路径断言和 CVar 断言，各自附带出现的文件名。"""
     paths: dict[str, set[str]] = collections.defaultdict(set)
     cvars: dict[str, set[str]] = collections.defaultdict(set)
     for md in sorted(doc_dir.glob("*.md")):
-        text = md.read_text(encoding="utf-8")
+        text = strip_ignored(md.read_text(encoding="utf-8"))
         for raw in PATH_RE.findall(text):
             if "/" not in raw:
                 continue  # 裸文件名无法校验路径，跳过
@@ -327,8 +342,17 @@ def main() -> int:
         print("\n正在扫描引擎源码里的 CVar 字面量（较慢）…")
         known = build_cvar_index(ue_root, Path(args.cvar_cache) if args.cvar_cache else None)
         print(f"  已收集 {len(known)} 个点分名字面量\n")
+        allow_file = Path(__file__).with_name("verify-ue-rendering-allow.txt")
+        allowed: set[str] = set()
+        if allow_file.exists():
+            for line in allow_file.read_text(encoding="utf-8").splitlines():
+                token = line.split("#", 1)[0].strip()
+                if token:
+                    allowed.add(token)
+        if allowed:
+            print(f"  允许清单放行 {len(allowed)} 个名字（见 {allow_file.name}）")
         for name in sorted(cvars):
-            if name not in known:
+            if name not in known and name not in allowed:
                 cvar_missing.append((name, cvars[name]))
         print("=" * 72)
         print(f"CVar 断言：共 {len(cvars)} 条")
