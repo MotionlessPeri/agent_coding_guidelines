@@ -19,7 +19,7 @@
 | [3. 单条核对：查一个名字](#3-单条核对查一个名字) | 客户报了个 CVar，它存在吗 |
 | [4. 从 CVar 反查生效路径](#4-从-cvar-反查生效路径) | 这个开关到底控制了什么 |
 | [5. 从 Pass 名反查注册点](#5-从-pass-名反查注册点) | ProfileGPU 里看到的名字在哪个文件 |
-| [6. 确认某特性在客户版本存不存在](#6-确认某特性在客户版本存不存在) | 跨版本回答问题 |
+| [6. 确认某特性在客户版本存不存在](#6-确认某特性在客户版本存不存在) | 跨版本回答问题；§6.1 附本库 434 条 CVar 的实测跨版本缺口 |
 | [7. 校验方法自身的盲区](#7-校验方法自身的盲区) | 什么情况下工具会说谎 |
 
 ---
@@ -182,6 +182,42 @@ CVar，代价远大于说一句「需要确认」。
 | 子系统内部细调项（`r.Lumen.ScreenProbeGather.*`） | 不稳，改名 / 增删频繁 |
 | 源码文件路径 | 中等，模块重组时会挪（实测 `Engine/Source/Runtime/Engine/Public/Materials/Material.h` 在 5.7 和 5.8 就不在同一层） |
 | 枚举成员名 | 不稳（实测 `EStereoscopicPass` 从 UE4 的 `eSSP_LEFT_EYE` 变成了 `eSSP_PRIMARY`） |
+
+### 6.1 本库的实测跨版本缺口
+
+不用凭经验猜——`scripts/ue-cvar-crossversion.py` 拿本机多个版本的源码机械比对过。本库引用的
+**434 条 CVar 里有 98 条在 5.5.3 中不存在**（占 23%），其中 35 条是 5.8 独有、63 条是 5.7 起才有：
+
+| 家族 | 仅 5.8 有 | 5.7 起有、5.5 没有 | 说明 |
+|---|---|---|---|
+| `r.HeterogeneousVolumes.*` | 1 | 12 | 异构体积（雾 / 云）整套是 5.7 引入 |
+| `r.GPUCrashDebugging.*` | 0 | 11 | Aftermath 细分项与 Intel crash dump 全部 5.7 起 |
+| `r.Nanite.*` | 6 | 10 | 5.8 新增 Curve 光栅化与 Mesh Shader 半透明；5.7 新增 Assembly 与 PrimeHZB |
+| `r.TSR.*` | 7 | 7 | ThinGeometryDetection 整套跨 5.7 / 5.8 陆续加 |
+| `r.ProfileGPU.*` | 1 | 7 | 输出形态控制项 5.7 起才有 |
+| `r.MegaLights.*` | 6 | 3 | MegaLights 本身是 5.7 引入的子系统 |
+| `r.RayTracing.Nanite.*` | 4 | 0 | 5.8 新增 |
+| `r.RDG.*` | 1 | 3 | `r.RDG.BarrierPass` 是 5.8 新增 |
+| 其余零散（Lumen / Substrate / Shadow / D3D12 / DumpGPU 各家族的个别项） | 9 | 10 | |
+
+**给支持工作的结论**：客户在 5.5 或更早时，上面这几个家族的**细调项基本都不能直接给**——
+`HeterogeneousVolumes` 与 `MegaLights` 整个子系统不存在，`GPUCrashDebugging` 只有总开关没有厂商
+细分项，`ProfileGPU` 的输出控制项也没有。反过来，**子系统总开关**（`r.Nanite`、
+`r.Lumen.DiffuseIndirect.Allow`、`r.RDG.Validation`）在三个版本里都在，可以放心用。
+这跟上面那张经验判据表是一致的：总开关稳，内部细调项不稳。
+
+要查某一条具体 CVar 在客户版本有没有，重跑一次拿逐条表（比这里的家族归纳细）：
+
+```bash
+python scripts/ue-cvar-crossversion.py \
+    --ue "H:/Epic Games/UE_5.8" \
+    --ue "C:/Program Files/Epic Games/UE_5.7" \
+    --ue "D:/UnrealEngine" \
+    --cache-dir <缓存目录> --md <输出路径>
+```
+
+首次每个版本要扫十万级文件（几分钟），之后走缓存。第一个 `--ue` 是基准版本。
+
 
 ---
 
