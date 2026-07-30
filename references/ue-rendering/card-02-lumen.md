@@ -1,5 +1,11 @@
 # Lumen 全局光照系统 —— 知识卡片
 
+> **验证状态**：源码路径与 CVar 名逐条核对 UE 5.8.0。§13 的 CVar 表由
+> `scripts/ue-cvar-dump.py` 从源码生成。
+> **未逐条核实**：三种追踪后端的内部算法描述、Surface Cache 更新策略、Radiance Cache
+> 层级机制来自调研阶段。`r.Lumen.*` 家族在 5.8 有 396 个，本文档只覆盖常调项。
+> 校验：`python scripts/verify-ue-rendering-refs.py`（机械核对全库路径 / CVar / 符号三类断言是否真的存在于引擎源码）
+
 ---
 
 ## 1. Lumen 概览

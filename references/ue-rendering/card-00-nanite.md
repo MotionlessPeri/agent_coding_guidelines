@@ -1,5 +1,10 @@
 # Nanite 虚拟几何体系统 — UE 5.8 知识卡片
 
+> **验证状态**：源码路径与 CVar 名逐条核对 UE 5.8.0（`H:/Epic Games/UE_5.8`）。
+> §12 的 CVar 表由 `scripts/ue-cvar-dump.py` 从源码生成，作用说明取引擎帮助文本。
+> **未逐条核实**：Cluster / Page / Group 的内部数值（128 三角、256 顶点等）与流送策略描述
+> 来自调研阶段，属机制性叙述，未对照源码常量确认——引用具体数字前请自行核。
+> 校验：`python scripts/verify-ue-rendering-refs.py`（机械核对全库路径 / CVar / 符号三类断言是否真的存在于引擎源码）
 ## 术语表
 
 本文档中出现的 Nanite 特有术语：

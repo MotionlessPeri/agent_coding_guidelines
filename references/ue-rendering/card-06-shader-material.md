@@ -1,5 +1,10 @@
 # UE 5.8 Shader 编译管线与材质系统 — 知识卡片
 
+> **验证状态**：源码路径与 CVar 名逐条核对 UE 5.8.0。
+> **未逐条核实**：材质编译链条各阶段的内部行为、Substrate 的 BSDF 结构描述来自调研阶段。
+> `Engine/Source/Programs/ShaderCompileWorker/` 需完整源码树才能看到——安装版与公司
+> Perforce 版都不带这个目录。
+> 校验：`python scripts/verify-ue-rendering-refs.py`（机械核对全库路径 / CVar / 符号三类断言是否真的存在于引擎源码）
 > 以下内容基于 UE 5.5–5.8 稳定跨版本的核心引擎源码架构知识整理。
 
 ---

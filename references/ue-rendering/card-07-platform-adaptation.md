@@ -1,5 +1,11 @@
 # UE 5.8 平台适配与渲染管线裁剪 —— 知识卡片
 
+> **验证状态**：源码路径与 CVar 名逐条核对 UE 5.8.0。原有的 VR 注视点渲染 CVar
+> （`r.VR.FoveatedShafts*` 等）全部不存在，已换成真实的 `xr.OpenXRFBFoveation*` 家族。
+> **未逐条核实**：各主机平台的具体限制数字（Series S 的分辨率上限等）来自调研阶段；
+> 主机平台源码不在安装版引擎里，本机无法核。
+> 校验：`python scripts/verify-ue-rendering-refs.py`（机械核对全库路径 / CVar / 符号三类断言是否真的存在于引擎源码）
+
 ---
 
 ## 1. ERHIFeatureLevel 系统

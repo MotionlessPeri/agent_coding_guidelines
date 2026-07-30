@@ -62,6 +62,23 @@ CVAR_RE = re.compile(
 # 引擎源码里 CVar 名的字面量出现形式。
 CVAR_LITERAL_RE = re.compile(r'TEXT\(\s*"([A-Za-z][A-Za-z0-9_.]*\.[A-Za-z0-9_.]+)"')
 
+# 反引号里的 C++ 符号：UE 命名法的类型（F/U/I/E/S/T 前缀 + 驼峰）、全大写宏、Foo::Bar。
+# 加这一轴是因为实测「文件真、符号假」的组合确实存在——card-11 的源码导航表抽查 9 个符号
+# 有 6 个不在引擎里，跟路径、CVar 是三条独立的编造轴。
+SYMBOL_RE = re.compile(
+    r"`((?:[FUIEST][A-Za-z0-9_]{3,}(?:::[A-Za-z_][A-Za-z0-9_]*)?"
+    r"|[A-Z][A-Z0-9_]{5,}))`"
+)
+
+# 这些是通用词或本仓库自造的说明性标识，不是引擎符号，不参与判定。
+SYMBOL_IGNORE = {
+    "TODO", "FIXME", "README", "AGENTS", "MEMORY", "SKILL",
+}
+
+# 引擎源码里的标识符 token。判定标准是"作为 token 出现过"——比只认声明处更保守，
+# 宁可漏报也不误报，因为误报会让人去改本来正确的内容。
+SYMBOL_TOKEN_RE = re.compile(r"\b((?:[FUIEST][A-Za-z0-9_]{3,})|(?:[A-Z][A-Z0-9_]{5,}))\b")
+
 
 def resolve_ue_root(explicit: str | None) -> Path:
     """定位引擎根目录。显式参数 > 环境变量 > 候选列表。"""
@@ -132,6 +149,39 @@ def build_cvar_index(ue_root: Path, cache: Path | None = None) -> set[str]:
     return names
 
 
+def build_symbol_index(ue_root: Path, cache: Path | None = None) -> set[str]:
+    """收集引擎源码里出现过的 UE 命名法标识符。
+
+    跟 CVar 索引一样落盘缓存——扫全量源码要几分钟。引擎换版本时删缓存。
+    """
+    if cache and cache.exists():
+        data = json.loads(cache.read_text(encoding="utf-8"))
+        if data.get("ue_root") == str(ue_root):
+            print(f"  复用缓存 {cache.name}（{len(data['symbols'])} 个标识符）")
+            return set(data["symbols"])
+
+    symbols: set[str] = set()
+    scanned = 0
+    for root, dirs, files in os.walk(ue_root / "Engine"):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        for fn in files:
+            if not fn.endswith((".h", ".cpp", ".inl", ".ush", ".usf")):
+                continue
+            try:
+                text = Path(root, fn).read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                continue
+            symbols.update(SYMBOL_TOKEN_RE.findall(text))
+            scanned += 1
+    print(f"  扫了 {scanned} 个源码文件，得到 {len(symbols)} 个标识符")
+    if cache:
+        cache.write_text(
+            json.dumps({"ue_root": str(ue_root), "symbols": sorted(symbols)}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    return symbols
+
+
 def expand_combined(path: str) -> list[str]:
     """把 `Lumen.cpp/.h` 展开成 [`Lumen.cpp`, `Lumen.h`]，其余原样返回。"""
     m = COMBINED_RE.match(path)
@@ -153,10 +203,11 @@ def strip_ignored(text: str) -> str:
     )
 
 
-def collect_assertions(doc_dir: Path) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
-    """从文档里收集路径断言和 CVar 断言，各自附带出现的文件名。"""
+def collect_assertions(doc_dir: Path):
+    """从文档里收集路径 / CVar / 符号三类断言，各自附带出现的文件名。"""
     paths: dict[str, set[str]] = collections.defaultdict(set)
     cvars: dict[str, set[str]] = collections.defaultdict(set)
+    symbols: dict[str, set[str]] = collections.defaultdict(set)
     for md in sorted(doc_dir.glob("*.md")):
         text = strip_ignored(md.read_text(encoding="utf-8"))
         for raw in PATH_RE.findall(text):
@@ -170,7 +221,10 @@ def collect_assertions(doc_dir: Path) -> tuple[dict[str, set[str]], dict[str, se
                     paths[raw].add(md.name)
         for raw in CVAR_RE.findall(text):
             cvars[raw].add(md.name)
-    return paths, cvars
+        for raw in SYMBOL_RE.findall(text):
+            if raw not in SYMBOL_IGNORE:
+                symbols[raw].add(md.name)
+    return paths, cvars, symbols
 
 
 def classify_path(path: str, ue_root: Path, index: dict[str, list[str]]) -> tuple[str, list[str]]:
@@ -285,6 +339,7 @@ def main() -> int:
     ap.add_argument("--paths-only", action="store_true", help="跳过较慢的 CVar 扫描")
     ap.add_argument("--structure-only", action="store_true", help="只跑 markdown 结构 lint，不碰引擎源码")
     ap.add_argument("--cvar-cache", help="CVar 名索引的缓存文件（扫全量引擎源码要几分钟，换引擎版本时删掉）")
+    ap.add_argument("--symbol-cache", help="标识符索引的缓存文件，同上")
     ap.add_argument("--json", help="把完整结果写到指定 JSON 文件")
     args = ap.parse_args()
 
@@ -311,7 +366,7 @@ def main() -> int:
     print(f"引擎版本   : {version}")
     print(f"文档目录   : {DOC_DIR}\n")
 
-    paths, cvars = collect_assertions(DOC_DIR)
+    paths, cvars, symbols = collect_assertions(DOC_DIR)
     print("正在建立引擎源码索引…")
     index = build_source_index(ue_root)
     print(f"  已索引 {sum(len(v) for v in index.values())} 个源码文件\n")
@@ -339,18 +394,19 @@ def main() -> int:
             hint = suggestions[0] if len(suggestions) == 1 else f"{len(suggestions)} 个候选: {suggestions[:3]}"
             print(f"  {path}\n      -> {hint}\n      出现于: {', '.join(sorted(files))}")
 
+    allow_file = Path(__file__).with_name("verify-ue-rendering-allow.txt")
+    allowed: set[str] = set()
+    if allow_file.exists():
+        for line in allow_file.read_text(encoding="utf-8").splitlines():
+            token = line.split("#", 1)[0].strip()
+            if token:
+                allowed.add(token)
+
     cvar_missing: list[tuple[str, set[str]]] = []
     if not args.paths_only:
         print("\n正在扫描引擎源码里的 CVar 字面量（较慢）…")
         known = build_cvar_index(ue_root, Path(args.cvar_cache) if args.cvar_cache else None)
         print(f"  已收集 {len(known)} 个点分名字面量\n")
-        allow_file = Path(__file__).with_name("verify-ue-rendering-allow.txt")
-        allowed: set[str] = set()
-        if allow_file.exists():
-            for line in allow_file.read_text(encoding="utf-8").splitlines():
-                token = line.split("#", 1)[0].strip()
-                if token:
-                    allowed.add(token)
         if allowed:
             print(f"  允许清单放行 {len(allowed)} 个名字（见 {allow_file.name}）")
         for name in sorted(cvars):
@@ -366,6 +422,25 @@ def main() -> int:
             for name, files in cvar_missing:
                 print(f"  {name}\n      出现于: {', '.join(sorted(files))}")
 
+    sym_missing: list[tuple[str, set[str]]] = []
+    if not args.paths_only:
+        print("\n正在扫描引擎源码里的标识符（较慢）…")
+        known_syms = build_symbol_index(
+            ue_root, Path(args.symbol_cache) if args.symbol_cache else None)
+        for name in sorted(symbols):
+            bare = name.split("::")[0]
+            if name not in known_syms and bare not in known_syms and name not in allowed:
+                sym_missing.append((name, symbols[name]))
+        print("=" * 72)
+        print(f"符号断言：共 {len(symbols)} 条")
+        print(f"  存在  : {len(symbols) - len(sym_missing)}")
+        print(f"  找不到: {len(sym_missing)}")
+        print("=" * 72)
+        if sym_missing:
+            print("\n--- 符号在引擎源码里找不到 ---")
+            for name, files in sym_missing:
+                print(f"  {name}\n      出现于: {', '.join(sorted(files))}")
+
     if args.json:
         payload = {
             "ue_root": str(ue_root),
@@ -378,11 +453,12 @@ def main() -> int:
                 for verdict, items in buckets.items()
             },
             "cvars_missing": [{"name": n, "docs": sorted(f)} for n, f in cvar_missing],
+            "symbols_missing": [{"name": n, "docs": sorted(f)} for n, f in sym_missing],
         }
         Path(args.json).write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"\n完整结果已写入 {args.json}")
 
-    failures = len(buckets["MISSING"]) + len(cvar_missing)
+    failures = len(buckets["MISSING"]) + len(cvar_missing) + len(sym_missing)
     print(f"\n{'通过——无 MISSING' if failures == 0 else f'失败——{failures} 条断言无法在引擎源码中证实'}")
     return 0 if failures == 0 else 1
 

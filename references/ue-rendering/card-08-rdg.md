@@ -1,5 +1,11 @@
 # UE 5.8 Render Graph (RDG) 知识卡片
 
+> **验证状态**：§8 的 RDG 调试 CVar 逐条核对 UE 5.8.0 源码
+> （`Engine/Source/Runtime/RenderCore/Private/RenderGraphPrivate.cpp` 等），全部存在。
+> 其余各节的 API 签名与源码行号引用来自调研阶段的两份 RDG 文档合并，**签名本身未逐条核**——
+> 路径和 CVar 已清，但函数参数列表、结构体字段、枚举位值请引用前对照头文件。
+> 本文档合并自三份来源，合并时用正文指纹机械核对过内容无丢失。
+> 校验：`python scripts/verify-ue-rendering-refs.py`（机械核对全库路径 / CVar / 符号三类断言是否真的存在于引擎源码）
 ## 目录
 
 | 节 | 内容 |
