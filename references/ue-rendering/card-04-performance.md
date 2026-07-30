@@ -31,7 +31,9 @@ stat GPU          ← 实时行模式，显示每帧各 Pass 平均耗时
 
 **stat GPU** 适合持续监测：实时更新各 Pass 的帧时间占比。Debug 模式下可配合 `stat unit` 一起看，区分 Game Thread / Render Thread / GPU 哪端是瓶颈。
 
+<!-- verify:ignore-start -->
 > **r.VisualizeGPU 已移除：** UE 5.8 中 `r.VisualizeGPU` 已被移除，不再可用。替代方案：使用 `ProfileGPU` 做单帧完整 Pass 树分析，`stat GPU` 做实时监测，Unreal Insights 做深度帧分析。上述三个工具覆盖了 `r.VisualizeGPU` 全部功能且更精确。
+<!-- verify:ignore-end -->
 
 ### 1.3 RenderDoc 集成
 
@@ -109,7 +111,7 @@ flowchart LR
 
 **应对：**
 - Nanite 自动合并网格，减少 Draw Call 数量
-- 未走 Nanite 的静态网格使用 `StaticMesh` + 自动 Instancing（`r.InstanceCulling` 控制）
+- 未走 Nanite 的静态网格使用 `StaticMesh` + 自动 Instancing（由 `r.InstanceCulling.*` 家族控制；逐实例遮挡剔除是 `r.InstanceCulling.OcclusionCull`）
 - 草地/粒子使用 GPU Instance Culling（Niagara 内置）
 
 ### 2.2 Overdraw 与半透明排序
@@ -140,7 +142,7 @@ flowchart LR
 
 **应对：**
 - 降低渲染分辨率（`r.ScreenPercentage`）—— 带宽最直接的缓解手段
-- 减少不必要的 RT 分配（`r.SceneRenderTargetsResizeMethod` 控制分配策略）
+- 减少不必要的 RT 分配（`r.SceneRenderTargetResizeMethod` 控制分配策略——注意 Target 是单数，带 s 的写法不存在）
 - TSR 配合低分辨率渲染 + 高质量 Upsample
 
 ### 2.4 Shader 复杂度
@@ -154,7 +156,7 @@ flowchart LR
 
 **应对：**
 - 材质复杂度限流：`r.MaterialQualityLevel` 切换（低/中/高）
-- 开启 `r.OptimizeShaders` 让 UE 编译期做 Shader 优化
+- 保持 `r.Shaders.Optimize` 开启（默认就是开）让编译期做 Shader 优化——只有要用 Nsight 之类调试器按源码单步时才关掉
 - 减少材质中 `WorldPositionOffset`、`Subsurface`、`Clear Coat` 等昂贵节点
 - 使用 `ProfileGPU` 定位具体材质，对该材质降级
 
@@ -181,7 +183,9 @@ flowchart LR
 
 **应对：**
 - 调整 `rhi.SyncInterval` 控制同步间隔
-- 使用 `r.GPUFenceFrameCount` 减少 Fence 数量
+<!-- verify:ignore-start -->
+- 减少跨帧 fence 等待：`r.GPUFenceFrameCount` 在 5.8 中不存在；实际可调的是 RHI 线程与并行录制相关开关，见 [`card-05-rhi.md`](card-05-rhi.md) 的 GPU 同步一节
+<!-- verify:ignore-end -->
 - 确保异步计算提交的 Barrier 是最小粒度（`D3D12_BARRIER_SYNC_NONE` 等级别）
 - 检查 `r.RHICmdBypass` 关闭时的命令缓冲区提交策略
 
@@ -194,7 +198,7 @@ flowchart LR
 | CVar | 值 | 效果 |
 |------|------|------|
 | `r.ScreenPercentage` | 50-200 | 直接控制渲染分辨率百分比。100 为原生 |
-| `r.TSR.OverrideScreenPercentage` | 50-200 | 仅覆盖 TSR Upsample 阶段的输出分辨率 |
+| `r.TSR.History.ScreenPercentage` | 100-200 | TSR 历史缓冲相对输出的分辨率百分比。整体渲染分辨率仍走 `r.ScreenPercentage` |
 | `r.TemporalAA.Upsampling` | 0/1 | 在 TAA 阶段做 Upsample（比独立 Upsample Pass 更高效） |
 
 **TSR 策略：**
@@ -225,7 +229,9 @@ r.Lumen.ScreenProbeGather.NumAdaptiveProbes 0           ← 关闭自适应探�
 
 **性能影响参考：** 关闭 Lumen GI 可节省 2-4ms 帧时间（视场景复杂度），代价是 GI 退回到 Static Lighting 或 Voxel Lightmap 方案。
 
+<!-- verify:ignore-start -->
 **Lumen 5.8 有效参数控制域：** UE 5.8 中 Lumen 的 Mesh Card 相关参数通过 `r.Lumen.SurfaceCache.*` 和 `r.Lumen.IrradianceFieldGather.*` 控制；探针相关参数通过 `r.Lumen.IrradianceFieldGather.*` 与 `r.Lumen.ScreenProbeGather.*` 控制。Surface Cache 分辨率通过 `r.Lumen.SurfaceCache.CardResolution` 等 CVar 控制，辐照场探针通过 `r.Lumen.IrradianceFieldGather.*` 系列调整。以下 5.7 及更早版本的 Lumen CVar 在 5.8 中已不存在，不要使用：`r.Lumen.DiffuseIndirect.NumMeshCards`、`r.Lumen.DiffuseIndirect.NumProbes`、`r.Lumen.Scene.LightingCache.RadianceCache.RadianceProbeClipmapResolution`、`r.Lumen.FarField`——它们已被 `r.Lumen.SurfaceCache.*`、`r.Lumen.IrradianceFieldGather.*`、`r.Lumen.ScreenProbeGather.*` 系列参数替代。
+<!-- verify:ignore-end -->
 
 ### 3.3 Nanite 裁剪
 
@@ -258,9 +264,11 @@ r.Nanite.ViewMeshLODBias.Min -2.0         ← LOD 偏移下限
 | `r.Nanite.ComputeRasterization` | 1 | 启用计算着色器栅格化路径 |
 | `r.Nanite.ProgrammableRaster` | 1 | 启用可编程栅格化 |
 | `r.Nanite.Tessellation` | 0 | 启用曲面细分 |
-| `r.Nanite.Streaming` | 1 | Nanite 几何流送开关 |
+| `r.Nanite.Streaming.Async` | 1 | Nanite 流送是否放到异步 worker 线程。没有「总开关」CVar，可调的是 `r.Nanite.Streaming.*` 家族 |
 
+<!-- verify:ignore-start -->
 **5.8 中已移除的旧 Nanite CVar：** `r.Nanite.FilterOutSmallObjects`、`r.Nanite.ViewDistance`、`r.Nanite.ImposterMaxPixelsPerEdge`、`r.Nanite.ClusterCulling` 在 UE 5.8 中均不存在。小物体剔除由 `r.Nanite.FilterPrimitives` 控制；ViewDistance 由 `r.Nanite.ViewMeshLODBias.*` 体系替代；Imposter 裁剪由 `r.Nanite.MaxPixelsPerEdge` 统一控制。
+<!-- verify:ignore-end -->
 
 ### 3.4 Shadow 优化
 
@@ -295,7 +303,9 @@ r.SceneColorFringeQuality 0               ← 关闭色差
 
 **性能影响：** 关闭全部 Post Processing 可节省 1-3ms，但画面质量明显下降。建议分场景控制：游戏运行时保留 Bloom + Tone Mapping，编辑器中可全关。
 
+<!-- verify:ignore-start -->
 > **注意：** 人眼适应开关的正确 CVar 是 `r.EyeAdaptationQuality`，**不是** `r.EyeAdaptation`——后者在 UE 5.8 中不存在。
+<!-- verify:ignore-end -->
 
 ### 3.6 Feature Level 降级（SM5 vs SM6）
 
@@ -330,8 +340,8 @@ TSR 在 5.8 中新增了大量精细控制 CVar，可针对不同硬件配置调
 | `r.TSR.History.ScreenPercentage` | 100 | 历史帧分辨率百分比（越高越清晰，代价越大） |
 | `r.TSR.History.SampleCount` | 16 | 历史采样数 |
 | `r.TSR.History.UpdateQuality` | 3 | 历史更新质量（0-3） |
-| `r.TSR.History.Snap` | 0 | 历史帧对齐到像素网格（减少闪烁） |
-| `r.TSR.History.Snap.Threshold` | 0.5 | 像素网格对齐阈值 |
+| `r.TSR.History.R11G11B10` | 1 | 历史缓冲用 R11G11B10 打包，省带宽 |
+| `r.TSR.History.UpdateQuality` | — | 历史更新质量档位 |
 
 **闪烁抑制：**
 
@@ -483,7 +493,9 @@ UE 5.8 将 Lumen 半透明反射的 Front Layer 控制参数从 `r.Lumen.Translu
 | `r.Lumen.TranslucencyReflections.FrontLayer.Enable` | 保持不变 | 运行时开关 |
 | `r.Lumen.TranslucencyReflections.FrontLayer.EnableForProject` | 保持不变 | 项目级开关 |
 | `r.Lumen.TranslucencyReflections.FrontLayer.Allow` | 保持不变 | 可伸缩性开关 |
-| `r.Lumen.TranslucencyReflections.FrontLayer.DepthThreshold` | `r.FrontLayerTranslucency.DepthThreshold` | 5.8 自动迁移，旧名自动重定向到新名 |
+<!-- verify:ignore-start -->
+| `r.Lumen.TranslucencyReflections.FrontLayer.DepthThreshold` | `r.FrontLayerTranslucency.DepthThreshold` | 5.8 已改名，旧名不再存在 |
+<!-- verify:ignore-end -->
 
 **新增 CVar：**
 
@@ -528,7 +540,9 @@ r.Vulkan.SubmitOnRenderThread 0           ← 允许渲染线程异步提交，�
 
 **Vulkan Mobile 特有坑：**
 - 部分 Android 设备 Vulkan 驱动对 `StorageBuffer` 支持有限，降级到 `UniformBuffer` 更稳定
-- 使用 `r.Vulkan.StripGlslSource` 移除 Shader 源码，减小包体积
+<!-- verify:ignore-start -->
+- 减小包体积：`r.Vulkan.StripGlslSource` 在 5.8 中不存在；shader 调试数据由 `r.Shaders.Symbols` / `r.Shaders.WriteSymbols` 控制，发布构建应关闭
+<!-- verify:ignore-end -->
 - 对 Mali GPU，`r.Vulkan.SubmitOnRenderThread 0` 显著减少帧时间波动
 
 ### 4.3 发热与降频控制
@@ -602,10 +616,12 @@ r.DynamicRes.TriggerThreshold 0.9         ← 帧时间达到 90% 目标时触�
 |------|--------|--------|------|--------|
 | `r.ScreenPercentage` | 100 | 50-80 | 降低渲染分辨率 | 画面模糊，需 TSR 补偿 |
 | `r.MaterialQualityLevel` | 1 | 0 | 降级材质质量（0=低，1=中，2=高） | 材质效果降低 |
-| `r.PostProcessAAQuality` | 6 | 3-4 | 降低抗锯齿质量 | 边缘锯齿增加 |
-| `r.DefaultFeature.AntiAliasing` | 2 (TAA) | 0/1 | 切换 AA 方法（0=None, 1=FXAA, 2=TAA, 3=MSAA） | TAA 切换为 FXAA 性能提升但画面闪烁 |
+| `r.TemporalAA.HistoryScreenPercentage` | 100 | 降低 | 缩小 TAA 历史缓冲尺寸 | 省带宽，鬼影与闪烁增加 |
+| `r.AntiAliasingMethod` | 项目设置 | 1 (FXAA) | 切换 AA 方法（0=None, 1=FXAA, 2=TAA, 3=MSAA, 4=TSR） | 切成 FXAA 省开销但边缘闪烁 |
 | `r.VertexFoggingForOpaque` | 1 | 0 | 关闭不透明物体顶点雾 | 雾效消失 |
-| `r.SimpleDynamicLighting` | 0 | 1 | 降级动态光照为简单模式 | 光照质量下降严重 |
+<!-- verify:ignore-start -->
+| `r.DefaultFeature.AutoExposure` | 项目设置 | 0 | 关掉自动曝光。`r.SimpleDynamicLighting` 在 5.8 中不存在 | 亮度不再随场景自适应 |
+<!-- verify:ignore-end -->
 
 ### 6.2 阴影 CVar
 
@@ -617,7 +633,7 @@ r.DynamicRes.TriggerThreshold 0.9         ← 帧时间达到 90% 目标时触�
 | `r.Shadow.DistanceScale` | 1.0 | 0.3-0.7 | 缩小阴影距离 | 阴影截止距离缩短 |
 | `r.ContactShadows` | 1 | 0 | 关闭接触阴影 | 物体接触面阴影消失 |
 | `r.Shadow.Virtual.Enable` | 1 | 0 | 关闭 Virtual Shadow Map | 退回到传统阴影贴图 |
-| `r.Shadow.CacheInvalidate` | 0 | 1 | 强制刷新阴影缓存 | 帧时间短暂增加 |
+| `r.Shadow.Virtual.Cache` | 1 | 0（仅诊断） | 虚拟阴影图缓存总开关。关掉用来判断是不是缓存失效过于频繁 | 关掉后阴影开销大幅上升，只用于定位 |
 
 ### 6.3 Lumen CVar
 
@@ -641,7 +657,7 @@ r.DynamicRes.TriggerThreshold 0.9         ← 帧时间达到 90% 目标时触�
 |------|--------|--------|------|--------|
 | `r.Nanite.MaxPixelsPerEdge` | 4 | 8-16 | 增大裁剪阈值，降低 GPU 负载 | 几何细节减少 |
 | `r.Nanite.FilterPrimitives` | 1 | 1（保持） | 启用场景图元裁剪 | 关闭后性能下降 |
-| `r.Nanite.Streaming` | 1 | 1（保持） | Nanite 几何流送 | 关闭后高精度网格可能无法加载 |
+| `r.Nanite.Streaming.BandwidthLimit` | -1（不限） | 按平台设 | Nanite 流送带宽上限（MB/s） | 设太低会看到几何长时间停在低模 |
 
 **5.8 新增 Nanite CVar：**
 
@@ -672,10 +688,10 @@ r.DynamicRes.TriggerThreshold 0.9         ← 帧时间达到 90% 目标时触�
 | `r.MotionBlurQuality` | 4 | 0 | 关闭运动模糊 | 运动画面无模糊 |
 | `r.DepthOfFieldQuality` | 2 | 0 | 关闭景深 | 远近景无模糊 |
 | `r.LensFlareQuality` | 2 | 0 | 关闭镜头光晕 | 光晕效果消失 |
-| `r.Tonemapper.GrainQuantization` | 1 | 0 | 关闭颗粒噪声 | 画面无颗粒 |
+| `r.Tonemapper.Quality` | 5 | 降档 | 降低 tonemapper 质量档（0..5） | 高光过渡与颗粒处理变粗 |
 | `r.SceneColorFringeQuality` | 1 | 0 | 关闭色差 | 无紫边效果 |
 | `r.EyeAdaptationQuality` | 1 | 0 | 关闭人眼适应 | 亮度过渡消失 |
-| `r.Vignette` | 1 | 0 | 关闭暗角 | 画面四角无暗角 |
+| `r.Tonemapper.Sharpen` | 0 | 0（保持） | tonemapper 锐化量。暗角没有独立 CVar，走后处理体积设置 | 开启会增加一点开销 |
 | `r.TemporalAASamples` | 8 | 4 | 减少 TAA 采样数 | 抗锯齿质量下降 |
 
 ### 6.6 调试与诊断 CVar
