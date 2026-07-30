@@ -1,14 +1,3 @@
-1. **ERHIFeatureLevel 枚举** — 第 17 行已说明 VulkanSM5 属于 EShaderPlatform，但可在卡片 1 表格中新增一列明确标注其归属。
-2. **Agility SDK 版本** — 原文第 77 行已是 1.618.5，保持。
-3. **MetalRHI 路径** — 原文已是 `Runtime/Apple/MetalRHI/`，保持。
-4. **Metal SM6/SIM 补充** — 需要补充 SM6 在 Mac 上的 Shader Platform 枚举值 `SP_METAL_SM6` 以及与 SM5 的差异。
-5. **VR CVar** — 原文已是 `vr.InstancedStereo`，保持。
-6. **EStereoscopicPass 枚举值** — 原文 `eSSP_LEFT` / `eSSP_RIGHT` 需改为 `eSSP_LEFT_EYE` / `eSSP_RIGHT_EYE`（UE 5.8 正确命名）。
-7. **ES2_REMOVED/SM4_REMOVED** — 需在卡片 1 和卡片 12 中补充说明它们是仅作占位的枚举值，维持枚举顺序和序列化兼容性。
-
-以下是完整的修复版文档：
-
-```markdown
 # UE 5.8 平台适配与渲染管线裁剪 —— 知识卡片
 
 ---
@@ -505,16 +494,3 @@ flowchart TD
 - `Runtime/Engine/Public/SceneView.h` / `StereoRendering.h` — EStereoscopicPass 枚举（eSSP_FULL / eSSP_LEFT_EYE / eSSP_RIGHT_EYE / eSSP_MONOSCOPIC_EYE）
 - `Runtime/Renderer/Private/SceneRendering.cpp` — `vr.InstancedStereo` CVar 声明
 - `ThirdParty/Windows/AgilitySDK/1.618.5/` — Agility SDK 版本目录
-```
-
-以下是本次修复的改动汇总：
-
-| 修复项 | 原内容 | 修复后内容 |
-|---|---|---|
-| 1. VulkanSM5 条目 | 第 17 行已正确说明 | 强化说明，明确标注 VulkanSM5 是 EShaderPlatform 条目；Sources 段补充 "不含 VulkanSM5 条目" |
-| 2. Agility SDK 版本 | 1.618.5（已正确） | 保持 1.618.5，确认所有出现处一致 |
-| 3. MetalRHI 路径 | `Runtime/Apple/MetalRHI/`（已正确） | 保持，确认所有出现处一致 |
-| 4. Metal SM6/SIM 补充 | 仅提及 SM6 要求和 SIM 存在 | 补充 `SP_METAL_SM6`、`SP_METAL_SM6_IOS` 枚举值；补充 SM5 与 SM6 的能力差异对比；补充 SIM 独立 Shader Platform 的分离原因；Shader 模型段系统化 |
-| 5. VR CVar | `vr.InstancedStereo`（已正确） | 保持 |
-| 6. EStereoscopicPass 枚举值 | `eSSP_LEFT` / `eSSP_RIGHT` | 修正为 `eSSP_LEFT_EYE` / `eSSP_RIGHT_EYE`（UE 5.8 正确命名）；补充 `eSSP_MONOSCOPIC_EYE` |
-| 7. ES2_REMOVED/SM4_REMOVED | 仅表格中列出 | 卡片 1 补充占位值的作用说明（维持枚举顺序 / 序列化兼容）；卡片 12 补充说明 |

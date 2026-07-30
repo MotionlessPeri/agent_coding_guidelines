@@ -1,4 +1,3 @@
-```markdown
 # Nanite 虚拟几何体系统 — UE 5.8 知识卡片
 
 ## 术语表
@@ -692,8 +691,3 @@ Static Mesh 源 → Nanite Cook（UE Cooker）→ 输出：
 - 植被 → 启用 Nanite（Foliage 有特别优化路径）
 - 半透明 → 5.8 可通过 Mesh Shader 路径走 Nanite Translucency
 - Decal → 关闭 Nanite
-
----
-
-以上知识卡片覆盖了 UE 5.8 Nanite 虚拟几何体系统的核心架构、渲染管线（CullRaster / ShadeBinning / ShadingPipelines）、流式加载（Root Page + Streaming Page）、性能调优、定制扩展和关键源码文件。如需深入某个具体主题的详细分析，请告知。
-```

@@ -1,4 +1,3 @@
-```markdown
 # UE 5.8 Shader 编译管线与材质系统 — 知识卡片
 
 > 以下内容基于 UE 5.5–5.8 稳定跨版本的核心引擎源码架构知识整理。
@@ -501,19 +500,3 @@ UE 5.8 的 Shader 编译管线已经是一个非常成熟的工业化系统：
 4. **Substrate** — 5.x 的重点方向，5.8 新增 Glint 微闪、Toon 卡通着色、Stochastic Lighting 随机化光照、Async Classification 异步材质分类等特性
 5. **自定义 Shader** — `FGlobalShader` + `SHADER_PARAMETER_STRUCT` + RDG `AddPass` 模式清晰，模板化编写
 6. **调试** — 工具链完善（`r.ShaderDevelopmentMode`、`UE_SaveShaderDebugInfo`、`ProfileGPU`、`r.Substrate.ViewMode`）
-```
-
----
-
-**修复总结**：
-
-1. **Material.h 路径**：`Public/Material.h` → `Public/Materials/Material.h`（卡片 1、8）
-2. **MaterialShaderMap.h 合并**：删除独立文件条目，内容合并到 MaterialShared.h 描述中（卡片 1、8）
-3. **FShaderCompilingThreadManager → FShaderCompileJobCollection**：全部替换（卡片 3）
-4. **GlobalShader.h 路径**：`Engine/Public/` → `RenderCore/Public/`（卡片 6、8）
-5. **删除已不存在引用**：移除 `VALIDATE_BOOL`、`GET_SHADER_CONDITIONAL`、`FMaterialVertexFactoryShaderMap`（卡片 4）
-6. **Substrate Glint/ToonProfile**：新增 Glint 几何微闪（`SubstrateEvaluation.ush` 中的 `Substrate_D_Glint`、`EvaluateGlintRect`，`Glint/GlintThirdParty.ush`）和 Toon 卡通着色（`SubstrateToonBSDF.ush`，`ESubstrateBsdfFeature::Toon = 1u<<12u`）描述（卡片 5）
-7. **Substrate StochasticLighting / AsyncClassification**：新增 `r.Substrate.StochasticLighting`、`r.Substrate.StochasticLighting.Active`、`r.Substrate.AsyncClassification` 三个 CVar 描述（卡片 5）
-8. **SubstrateParameters.ush/SubstrateBSDF.ush → SubstrateEvaluation.ush/SubstrateTree.ush**：全部替换（卡片 5、8）
-9. **SHADER_PERMUTATION_BOOL/SHADER_PERMUTATION_INT**：新增宏描述和代码示例，替换裁剪机制表中的旧条目（卡片 4）
-10. **SubstrateVisualizationData 调试可视化系统**：新增 `FSubstrateVisualizationData` / `FSubstrateViewMode` 完整描述，含 8 种可视化模式表、控制台命令、关键源码路径（卡片 5）

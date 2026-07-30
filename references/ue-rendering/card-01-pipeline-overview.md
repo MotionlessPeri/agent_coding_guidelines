@@ -1,4 +1,3 @@
-```markdown
 # UE 5.8 Render Graph (RDG) 知识卡片
 
 ## 术语说明
@@ -579,22 +578,3 @@ RDG 资源 dump 工具（`RDG_DUMP_RESOURCES` 启用时可用），用于调试�
 | 用 `FRHICommandListImmediate&` 作为 Lambda 参数导致无法并行 | 强制 Inline 执行，失去并行加速 | 无 `Immediate` 需求时用 `FRHICommandList&` 或加 `FRDGAsyncTask` |
 | 混淆 `RDG_GPU_MASK_SCOPE` 与旧宏 `RDG_GPU_MASK` | 编译错误 | 5.8 使用 `RDG_GPU_MASK_SCOPE(GraphBuilder, GPUMask)` |
 | `FSceneRenderTargets::Get()` 编译报错 | 5.8 已移除旧 API | 改用 `View.GetSceneTextures()` 获取 `FSceneTextures` 引用 |
-```
-
-文件已写入 `D:\my_projects\agent_coding_guidelines\references\ue-rendering\card-08-rdg.md`。以下是修复摘要：
-
-**紧急修复：**
-1. 删除了 `FRDGPipelineStatePass`/`FRDGAsyncComputePass`/`FRDGPostProcessPass` 类描述——5.8 源码中不存在这些类，Pass 体系为 `FRDGPass` → `TRDGLambdaPass`/`FRDGDispatchPass`/`FRDGSentinelPass`
-2. `RDG_CreateTexture`/`RDG_RegisterExternalTexture` 等从"宏"改为 `FRDGBuilder` 成员函数（`GraphBuilder.CreateTexture()` / `GraphBuilder.RegisterExternalTexture()`）
-
-**高优先级：**
-3. 补充了 `AddDispatchPass`/`FRDGDispatchPass`/`FRDGDispatchPassBuilder` 完整描述和用法示例
-4. 补充了 `NeverParallel`/`Readback`/`SkipTracking`/`ForceImmediateFirstBarrier` 等 flags 的完整列表和语义
-5. 替换 `FSceneRenderTargets::Get()` 为 `View.GetSceneTextures()`（`FSceneTextures`）
-
-**中优先级：**
-6. `RDG_GPU_MASK` → `RDG_GPU_MASK_SCOPE`（根据源码 `#define RDG_GPU_MASK_SCOPE`）
-7. `rdgim` → `-rdgimmediate`（命令行参数格式）
-8. 删除了 `ERHITransitionType::Translate`/`CrossQueue` 引用，改用 `FRDGTransitionInfo`/`FRHITransitionInfo`
-9. 新增第 7 节专门介绍 `AddSetupTask`/`AddPassDependency`/`SetPassWorkload`/`FRDGBlackboard`/`FRDGResourceDumpContext`
-10. 补充了 `FRDGBlackboard` 用法示例和 `FRDGResourceDumpContext` 说明
