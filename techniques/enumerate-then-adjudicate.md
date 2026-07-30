@@ -81,9 +81,46 @@ flowchart LR
 
 ## 项目实例参考
 
-本 pattern 提炼自 pmarreck 的 [MFIC — Mechanically-Falsifiable Independent Control](https://gist.github.com/pmarreck/b30aa3ca69cb70a5526f8a63ab8c8d7e)（Section 2 例 2），essay 里给的真实世界例子是 *eyecite*（法律引文先按已知形态匹配再判定）。**尚未在本机项目里跑过一轮验证**——落地时按 [`guidelines/workflow/knowledge-promotion.md`](../guidelines/workflow/knowledge-promotion.md) 的态度，先在一个真实"找全 X"任务上用一次，确认 prefilter 的召回可测、逐条裁决确实堵住了静默漏，再当成定规。
+本 pattern 提炼自 pmarreck 的 [MFIC — Mechanically-Falsifiable Independent Control](https://gist.github.com/pmarreck/b30aa3ca69cb70a5526f8a63ab8c8d7e)（Section 2 例 2），essay 里给的真实世界例子是 *eyecite*（法律引文先按已知形态匹配再判定）。**已在本机项目完整验证一轮**（2026-07-30，见下「完整验证」小节）：一个真实的「找全所有不存在的 API 名」任务，prefilter 的假阴性可标定、逐条裁决确实堵住了静默漏，且暴露出原文没覆盖的四条（按类型分桶、假阴性要有对照组、反面教材要能排除、裁决率高时改生成）。
 
 一个**相关但非完整**的本机落地（2026-07，某 C++ 渲染器项目 CRAP 评测）：top-N 高危函数的「机械枚举候选 → 逐条 accept/reject 留痕」正是本 pattern 的形态——但那里的枚举本身是完整的（lizard 全量列出所有函数），没触及本 pattern 最难的「漏掉不可见」那一面，所以只算部分印证「逐条裁决防静默跳过」，**不算**验证「prefilter 召回封顶」。详见 [`../guidelines/code/complexity-coverage-metrics.md`](../guidelines/code/complexity-coverage-metrics.md)。
+
+### 完整验证：审计生成式参考资料（2026-07-30，`references/ue-rendering/` 渲染知识库）
+
+一批约 29 万字符的 UE 渲染知识库，内容混有自动化调研产物。要回答的问题正是本 pattern 的形状：
+「里面**所有**不存在的 API 名 / 文件路径 / CVar 名，找全」。直接让模型读一遍找是不可能的——
+编造出来的名字（`NaniteRendering.cpp`、`r.VisualizeBuffer`、`FGPUCrashDebugging`）**读起来
+完全合理**，人和模型都发现不了。
+
+做法与结果：
+
+| 步骤 | 做法 | 结果 |
+|---|---|---|
+| prefilter（机械枚举） | 正则从文档抽出全部反引号断言，按类型分三桶 | 路径 239 / CVar 431 / 符号数百条 |
+| 判官（独立 oracle） | 拿引擎源码建索引，逐条判「存在 / 存在但写法不对 / 不存在」 | 判官是引擎源码，不是写文档的人 |
+| 逐条裁决 | 每条不存在的都要处置：换真名、或改写、或标为反面教材 | 路径 79→0，CVar 163→0，符号 70→0 |
+
+从这轮跑出来的、原文没写到的四条：
+
+1. **断言要按类型分桶枚举，一类一个 prefilter。** 路径、CVar 名、符号名是**三条互相独立**的
+   编造轴——校验了路径不等于覆盖了符号，实测出现过「文件真、符号假」的组合（源码导航表里
+   路径对但那一列的类名不存在）。只做一轴会得到「已清零」的假象。
+
+2. **prefilter 的假阴性要单独标定，且必须有对照组。** 本轮踩到两次：一次是索引只扫了
+   `Engine/Source/` 漏掉 `Engine/Plugins/`；一次是引擎分发裁掉了 `Engine/Source/Programs/`。
+   识别信号是**对照组也失败**——拿几个确定存在的名字一起查，它们必须全部命中；全都不命中时
+   坏的是方法不是被测对象（实测踩过：shell 里未加引号的引擎路径被目录名中的空格拆开，
+   grep 静默返回空，于是所有名字包括对照组都「不存在」）。
+
+3. **反面教材要能从统计里排除。** 文档会**故意**写出不存在的名字（「这些名字调研稿里有但引擎里
+   没有」的对照表）。没有排除机制，gate 就会长期报固定数量的「缺陷」，而一个永远非零的 gate
+   等于训练人忽略它。本轮的做法是显式标记（`<!-- verify:ignore-start/end -->`）+ 一份需写明
+   理由的允许清单。
+
+4. **裁决率高到一定程度时，改「生成」比改「裁决」划算。** 一份文档 95 条 CVar 断言里 58 条不存在
+   （61%）时，逐条修的成本高于直接从源码重新生成整张表，而且修完仍不知道漏没漏。改成生成后
+   还多一层保障：**生成器遇到不存在的名字直接报错退出**，于是「表里混进假名字」这件事在结构上
+   不可能发生。判据是裁决率——低（如 15%）就逐条修，高（如 60%）就重生成。
 
 ## 相关 Guidelines / Techniques
 

@@ -33,6 +33,7 @@ Guidelines are grouped by topic under `guidelines/`:
 | `docs/plans/` | 已确认设计的实施前记录；用于保存跨文件改造的边界、接口与验收标准 |
 | `skills/` | Shared Agent Skills, organized under `skills/<category>/<name>/SKILL.md`. `scripts/sync-skills.ps1` installs them flat to Claude Code's `.claude/skills/<name>/` and Codex's `.agents/skills/<name>/` discovery directories |
 | `_radar/` | **外部知识雷达暂存区**——`/research-radar` skill(`.claude/skills/research-radar/SKILL.md`,project-local + `disable-model-invocation` 纯手动)跑 deep research 产出的待审 digest 落点。是 inbox **不是** corpus：**绝不** `@`-import(会污染 always-loaded context)、**绝不**自动写进 `guidelines/`。从雷达到 corpus 是用户事后人工走 `knowledge-promotion.md` 的一步。政策见 [`_radar/README.md`](_radar/README.md) |
+| `references/` | **领域参考资料**——不是 agent 行为规范，而是「做某个领域的活时要查的东西」。跟 `guidelines/`（agent 该怎么工作）正交，**绝不** `@`-import。当前只有 [`references/ue-rendering/`](references/ue-rendering/README.md)（UE 5.8 渲染知识库，14 份卡片，面向渲染底层技术支持）。**引用纪律**：这类内容混有自动化调研产物，每条源码路径 / CVar 名 / 符号名都可能是似真编造（该库起点实测：路径断言 79 条不存在、CVar 163 条、符号 70 条），所以配了机械校验（`scripts/verify-ue-rendering-refs.py` 三轴核对 + `scripts/ue-cvar-dump.py` 从源码生成可信内容 + `scripts/ue-cvar-crossversion.py` 跨版本适用性）。新增 `references/` 子目录时必须同时配好「怎么核」的手段，否则不要建 |
 
 **Adding new files:**
 - Place new files in the appropriate subdirectory.
