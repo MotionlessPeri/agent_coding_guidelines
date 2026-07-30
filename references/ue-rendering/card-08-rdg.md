@@ -1344,9 +1344,9 @@ void SetPassWorkload(FRDGPass* Pass, uint32 Workload);
 | 文件 | 路径 | 核心内容 |
 |------|------|----------|
 | `RenderGraph.cpp` | `Private/RenderGraph.cpp` | `FRDGBuilder::Execute()` / `Compile()` 等核心实现 |
-| `DumpGPU.cpp` | `Private/DumpGPU.cpp` | `FRDGResourceDumpContext` 完整实现 |
-| `RenderGraphValidation.cpp` | `Private/RenderGraphValidation.cpp` | `FRDGUserValidation` 实现 |
-| `RenderGraphBlackboard.cpp` | `Private/RenderGraphBlackboard.cpp` | `FRDGBlackboard::AllocateIndex` 等 |
+| `DumpGPU.cpp` | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp` | `FRDGResourceDumpContext` 完整实现 |
+| `RenderGraphValidation.cpp` | `Engine/Source/Runtime/RenderCore/Private/RenderGraphValidation.cpp` | `FRDGUserValidation` 实现 |
+| `RenderGraphBlackboard.cpp` | `Engine/Source/Runtime/RenderCore/Private/RenderGraphBlackboard.cpp` | `FRDGBlackboard::AllocateIndex` 等 |
 
 ### 10.1 渲染器侧与 RHI 侧相关文件
 
@@ -1363,7 +1363,7 @@ void SetPassWorkload(FRDGPass* Pass, uint32 Workload);
 | `Engine/Source/Runtime/RenderCore/Private/RenderGraph.cpp` | `FRDGBuilder::Execute`、Compile + Culling 实现 |
 | `Engine/Source/Runtime/RenderCore/Private/RenderGraphAllocator.cpp` | Transient 资源分配器、别名优化 |
 | `Engine/Source/Runtime/RenderCore/Private/RenderGraphValidation.cpp` | Debug 验证（`-rdgimmediate` 资源泄漏检测） |
-| `Engine/Source/Runtime/Renderer/Private/PostProcessing/PostProcessing.cpp` | 后处理链 RDG 实现，`AddPostProcessingPasses` 入口 |
+| `Engine/Source/Runtime/Renderer/Private/PostProcess/PostProcessing.cpp` | 后处理链 RDG 实现，`AddPostProcessingPasses` 入口 |
 | `Engine/Source/Runtime/Renderer/Private/DeferredShadingRenderer.cpp` | `FDeferredShadingRenderer::Render` 完整渲染管线 |
 | `Engine/Source/Runtime/Renderer/Private/SceneRendering.cpp` | `FRDGBuilder` 创建位置、`RenderGraph` 初始化 |
 | `Engine/Source/Runtime/RHI/Public/RHICommandList.h` | `FRHICommandList`、`Transition` 等底层 Barrier |

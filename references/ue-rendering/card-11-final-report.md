@@ -742,12 +742,12 @@ flowchart TD
 
 | 文件 | 关注点 | 建议断点 |
 |------|--------|---------|
-| `Runtime/Renderer/Private/SceneRendering.cpp` | `FSceneRenderer::Draw` 入口函数，了解一帧的完整流程 | `FSceneRenderer::Draw` 开头 |
-| `Runtime/Renderer/Private/DeferredShadingRenderer.cpp` | `FDeferredShadingSceneRenderer::Render` 主流程，Pass 顺序 | `DeferredShadingSceneRenderer::Render` 开头 |
-| `Runtime/Renderer/Private/MobileShadingRenderer.cpp` | Mobile 渲染路径，对比 Desktop 差异 | `FMobileSceneRenderer::Render` 开头 |
-| `Runtime/Renderer/Private/RenderingThread.cpp` | 三级流水线启动机制 | `StartRenderingThread` |
-| `Runtime/RHI/Public/RHICommandList.h` | `FRHICommandList` 命令体系 | (阅读) |
-| `Runtime/RenderCore/Private/GPUProfiler.cpp` | `ProfileGPU` 如何统计数据 | `FGPUProfiler::BeginFrame` |
+| `Engine/Source/Runtime/Renderer/Private/SceneRendering.cpp` | `FSceneRenderer::Draw` 入口函数，了解一帧的完整流程 | `FSceneRenderer::Draw` 开头 |
+| `Engine/Source/Runtime/Renderer/Private/DeferredShadingRenderer.cpp` | `FDeferredShadingSceneRenderer::Render` 主流程，Pass 顺序 | `DeferredShadingSceneRenderer::Render` 开头 |
+| `Engine/Source/Runtime/Renderer/Private/MobileShadingRenderer.cpp` | Mobile 渲染路径，对比 Desktop 差异 | `FMobileSceneRenderer::Render` 开头 |
+| `Engine/Source/Runtime/RenderCore/Private/RenderingThread.cpp` | 三级流水线启动机制 | `StartRenderingThread` |
+| `Engine/Source/Runtime/RHI/Public/RHICommandList.h` | `FRHICommandList` 命令体系 | (阅读) |
+| `Engine/Source/Runtime/RHI/Private/GPUProfiler.cpp` | `ProfileGPU` 如何统计数据 | `FGPUProfiler::BeginFrame` |
 
 **实操练习**：
 
@@ -774,16 +774,16 @@ flowchart TD
 
 | 文件 | 关注点 | 建议断点 |
 |------|--------|---------|
-| `Runtime/RenderCore/Public/RenderGraphBuilder.h` | `FRDGBuilder` 核心 API，`AddPass` / `CreateTexture` / `Execute` | `FRDGBuilder::AddPass` 入口 |
-| `Runtime/RenderCore/Public/RenderGraphResources.h` | `FRDGTexture` / `FRDGBuffer` 资源声明 | (阅读) |
-| `Runtime/RenderCore/Public/RenderGraphPass.h` | `ERDGPassFlags` / Pass 类型体系 | (阅读) |
+| `Engine/Source/Runtime/RenderCore/Public/RenderGraphBuilder.h` | `FRDGBuilder` 核心 API，`AddPass` / `CreateTexture` / `Execute` | `FRDGBuilder::AddPass` 入口 |
+| `Engine/Source/Runtime/RenderCore/Public/RenderGraphResources.h` | `FRDGTexture` / `FRDGBuffer` 资源声明 | (阅读) |
+| `Engine/Source/Runtime/RenderCore/Public/RenderGraphPass.h` | `ERDGPassFlags` / Pass 类型体系 | (阅读) |
 | `Runtime/RenderCore/Private/RenderGraph.cpp` | `FRDGBuilder::Execute` Compile/Culling 实现 | `FRDGBuilder::Execute` 开头 |
-| `Runtime/RenderCore/Private/RenderGraphAllocator.cpp` | Transient 资源分配策略 | (阅读) |
-| `Runtime/RHI/Public/RHIAccess.h` | `ERHIAccess` / `FRHIBarrier` / `FRHITransitionInfo` | (阅读) |
-| `Runtime/Renderer/Private/PostProcess/PostProcessing.cpp` | 后处理链的 RDG 编排，参考如何插入 Pass | `FPostProcessing::Process` |
-| `Runtime/Engine/Public/GlobalShader.h` | `FGlobalShader` 基类与注册宏 | (阅读) |
-| `Runtime/Engine/Public/ShaderCore.h` | `SHADER_PARAMETER_STRUCT` 参数反射 | (阅读) |
-| `Runtime/Engine/Public/ShaderParameters.h` | `BEGIN_SHADER_PARAMETER_STRUCT` 宏定义 | (阅读) |
+| `Engine/Source/Runtime/RenderCore/Private/RenderGraphAllocator.cpp` | Transient 资源分配策略 | (阅读) |
+| `Engine/Source/Runtime/RHI/Public/RHIAccess.h` | `ERHIAccess` / `FRHIBarrier` / `FRHITransitionInfo` | (阅读) |
+| `Engine/Source/Runtime/Renderer/Private/PostProcess/PostProcessing.cpp` | 后处理链的 RDG 编排，参考如何插入 Pass | `FPostProcessing::Process` |
+| `Engine/Source/Runtime/RenderCore/Public/GlobalShader.h` | `FGlobalShader` 基类与注册宏 | (阅读) |
+| `Engine/Source/Runtime/RenderCore/Public/ShaderCore.h` | `SHADER_PARAMETER_STRUCT` 参数反射 | (阅读) |
+| `Engine/Source/Runtime/RenderCore/Public/ShaderParameters.h` | `BEGIN_SHADER_PARAMETER_STRUCT` 宏定义 | (阅读) |
 
 **实操练习**：
 
@@ -810,17 +810,17 @@ flowchart TD
 
 | 文件 | 关注点 | 建议断点 |
 |------|--------|---------|
-| `Runtime/Renderer/Private/Lumen/LumenSceneRendering.cpp` | `ShouldRenderLumen()` / `RenderLumenScene()` / 体素化 | `RenderLumenScene` 入口 |
-| `Runtime/Renderer/Private/Lumen/LumenReflections.cpp` | `CompositeLumenReflections()` / `RenderLumenReflections()` | `RenderLumenReflections` 入口 |
+| `Engine/Source/Runtime/Renderer/Private/Lumen/LumenSceneRendering.cpp` | `ShouldRenderLumen()` / `RenderLumenScene()` / 体素化 | `RenderLumenScene` 入口 |
+| `Engine/Source/Runtime/Renderer/Private/Lumen/LumenReflections.cpp` | `CompositeLumenReflections()` / `RenderLumenReflections()` | `RenderLumenReflections` 入口 |
 | `Runtime/Renderer/Private/Lumen/LumenScreenProbe.cpp` | Screen Probe 生成/采样/插值 | `LumenScreenProbeGather` 入口 |
-| `Runtime/Renderer/Private/Lumen/LumenMeshCards.cpp` | Mesh Card 生成与管理 | (阅读) |
+| `Engine/Source/Runtime/Renderer/Private/Lumen/LumenMeshCards.cpp` | Mesh Card 生成与管理 | (阅读) |
 | `Runtime/Renderer/Private/Lumen/LumenHardwareRayTracing.cpp` | DXR 加速结构 + RayGen | `BuildLumenHardwareRayTracingScene` |
 | `Runtime/Renderer/Private/Lumen/LumenTracing.cpp` | 统一追踪接口 | `TraceLumenRadiance` |
 | `Runtime/Renderer/Private/Nanite/NaniteRendering.cpp` | `RenderNanite()` / Visibility Buffer 渲染 | `RenderNanite` 入口 |
 | `Runtime/Renderer/Private/Nanite/NaniteStreaming.cpp` | Page 加载/卸载/LOD 选择 | `FNaniteStreamingManager::UpdateLODs` |
 | `Runtime/Renderer/Private/Nanite/NaniteCull.cpp` | GPU 剔除 Kernel | `CullKernel` |
 | `Runtime/Renderer/Private/Nanite/NaniteMaterialResolve.cpp` | Visibility Buffer → G-Buffer | Material Resolve 入口 |
-| `Runtime/Engine/Public/NaniteDefinitions.h` | Cluster / Page / Group 数据结构 | (阅读) |
+| `Engine/Shaders/Shared/NaniteDefinitions.h` | Cluster / Page / Group 数据结构 | (阅读) |
 
 **实操练习**：
 
@@ -848,16 +848,16 @@ flowchart TD
 
 | 文件 | 关注点 | 建议断点 |
 |------|--------|---------|
-| `Runtime/RHI/Public/RHI.h` | `ERHIFeatureLevel` / `IsFeatureLevelSupported()` | (阅读) |
-| `Runtime/Renderer/Private/MobileShadingRenderer.cpp` | Mobile 渲染路径，Feature Level 分支 | `FMobileSceneRenderer::Render` |
-| `Runtime/Renderer/Private/ShaderCompiler.cpp` | `ShouldCompilePermutation()` 裁剪入口 | `ShouldCompilePermutation` 调用 |
-| `Runtime/Engine/Public/ShaderPermutation.h` | `FShaderPermutationBool` 裁剪机制 | (阅读) |
+| `Engine/Source/Runtime/RHI/Public/RHI.h` | `ERHIFeatureLevel` / `IsFeatureLevelSupported()` | (阅读) |
+| `Engine/Source/Runtime/Renderer/Private/MobileShadingRenderer.cpp` | Mobile 渲染路径，Feature Level 分支 | `FMobileSceneRenderer::Render` |
+| `Engine/Source/Runtime/Engine/Private/ShaderCompiler/ShaderCompiler.cpp` | `ShouldCompilePermutation()` 裁剪入口 | `ShouldCompilePermutation` 调用 |
+| `Engine/Source/Runtime/RenderCore/Public/ShaderPermutation.h` | `FShaderPermutationBool` 裁剪机制 | (阅读) |
 | `Runtime/RenderCore/Private/GPUCrashDebugging.cpp` | GPU Crash 检测机制 | `FGPUCrashDebugging` |
 | `Runtime/D3D12RHI/Private/D3D12Debug.cpp` | D3D12 Debug Layer 实现 | (阅读) |
 | `Runtime/VulkanRHI/Private/VulkanValidation.cpp` | Vulkan Validation 实现 | (阅读) |
-| `Runtime/Engine/Private/HLSLMaterialTranslator.cpp` | 材质表达式 → HLSL 完整流程 | `FMaterialCompiler::*` |
-| `Runtime/Engine/Public/MaterialShared.h` | `FMaterialShaderMap` 编译调度 | (阅读) |
-| `Runtime/Renderer/Private/MeshPassProcessor.cpp` | `FMeshPassProcessor` 注册机制 | `FMeshPassProcessor::AddMeshBatch` |
+| `Engine/Source/Runtime/Engine/Private/Materials/HLSLMaterialTranslator.cpp` | 材质表达式 → HLSL 完整流程 | `FMaterialCompiler::*` |
+| `Engine/Source/Runtime/Engine/Public/MaterialShared.h` | `FMaterialShaderMap` 编译调度 | (阅读) |
+| `Engine/Source/Runtime/Renderer/Private/MeshPassProcessor.cpp` | `FMeshPassProcessor` 注册机制 | `FMeshPassProcessor::AddMeshBatch` |
 | `Shaders/Private/Substrate/SubstrateBSDF.ush` | Substrate BSDF 计算 | (阅读) |
 | `Shaders/Private/Substrate/SubstrateDeferredShading.ush` | Substrate Deferred 路径 | (阅读) |
 

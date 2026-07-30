@@ -12,7 +12,7 @@
 | `ERHIFeatureLevel::SM5` | Standard | DX11, Vulkan (Desktop), Metal (Mac) | SM5 | 无 Ray Tracing, 无 Mesh Shader, 无 Variable Rate Shading |
 | `ERHIFeatureLevel::SM6` | High-End | DX12 (DX12 Ultimate), Vulkan 1.3, Metal 3.1+ | SM6+ | 支持 Ray Tracing, Mesh Shader, VRS, Sampler Feedback |
 
-**源码**：`Runtime/RHI/Public/RHIFeatureLevel.h` 内 `ERHIFeatureLevel` 枚举定义。
+**源码**：`Engine/Source/Runtime/RHI/Public/RHIFeatureLevel.h` 内 `ERHIFeatureLevel` 枚举定义。
 
 **说明**：`ERHIFeatureLevel` 枚举仅包含 `ES2_REMOVED`、`ES3_1`、`SM4_REMOVED`、`SM5`、`SM6` 五个条目。`VulkanSM5` 属于 `EShaderPlatform` 枚举（`SP_VULKAN_SM5`），不是 `ERHIFeatureLevel` 成员。Vulkan Desktop 的 Feature Level 是 `SM5` 或 `SM6`（取决于扩展支持）。
 
@@ -115,7 +115,7 @@ flowchart TD
 - **Feature Level**：`ES3_1`
 - **核心限制**：无 Compute Shader, 无 Tessellation, 极少 UAV
 - **Shader 模型**：`SF_SM5` (ES 3.1 HLSL 子集)
-- **初始化**：`OpenGLDrv/Private/Android/AndroidOpenGL.cpp`
+- **初始化**：`Engine/Source/Runtime/OpenGLDrv/Private/Android/AndroidOpenGL.cpp`
 - **UE 5.8 变化**：OpenGL ES 3.1 路径继续维护但不再增加新功能；Vulkan 是 Android 推荐路径
 
 ### Vulkan Mobile (Android)
@@ -135,7 +135,7 @@ flowchart TD
 - **Shader 模型**：`SP_METAL_SM5` / `SP_METAL_SM6` / `SP_METAL_ES3_1`
   - `SP_METAL_SM5`：Mac SM5，等价于 DX11 级别能力
   - `SP_METAL_SM6`：Mac SM6（UE 5.8 新增或在 SM5 基础上扩展），需要 macOS 15.0+ 且 M2+ Apple GPU（`GPUFamilyApple8`）；支持 Bindless（`GPUFamilyApple7`）、AtomicUInt64、Ray Tracing 管线
-- **初始化**：`Runtime/Apple/MetalRHI/Private/MetalRHI.cpp`
+- **初始化**：`Engine/Source/Runtime/Apple/MetalRHI/Private/MetalRHI.cpp`
 - **UE 5.8 SM6 要求**：macOS 15.0+ 且 M2+ Apple GPU（`GPUFamilyApple8`）；支持 Bindless（`GPUFamilyApple7`）
 - **UE 5.8 SM6 特性**：`GRHISupportsAtomicUInt64` 启用，Lumen Lighting Data Format 自动适配，Ray Tracing 管线支持
 - **SM5 与 SM6 差异**：SM5 在 Metal 上提供 Compute Shader、Tessellation、Tile Shaders 等基础特性；SM6 额外解锁 Ray Tracing（Metal 3.1 API）、Mesh Shader、Bindless 资源绑定、AtomicUInt64，以及 Lumen 硬件加速路径
@@ -148,7 +148,7 @@ flowchart TD
   - `SP_METAL_SM5_IOS`：iOS SM5，已有 iOS 设备的默认 Shader Platform
   - `SP_METAL_SM6_IOS`：iOS SM6（UE 5.8 新增），需要 iOS 18.0+ 且 Apple9+ GPU
   - `SP_METAL_SIM`：iOS Simulator（UE 5.8 新增），独立于 `SP_METAL_ES3_1_IOS` 的 Simulator 专用 Shader Platform，使用 Mac GPU 进行模拟渲染，不再与 iOS 设备共享同一 Shader Platform 路径
-- **初始化**：`Runtime/Apple/MetalRHI/Private/MetalRHI.cpp`
+- **初始化**：`Engine/Source/Runtime/Apple/MetalRHI/Private/MetalRHI.cpp`
 - **UE 5.8 新增**：
   - **SM6 (iOS)**：`SP_METAL_SM6_IOS`，需要 iOS 18.0+ 且 Apple9+ GPU；项目设置 `bSupportsMetalMobileSM6` 启用
   - **SIM (iOS Simulator)**：`SP_METAL_SIM`，新增的 iOS Simulator 独立 Shader Platform，跟 `SP_METAL_ES3_1_IOS` 分离，避免 Simulator 与真机设备共享同一 Shader Platform 导致的编译和兼容性问题
@@ -417,33 +417,33 @@ flowchart TB
 
 | 文件路径 | 内容 |
 |---|---|
-| `Runtime/RHI/Public/RHIFeatureLevel.h` | `ERHIFeatureLevel` 枚举定义（ES2_REMOVED / ES3_1 / SM4_REMOVED / SM5 / SM6 / Num，其中 ES2_REMOVED 和 SM4_REMOVED 为仅作占位的遗留值） |
-| `Runtime/RHI/Public/RHIShaderPlatform.h` | `EShaderPlatform` 枚举定义（含 `SP_VULKAN_SM5`、`SP_METAL_SM6`、`SP_METAL_SM6_IOS`、`SP_METAL_SIM` 等） |
-| `Runtime/RHI/Public/RHI.h` | `IsFeatureLevelSupported()` 声明 |
-| `Runtime/RHI/Public/RHIUtilities.h` | `RHISupportsRayTracing()` 等能力查询宏 |
-| `Runtime/RHI/Public/DataDrivenShaderPlatformInfo.h` | `GetIsMetalMobileSM6()`、`GetIsMetalMobileSM5()` 等平台信息查询 |
-| `Runtime/RHI/Public/RHIShaderFormatDefinitions.inl` | Shader Format 名称到 `EShaderPlatform` 的映射（含 `SF_METAL_SM6`、`SF_METAL_SM6_IOS`、`SF_METAL_SIM`） |
-| `Runtime/Renderer/Private/SceneRendering.h` | `FSceneRenderer` 类、`EMeshPass` 枚举、`FViewInfo` 结构 |
-| `Runtime/Renderer/Private/SceneRendering.cpp` | `FSceneRenderer::Render()` 主渲染循环，Feature Level 分支；`vr.InstancedStereo` CVar 定义 |
-| `Runtime/Renderer/Private/DeferredShadingRenderer.cpp` | Deferred 渲染路径实现（含 `FRayTracingScene` 集成） |
-| `Runtime/Renderer/Private/MobileShadingRenderer.cpp` | 移动端渲染路径 |
-| `Runtime/Renderer/Private/BasePassRendering.cpp` | Base Pass 渲染（`FMeshPassProcessor` 注册） |
-| `Runtime/Renderer/Private/ShaderCompiler.cpp` | `ShouldCompilePermutation()` 平台裁剪入口 |
-| `Runtime/D3D12RHI/Private/D3D12RHI.cpp` | `FD3D12DynamicRHI` 初始化与平台适配 |
-| `Runtime/D3D12RHI/Private/Windows/WindowsD3D12Device.cpp` | D3D12 Agility SDK 检测（`CheckIfAgilitySDKLoaded`）、Feature Level 12_2 检测 |
-| `Runtime/D3D12RHI/Private/Windows/WindowsD3D12RHIDefinitions.h` | `UE_D3D12_SDK_VERSION` 定义（`D3D12_SDK_VERSION` = 618，对应 Agility SDK 1.618.5） |
-| `Runtime/VulkanRHI/Private/VulkanRHI.cpp` | `FVulkanDynamicRHI` 初始化 |
-| `Runtime/OpenGLDrv/Private/Android/AndroidOpenGL.cpp` | Android OpenGL ES 初始化 |
-| `Runtime/Apple/MetalRHI/Private/MetalRHI.cpp` | Metal RHI 初始化（含 SM6 检测、`SP_METAL_SM6` / `SP_METAL_SM6_IOS` / `SP_METAL_SIM` 路由） |
-| `Runtime/Renderer/Private/PostProcess/PostProcessing.cpp` | Post Processing 主路径 |
-| `Runtime/Renderer/Private/VT/VirtualTextureSystem.cpp` | 虚拟纹理系统 |
-| `Runtime/Engine/Public/SceneView.h` | `FSceneView` 与 `FViewInfo` 定义，`EStereoscopicPass` 枚举（`eSSP_FULL` / `eSSP_LEFT_EYE` / `eSSP_RIGHT_EYE` / `eSSP_MONOSCOPIC_EYE`） |
-| `Runtime/Engine/Public/StereoRendering.h` | `IStereoRendering` 接口，`GetViewPassForIndex()` 默认实现 |
-| `Runtime/Engine/Classes/Engine/Engine.h` | `GMaxRHIFeatureLevel`、`GMaxRHIShaderPlatform` 全局变量 |
-| `Runtime/Engine/Classes/Engine/GameViewportClient.cpp` | 视口创建与 RHI 初始化联动 |
-| `Runtime/RenderCore/Public/Shader.h` | `FShaderPermutation` 系统 |
-| `Runtime/RenderCore/Private/ShaderCore.cpp` | Shader 编译平台判定 |
-| `Runtime/RenderCore/Private/StereoRenderUtils.cpp` | `vr.InstancedStereo` 和 `vr.MobileMultiView` 的 Shader 平台缓存值查询 |
+| `Engine/Source/Runtime/RHI/Public/RHIFeatureLevel.h` | `ERHIFeatureLevel` 枚举定义（ES2_REMOVED / ES3_1 / SM4_REMOVED / SM5 / SM6 / Num，其中 ES2_REMOVED 和 SM4_REMOVED 为仅作占位的遗留值） |
+| `Engine/Source/Runtime/RHI/Public/RHIShaderPlatform.h` | `EShaderPlatform` 枚举定义（含 `SP_VULKAN_SM5`、`SP_METAL_SM6`、`SP_METAL_SM6_IOS`、`SP_METAL_SIM` 等） |
+| `Engine/Source/Runtime/RHI/Public/RHI.h` | `IsFeatureLevelSupported()` 声明 |
+| `Engine/Source/Runtime/RHI/Public/RHIUtilities.h` | `RHISupportsRayTracing()` 等能力查询宏 |
+| `Engine/Source/Runtime/RHI/Public/DataDrivenShaderPlatformInfo.h` | `GetIsMetalMobileSM6()`、`GetIsMetalMobileSM5()` 等平台信息查询 |
+| `Engine/Source/Runtime/RHI/Public/RHIShaderFormatDefinitions.inl` | Shader Format 名称到 `EShaderPlatform` 的映射（含 `SF_METAL_SM6`、`SF_METAL_SM6_IOS`、`SF_METAL_SIM`） |
+| `Engine/Source/Runtime/Renderer/Private/SceneRendering.h` | `FSceneRenderer` 类、`EMeshPass` 枚举、`FViewInfo` 结构 |
+| `Engine/Source/Runtime/Renderer/Private/SceneRendering.cpp` | `FSceneRenderer::Render()` 主渲染循环，Feature Level 分支；`vr.InstancedStereo` CVar 定义 |
+| `Engine/Source/Runtime/Renderer/Private/DeferredShadingRenderer.cpp` | Deferred 渲染路径实现（含 `FRayTracingScene` 集成） |
+| `Engine/Source/Runtime/Renderer/Private/MobileShadingRenderer.cpp` | 移动端渲染路径 |
+| `Engine/Source/Runtime/Renderer/Private/BasePassRendering.cpp` | Base Pass 渲染（`FMeshPassProcessor` 注册） |
+| `Engine/Source/Runtime/Engine/Private/ShaderCompiler/ShaderCompiler.cpp` | `ShouldCompilePermutation()` 平台裁剪入口 |
+| `Engine/Source/Runtime/D3D12RHI/Private/D3D12RHI.cpp` | `FD3D12DynamicRHI` 初始化与平台适配 |
+| `Engine/Source/Runtime/D3D12RHI/Private/Windows/WindowsD3D12Device.cpp` | D3D12 Agility SDK 检测（`CheckIfAgilitySDKLoaded`）、Feature Level 12_2 检测 |
+| `Engine/Source/Runtime/D3D12RHI/Private/Windows/WindowsD3D12RHIDefinitions.h` | `UE_D3D12_SDK_VERSION` 定义（`D3D12_SDK_VERSION` = 618，对应 Agility SDK 1.618.5） |
+| `Engine/Source/Runtime/VulkanRHI/Private/VulkanRHI.cpp` | `FVulkanDynamicRHI` 初始化 |
+| `Engine/Source/Runtime/OpenGLDrv/Private/Android/AndroidOpenGL.cpp` | Android OpenGL ES 初始化 |
+| `Engine/Source/Runtime/Apple/MetalRHI/Private/MetalRHI.cpp` | Metal RHI 初始化（含 SM6 检测、`SP_METAL_SM6` / `SP_METAL_SM6_IOS` / `SP_METAL_SIM` 路由） |
+| `Engine/Source/Runtime/Renderer/Private/PostProcess/PostProcessing.cpp` | Post Processing 主路径 |
+| `Engine/Source/Runtime/Renderer/Private/VT/VirtualTextureSystem.cpp` | 虚拟纹理系统 |
+| `Engine/Source/Runtime/Engine/Public/SceneView.h` | `FSceneView` 与 `FViewInfo` 定义，`EStereoscopicPass` 枚举（`eSSP_FULL` / `eSSP_LEFT_EYE` / `eSSP_RIGHT_EYE` / `eSSP_MONOSCOPIC_EYE`） |
+| `Engine/Source/Runtime/Engine/Public/StereoRendering.h` | `IStereoRendering` 接口，`GetViewPassForIndex()` 默认实现 |
+| `Engine/Source/Runtime/Engine/Classes/Engine/Engine.h` | `GMaxRHIFeatureLevel`、`GMaxRHIShaderPlatform` 全局变量 |
+| `Engine/Source/Runtime/Engine/Private/GameViewportClient.cpp` | 视口创建与 RHI 初始化联动 |
+| `Engine/Source/Runtime/RenderCore/Public/Shader.h` | `FShaderPermutation` 系统 |
+| `Engine/Source/Runtime/RenderCore/Private/ShaderCore.cpp` | Shader 编译平台判定 |
+| `Engine/Source/Runtime/RenderCore/Private/StereoRenderUtils.cpp` | `vr.InstancedStereo` 和 `vr.MobileMultiView` 的 Shader 平台缓存值查询 |
 
 ---
 
@@ -485,12 +485,12 @@ flowchart TD
 ---
 
 **Sources**：本卡片基于 UE 5.8 源码验证结果更新。核心源码来源：
-- `Runtime/RHI/Public/RHIFeatureLevel.h` — ERHIFeatureLevel 枚举（含 ES2_REMOVED / SM4_REMOVED 占位值，维持枚举顺序和序列化兼容性；不含 VulkanSM5 条目）
-- `Runtime/RHI/Public/RHIShaderPlatform.h` — EShaderPlatform 枚举（含 SP_VULKAN_SM5、SP_METAL_SM6、SP_METAL_SM6_IOS、SP_METAL_SIM 等）
-- `Runtime/RHI/Public/RHIShaderFormatDefinitions.inl` — Shader Format 名称映射
-- `Runtime/RHI/Public/DataDrivenShaderPlatformInfo.h` — 平台信息查询
-- `Runtime/Apple/MetalRHI/Private/MetalRHI.cpp` — Metal SM6 / SM6_IOS / SIM 初始化
-- `Runtime/D3D12RHI/Private/Windows/WindowsD3D12RHIDefinitions.h` — `UE_D3D12_SDK_VERSION = D3D12_SDK_VERSION` (=618)
-- `Runtime/Engine/Public/SceneView.h` / `StereoRendering.h` — EStereoscopicPass 枚举（eSSP_FULL / eSSP_LEFT_EYE / eSSP_RIGHT_EYE / eSSP_MONOSCOPIC_EYE）
-- `Runtime/Renderer/Private/SceneRendering.cpp` — `vr.InstancedStereo` CVar 声明
+- `Engine/Source/Runtime/RHI/Public/RHIFeatureLevel.h` — ERHIFeatureLevel 枚举（含 ES2_REMOVED / SM4_REMOVED 占位值，维持枚举顺序和序列化兼容性；不含 VulkanSM5 条目）
+- `Engine/Source/Runtime/RHI/Public/RHIShaderPlatform.h` — EShaderPlatform 枚举（含 SP_VULKAN_SM5、SP_METAL_SM6、SP_METAL_SM6_IOS、SP_METAL_SIM 等）
+- `Engine/Source/Runtime/RHI/Public/RHIShaderFormatDefinitions.inl` — Shader Format 名称映射
+- `Engine/Source/Runtime/RHI/Public/DataDrivenShaderPlatformInfo.h` — 平台信息查询
+- `Engine/Source/Runtime/Apple/MetalRHI/Private/MetalRHI.cpp` — Metal SM6 / SM6_IOS / SIM 初始化
+- `Engine/Source/Runtime/D3D12RHI/Private/Windows/WindowsD3D12RHIDefinitions.h` — `UE_D3D12_SDK_VERSION = D3D12_SDK_VERSION` (=618)
+- `Engine/Source/Runtime/Engine/Public/SceneView.h` / `StereoRendering.h` — EStereoscopicPass 枚举（eSSP_FULL / eSSP_LEFT_EYE / eSSP_RIGHT_EYE / eSSP_MONOSCOPIC_EYE）
+- `Engine/Source/Runtime/Renderer/Private/SceneRendering.cpp` — `vr.InstancedStereo` CVar 声明
 - `ThirdParty/Windows/AgilitySDK/1.618.5/` — Agility SDK 版本目录

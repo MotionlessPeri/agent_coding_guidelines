@@ -122,7 +122,7 @@ flowchart TB
 
 **关键源码/类名**：
 - `FRenderCommandFence` — `RenderingThread.h`
-- `FGraphEventRef` — `Async/AsyncWork.h`
+- `FGraphEventRef` — `Engine/Source/Runtime/Core/Public/Async/AsyncWork.h`
 - `ENQUEUE_RENDER_COMMAND(Type)` — `RenderingThread.h`
 - `FFrameNumber` + `FRHICommandListImmediate::Flush` — 低层级冲刷
 

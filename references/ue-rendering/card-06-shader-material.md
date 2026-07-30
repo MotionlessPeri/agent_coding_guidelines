@@ -73,8 +73,8 @@ flowchart TB
 ### 关键源码
 
 - `Engine/Shaders/Private/MaterialTemplate.ush` — 材质模板，含 `#if` 分支处理各 ShaderStage
-- `Engine/Source/Runtime/Engine/Private/HLSLMaterialTranslator.cpp` — `FMaterialCompiler` 实现，核心 HLSL 生成器
-- `Engine/Source/Runtime/Engine/Classes/Materials/HLSLMaterialTranslator.h`
+- `Engine/Source/Runtime/Engine/Private/Materials/HLSLMaterialTranslator.cpp` — `FMaterialCompiler` 实现，核心 HLSL 生成器
+- `Engine/Source/Runtime/Engine/Private/Materials/HLSLMaterialTranslator.h`
 
 ### 编译产物
 
@@ -144,7 +144,7 @@ flowchart TB
 
 - `Engine/Source/Runtime/Engine/Public/ShaderCompiler.h` — `FShaderCompileJob`、`FShaderCompileJobCollection`
 - `Engine/Source/Programs/ShaderCompileWorker/ShaderCompileWorker.cpp` — 外部进程入口
-- `Engine/Source/Runtime/Engine/Private/ShaderCompiler.cpp` — 主进程编译调度
+- `Engine/Source/Runtime/Engine/Private/ShaderCompiler/ShaderCompiler.cpp` — 主进程编译调度
 - `Engine/Source/Developer/ShaderFormatOpenGL/` — 各平台 Shader 编译后端
 
 ---
@@ -210,9 +210,9 @@ class FMyCustomShader : public FGlobalShader
 
 ### 关键源码
 
-- `Engine/Source/Runtime/Engine/Public/ShaderPermutation.h` — `FShaderPermutationBool`、`TShaderPermutationDomain`、`SHADER_PERMUTATION_BOOL`、`SHADER_PERMUTATION_INT`
+- `Engine/Source/Runtime/RenderCore/Public/ShaderPermutation.h` — `FShaderPermutationBool`、`TShaderPermutationDomain`、`SHADER_PERMUTATION_BOOL`、`SHADER_PERMUTATION_INT`
 - `Engine/Source/Runtime/Engine/Public/MaterialShared.h` — 材质相关的 Permutation 定义
-- `Engine/Source/Runtime/Engine/Private/Shader.cpp` — Shader 序列化、缓存、Permutation 调度
+- `Engine/Source/Runtime/RenderCore/Private/Shader.cpp` — Shader 序列化、缓存、Permutation 调度
 
 ---
 
@@ -235,8 +235,8 @@ Substrate（原代号 Strata）是 UE 5.x 引入的**多层 BSDF 材质框架**�
 |------|------|
 | **Glint（几何微闪）** | 基于法线贴图过滤的实时几何微闪效果，在粗糙表面上模拟金属微片的闪烁。由 `SUBSTRATE_GLINTS_ALLOWED` / `SUBSTRATE_GLINTS_ENABLED` 宏控制，通过 `Substrate_D_Glint()` / `EvaluateGlintRect()` 函数实现 Glint 到 GGX 的平滑过渡 |
 | **Toon（卡通着色）** | 支持 Toon BSDF 材质类型（`SUBSTRATE_MATERIAL_TYPE_TOON = 11`），通过 `SubstrateToonBSDF.ush` 实现卡通着色，包含 `PackToonCustomData` / `UnpackToonCustomData` 打包自定义数据，及 `SubstrateToonEvaluateCommon` 评估函数 |
-| **Stochastic Lighting（随机化光照）** | 由 `r.Substrate.StochasticLighting`（`RenderCore/Private/RenderUtils.cpp`）控制，通过随机化采样降低多层 BSDF 的着色开销，启用时 `Substrate::IsStochasticLightingEnabled()` 返回 true。运行时可通过 `r.Substrate.StochasticLighting.Active` 开关调试 |
-| **Async Classification（异步材质分类）** | 由 `r.Substrate.AsyncClassification`（`Renderer/Private/Substrate/Substrate.cpp`）控制，将材质分类（前向/延迟/DBuffer 等）阶段异步化，减少主线程等待 |
+| **Stochastic Lighting（随机化光照）** | 由 `r.Substrate.StochasticLighting`（`Engine/Source/Runtime/RenderCore/Private/RenderUtils.cpp`）控制，通过随机化采样降低多层 BSDF 的着色开销，启用时 `Substrate::IsStochasticLightingEnabled()` 返回 true。运行时可通过 `r.Substrate.StochasticLighting.Active` 开关调试 |
+| **Async Classification（异步材质分类）** | 由 `r.Substrate.AsyncClassification`（`Engine/Source/Runtime/Renderer/Private/Substrate/Substrate.cpp`）控制，将材质分类（前向/延迟/DBuffer 等）阶段异步化，减少主线程等待 |
 
 ### 现状（5.8）
 
@@ -417,7 +417,7 @@ void MainCS(
 ### 关键源码
 
 - `Engine/Source/Runtime/RenderCore/Public/GlobalShader.h` — `FGlobalShader` 基类 + `IMPLEMENT_GLOBAL_SHADER` 宏
-- `Engine/Source/Runtime/Renderer/Public/ShaderParameters.h` — `BEGIN_SHADER_PARAMETER_STRUCT` 宏系统
+- `Engine/Source/Runtime/RenderCore/Public/ShaderParameters.h` — `BEGIN_SHADER_PARAMETER_STRUCT` 宏系统
 - `Engine/Source/Runtime/Renderer/Private/RDG/` — RDG 框架
 
 ---
@@ -461,9 +461,9 @@ void MainCS(
 
 ### 关键源码
 
-- `Engine/Source/Runtime/Engine/Public/ShaderCore.h` — `SHADER_PARAMETER_STRUCT` 反射系统
+- `Engine/Source/Runtime/RenderCore/Public/ShaderCore.h` — `SHADER_PARAMETER_STRUCT` 反射系统
 - `Engine/Source/Developer/ShaderCompilerCommon` — 跨平台 Shader 编译公共逻辑
-- `Engine/Source/Runtime/Engine/Private/Shader.cpp` — Shader 序列化、缓存、Permutation 调度
+- `Engine/Source/Runtime/RenderCore/Private/Shader.cpp` — Shader 序列化、缓存、Permutation 调度
 
 ---
 

@@ -91,7 +91,7 @@ flowchart TD
 
 ### 2.1 生成与更新策略
 
-核心文件：`LumenScreenProbeGather.cpp/.h`、`LumenScreenProbeTracing.cpp`、`LumenScreenProbeFiltering.cpp`、`LumenScreenProbeImportanceSampling.cpp`、`LumenScreenProbeGBuffer.cpp`、`LumenScreenProbeHardwareRayTracing.cpp`。
+核心文件：`Engine/Source/Runtime/Renderer/Private/Lumen/LumenScreenProbeGather.{cpp,h}`、`LumenScreenProbeTracing.cpp`、`LumenScreenProbeFiltering.cpp`、`LumenScreenProbeImportanceSampling.cpp`、`LumenScreenProbeGBuffer.cpp`、`LumenScreenProbeHardwareRayTracing.cpp`。
 
 - **Probe 网格**：在屏幕空间生成一个规则的 Probe 网格，密度由 `r.Lumen.ScreenProbe.Distribution` 控制。
 - **每帧重建**：每帧从零重建 Probe 网格（不跨帧保持），因为屏幕内容变化时 Probe 的位置需要重新计算。
@@ -132,7 +132,7 @@ IrradianceFieldGather 依赖 `LumenRadianceCache` 系统存储和插值世界空
 
 ### 4.1 核心机制
 
-核心文件：`LumenReSTIRGather.cpp/.h`。
+核心文件：`Engine/Source/Runtime/Renderer/Private/Lumen/LumenReSTIRGather.{cpp,h}`。
 
 - **ReSTIR（Reservoir-based Spatio-Temporal Importance Resampling）**：通过时序和空间的重要性重采样，从少量初始样本中高效收敛到高质量 GI。
 - **Reservoir**：每个像素维护一个 Reservoir（候选样本池），在时间和空间上重采样，逐步逼近无偏估计。
@@ -156,7 +156,7 @@ ReSTIR 的时序复用与 ScreenProbe 的 Temporal Accumulation 不同：
 
 ### 5.1 Mesh Card 的生成与管理
 
-核心文件：`LumenMeshCards.cpp/.h`。
+核心文件：`Engine/Source/Runtime/Renderer/Private/Lumen/LumenMeshCards.{cpp,h}`。
 
 - **Mesh Card 是什么**：每个 Primitive 被降采样为一张"卡片"（Card）——一个低面数代理网格，覆盖原始 Mesh 的大致范围。
 - **生成时机**：Primitive 进入场景时，在 `LumenSceneCardBuild()` 中生成。Card 的生成是离线预处理（在 Mesh 导入时完成），运行时只做可见性判断。
@@ -183,13 +183,13 @@ ReSTIR 的时序复用与 ScreenProbe 的 Temporal Accumulation 不同：
 
 ### 6.1 加速结构（BVH）的构建与更新
 
-核心文件：`LumenHardwareRayTracingCommon.cpp/.h`、`LumenHardwareRayTracingMaterials.cpp`。
+核心文件：`Engine/Source/Runtime/Renderer/Private/Lumen/LumenHardwareRayTracingCommon.{cpp,h}`、`LumenHardwareRayTracingMaterials.cpp`。
 
 UE 5.8 将 Hardware RT 的实现拆分为通用基类和多个域专用文件：
 
 | 文件 | 职责 |
 |---|---|
-| **`LumenHardwareRayTracingCommon.cpp/.h`** | 通用基础设施：Lumen 专用 TLAS 管理、Hit Lighting 模式、Ray Tracing Scene Options |
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenHardwareRayTracingCommon.{cpp,h}`** | 通用基础设施：Lumen 专用 TLAS 管理、Hit Lighting 模式、Ray Tracing Scene Options |
 | **`LumenHardwareRayTracingMaterials.cpp`** | 材质 Hit Group 处理 |
 | **`LumenScreenProbeHardwareRayTracing.cpp`** | ScreenProbeGather 的硬件光追实现 |
 | **`LumenReflectionHardwareRayTracing.cpp`** | Reflections 的硬件光追实现 |
@@ -239,7 +239,7 @@ Lumen 的硬件光追支持多种 Hit Lighting 模式（`EHitLightingMode`），
 
 ### 7.1 核心机制
 
-核心文件：`LumenRadianceCache.cpp/.h`、`LumenRadianceCacheInternal.h`、`LumenRadianceCacheInterpolation.h`、`LumenRadianceCacheHardwareRayTracing.cpp`。
+核心文件：`Engine/Source/Runtime/Renderer/Private/Lumen/LumenRadianceCache.{cpp,h}`、`LumenRadianceCacheInternal.h`、`LumenRadianceCacheInterpolation.h`、`LumenRadianceCacheHardwareRayTracing.cpp`。
 
 Radiance Cache 是 Lumen 的**世界空间 Probe 缓存系统**，用于：
 
@@ -260,7 +260,7 @@ Radiance Cache 是 Lumen 的**世界空间 Probe 缓存系统**，用于：
 
 ### 8.1 核心机制
 
-核心文件：`LumenRadiosity.cpp/.h`。
+核心文件：`Engine/Source/Runtime/Renderer/Private/Lumen/LumenRadiosity.{cpp,h}`。
 
 Radiosity 是 Lumen 的**多次反弹漫反射间接光照**系统：
 
@@ -297,7 +297,7 @@ Lumen Scene 更新由 `FDeferredShadingSceneRenderer` 驱动：
 
 ### 9.2 GPU Driven Update
 
-核心文件：`LumenSceneGPUDrivenUpdate.cpp/.h`。
+核心文件：`Engine/Source/Runtime/Renderer/Private/Lumen/LumenSceneGPUDrivenUpdate.{cpp,h}`。
 
 UE 5.8 实验性支持 GPU 驱动的 Lumen Scene 更新：
 
@@ -311,7 +311,7 @@ UE 5.8 实验性支持 GPU 驱动的 Lumen Scene 更新：
 
 ### 10.1 追踪路径
 
-核心文件：`LumenReflections.cpp/.h`、`LumenReflectionTracing.cpp`、`LumenReflectionHardwareRayTracing.cpp`。
+核心文件：`Engine/Source/Runtime/Renderer/Private/Lumen/LumenReflections.{cpp,h}`、`LumenReflectionTracing.cpp`、`LumenReflectionHardwareRayTracing.cpp`。
 
 Lumen Reflections 有两种追踪路径，与 Diffuse GI 的 Final Gather 方法正交：
 
@@ -360,7 +360,7 @@ Lumen 也处理场景中的**直接光照**（Sun Sky、反射光之外的直接
 
 ## 12. Lumen Translucency Volume Lighting
 
-核心文件：`LumenTranslucencyVolumeLighting.cpp/.h`、`LumenTranslucencyVolumeHardwareRayTracing.cpp`、`LumenTranslucencyRadianceCache.cpp`。
+核心文件：`Engine/Source/Runtime/Renderer/Private/Lumen/LumenTranslucencyVolumeLighting.{cpp,h}`、`LumenTranslucencyVolumeHardwareRayTracing.cpp`、`LumenTranslucencyRadianceCache.cpp`。
 
 Lumen 对**半透明体积**的间接光照支持：
 
@@ -426,7 +426,7 @@ flowchart TB
 
 ## 14. 可视化调试
 
-核心文件：`LumenVisualize.cpp/.h`、`LumenVisualizeHardwareRayTracing.cpp`、`LumenVisualizeRadianceCache.cpp`。
+核心文件：`Engine/Source/Runtime/Renderer/Private/Lumen/LumenVisualize.{cpp,h}`、`LumenVisualizeHardwareRayTracing.cpp`、`LumenVisualizeRadianceCache.cpp`。
 
 Lumen 提供可视化调试工具：
 
@@ -443,42 +443,42 @@ Lumen 提供可视化调试工具：
 | **`LumenSceneRendering.cpp`** | Lumen 场景数据管理、主渲染调度 | `UpdateLumenScene()`, `BeginUpdateLumenSceneTasks()`, `VoxelizeLumenScene()`, `FLumenScene` |
 | **`LumenScene.cpp`** | Lumen 场景 Primitive 管理 | `UpdateLumenScenePrimitives()`, `Lumen::ShouldUpdateLumenSceneViewOrigin()` |
 | **`LumenSceneData.h`** | Lumen 场景数据结构 | `FLumenSceneData` |
-| **`Lumen.cpp/.h`** | Lumen 全局工具函数、枚举定义 | `GetFinalGatherMethod()`, `ShouldRenderLumenDiffuseGI()`（声明）, `UseHardwareRayTracing()`, `ELumenFinalGatherMethod` |
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/Lumen.{cpp,h}`** | Lumen 全局工具函数、枚举定义 | `GetFinalGatherMethod()`, `ShouldRenderLumenDiffuseGI()`（声明）, `UseHardwareRayTracing()`, `ELumenFinalGatherMethod` |
 | **`LumenDiffuseIndirect.cpp`** | 间接光照渲染入口 | `ShouldRenderLumenDiffuseGI()`（定义）, `SetupLumenDiffuseTracingParameters()` |
-| **`LumenReflections.cpp/.h`** | Lumen 反射的合成与降噪 | `CompositeLumenReflections()`, `FLumenReflections`, `RenderLumenReflections()` |
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenReflections.{cpp,h}`** | Lumen 反射的合成与降噪 | `CompositeLumenReflections()`, `FLumenReflections`, `RenderLumenReflections()` |
 | **`LumenReflectionTracing.cpp`** | Lumen 反射追踪 | `TraceLumenReflections()` |
 | **`LumenReflectionHardwareRayTracing.cpp`** | 反射的硬件光追实现 | `LumenReflections::UseHitLighting()` |
-| **`LumenTracingUtils.cpp/.h`** | 统一的追踪接口 | `TraceLumenRadiance()`, `FLumenTracing`, `TraceRay()` |
-| **`LumenScreenProbeGather.cpp/.h`** | Screen Probe 的生成、采样、插值 | `LumenScreenProbeGather()`, `FLumenScreenProbe`, `ScreenProbePlacement()` |
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenTracingUtils.{cpp,h}`** | 统一的追踪接口 | `TraceLumenRadiance()`, `FLumenTracing`, `TraceRay()` |
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenScreenProbeGather.{cpp,h}`** | Screen Probe 的生成、采样、插值 | `LumenScreenProbeGather()`, `FLumenScreenProbe`, `ScreenProbePlacement()` |
 | **`LumenScreenProbeTracing.cpp`** | Screen Probe 的追踪实现 | ScreenProbe 的 Ray 追踪 |
 | **`LumenScreenProbeFiltering.cpp`** | Screen Probe 的降噪过滤 | ScreenProbe 的 Spatial/Temporal 过滤 |
 | **`LumenScreenProbeImportanceSampling.cpp`** | Screen Probe 的重要性采样 | ScreenProbe 的方向分布 |
 | **`LumenScreenProbeGBuffer.cpp`** | Screen Probe 的 GBuffer 采样 | 从 GBuffer 读取材质属性 |
 | **`LumenScreenProbeHardwareRayTracing.cpp`** | Screen Probe 的硬件光追 | `LumenScreenProbeGather::UseHitLighting()` |
 | **`LumenIrradianceFieldGather.cpp`** | Irradiance Field Gather 方法 | Clipmap 管理、Probe occlusion |
-| **`LumenReSTIRGather.cpp/.h`** | ReSTIR Gather 方法 | `Lumen::UseReSTIRGather()`, Reservoir 管理 |
-| **`LumenMeshCards.cpp/.h`** | Mesh Card 的生成与管理 | `LumenSceneCardBuild()`, `FLumenMeshCards`, `CardRasterize()` |
-| **`LumenHardwareRayTracingCommon.cpp/.h`** | Hardware RT 通用基础设施 | `BuildLumenHardwareRayTracingScene()`, `FLumenHardwareRayTracing`, `GetHitLightingMode()` |
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenReSTIRGather.{cpp,h}`** | ReSTIR Gather 方法 | `Lumen::UseReSTIRGather()`, Reservoir 管理 |
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenMeshCards.{cpp,h}`** | Mesh Card 的生成与管理 | `LumenSceneCardBuild()`, `FLumenMeshCards`, `CardRasterize()` |
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenHardwareRayTracingCommon.{cpp,h}`** | Hardware RT 通用基础设施 | `BuildLumenHardwareRayTracingScene()`, `FLumenHardwareRayTracing`, `GetHitLightingMode()` |
 | **`LumenHardwareRayTracingMaterials.cpp`** | Hardware RT 材质 Hit Group | 材质命中处理 |
-| **`LumenRadianceCache.cpp/.h`** | Radiance Cache 系统 | Probe 管理、插值 |
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenRadianceCache.{cpp,h}`** | Radiance Cache 系统 | Probe 管理、插值 |
 | **`LumenRadianceCacheHardwareRayTracing.cpp`** | Radiance Cache 硬件光追 | `LumenRadianceCache::UseHitLighting()` |
-| **`LumenRadiosity.cpp/.h`** | Radiosity 多 bounce 系统 | `LumenRadiosity::IsEnabled()`, `ShouldRenderRadiosityHardwareRayTracing()` |
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenRadiosity.{cpp,h}`** | Radiosity 多 bounce 系统 | `LumenRadiosity::IsEnabled()`, `ShouldRenderRadiosityHardwareRayTracing()` |
 | **`LumenSceneDirectLighting.cpp`** | Lumen 场景直接光照 | `ShouldRenderLumenDirectLighting()` |
 | **`LumenSceneDirectLightingHardwareRayTracing.cpp`** | 直接光照硬件光追 | 直接光照的 Ray Tracing 实现 |
-| **`LumenSceneGPUDrivenUpdate.cpp/.h`** | GPU 驱动的场景更新（实验性） | `r.LumenScene.GPUDrivenUpdate` |
-| **`LumenTranslucencyVolumeLighting.cpp/.h`** | 半透明体积间接光照 | `r.Lumen.TranslucencyVolume.Enable` |
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenSceneGPUDrivenUpdate.{cpp,h}`** | GPU 驱动的场景更新（实验性） | `r.LumenScene.GPUDrivenUpdate` |
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenTranslucencyVolumeLighting.{cpp,h}`** | 半透明体积间接光照 | `r.Lumen.TranslucencyVolume.Enable` |
 | **`LumenTranslucencyVolumeHardwareRayTracing.cpp`** | 半透明体积硬件光追 | Translucency 的 Ray Tracing 实现 |
 | **`LumenTranslucencyRadianceCache.cpp`** | 半透明体积 Radiance Cache | Translucency 的 Cache 采样 |
 | **`LumenSurfaceCache.cpp`** | Surface Cache 管理 | Atlas 分配、更新 |
-| **`LumenSurfaceCacheFeedback.cpp/.h`** | Surface Cache 反馈更新 | 高需求页面优先更新 |
-| **`LumenSceneCardCapture.cpp/.h`** | Card Capture 渲染 | Card 页面渲染到 Atlas |
-| **`LumenSceneLighting.cpp/.h`** | 场景光照管理 | `UseHardwareRayTracedSceneLighting()` |
-| **`LumenVisualize.cpp/.h`** | Lumen 调试可视化（ShowFlags） | `AddVisualizeLumenScenePass()`, `LumenVisualizationMode` |
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenSurfaceCacheFeedback.{cpp,h}`** | Surface Cache 反馈更新 | 高需求页面优先更新 |
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenSceneCardCapture.{cpp,h}`** | Card Capture 渲染 | Card 页面渲染到 Atlas |
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenSceneLighting.{cpp,h}`** | 场景光照管理 | `UseHardwareRayTracedSceneLighting()` |
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenVisualize.{cpp,h}`** | Lumen 调试可视化（ShowFlags） | `AddVisualizeLumenScenePass()`, `LumenVisualizationMode` |
 | **`LumenVisualizeHardwareRayTracing.cpp`** | 硬件光追可视化 | 调试硬件光追状态 |
 | **`LumenVisualizeRadianceCache.cpp`** | Radiance Cache 可视化 | 调试 Cache 状态 |
 | **`LumenShortRangeAO.h`** | Short Range AO 管理 | Lumen 短距离环境光遮蔽 |
 | **`LumenShortRangeAOHardwareRayTracing.cpp`** | Short Range AO 硬件光追 | AO 的 Ray Tracing 实现 |
-| **`LumenHeightfields.cpp/.h`** | Heightfield 支持 | 地形/植被的 Lumen 支持 |
+| **`Engine/Source/Runtime/Renderer/Private/Lumen/LumenHeightfields.{cpp,h}`** | Heightfield 支持 | 地形/植被的 Lumen 支持 |
 | **`LumenMeshSDFCulling.cpp`** | Mesh SDF 裁剪 | 距离场视锥裁剪 |
 | **`LumenScreenSpaceBentNormal.cpp`** | 屏幕空间 Bent Normal | 法线可见性计算 |
 | **`LumenViewState.h`** | Lumen View 状态 | View 级 Lumen 状态管理 |

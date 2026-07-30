@@ -61,7 +61,7 @@ Nanite 资产结构（从细到粗）：
 
 **核心思想**：每帧为每个 Nanite Component 在 CPU 上选一个 LOD 阈值，GPU 在此基础上做 Per-Cluster 精细剔除。
 
-**CPU 端**（`Engine/Private/Rendering/NaniteStreamingManager.cpp` `Nanite::FStreamingManager::UpdateLODs`）：
+**CPU 端**（`Engine/Source/Runtime/Engine/Private/Rendering/NaniteStreamingManager.cpp` `Nanite::FStreamingManager::UpdateLODs`）：
 
 1. 计算每个 Component 的屏幕空间大小（Bounds x ViewProjection → 像素数）
 2. 查预计算 LOD 层级表，获得该大小下的目标 Error 阈值
@@ -271,7 +271,7 @@ BasePass(Nanite) → Visibility Buffer → ShadeBinning → Material Resolve →
 
 **Nanite 的 Streaming 比传统纹理流更激进**，因为它面对的是**几何数据**（不是 2D 贴图）。
 
-**Streaming Manager** — `Nanite::FStreamingManager`（`Engine/Public/Rendering/NaniteStreamingManager.h`，Renderer 模块通过 `Rendering/NaniteStreamingManager.h` 引用）：
+**Streaming Manager** — `Nanite::FStreamingManager`（`Engine/Source/Runtime/Engine/Public/Rendering/NaniteStreamingManager.h`，Renderer 模块通过 `Engine/Source/Runtime/Engine/Public/Rendering/NaniteStreamingManager.h` 引用）：
 
 每帧：
 
@@ -603,43 +603,43 @@ Nanite 渲染结果的后处理组合阶段：
 | 文件路径 | 核心职责 |
 |----------|----------|
 | `Engine/Shaders/Shared/NaniteDefinitions.h` | Nanite 数据结构定义（Cluster, Page, Group 等常量） |
-| `Engine/Public/Rendering/NaniteResources.h` | Nanite 资源定义（`FPackedHierarchyNode`、`FResources` 等） |
-| `Engine/Public/Rendering/NaniteStreamingManager.h` | `Nanite::FStreamingManager`，Page 加载/卸载/LOD 选择 |
-| `Engine/Public/Rendering/NaniteInterface.h` | Nanite 对外接口（`ERayTracingMode`、`GVertexFactoryResource`） |
-| `Engine/Classes/Engine/NaniteAssemblyData.h` | Assembly Part 数据结构（`FNaniteAssemblyNode`、`FNaniteAssemblyBoneInfluence`） |
-| `Engine/Public/NaniteSceneProxy.h` | Nanite Scene Proxy |
-| `Engine/Public/NaniteVertexFactory.h` | Nanite Vertex Factory |
-| `Engine/Private/Rendering/NaniteStreamingManager.cpp` | Streaming Manager 实现 |
-| `Engine/Private/Rendering/NaniteResources.cpp` | 资源加载/序列化 |
-| `Renderer/Private/Nanite/Nanite.cpp` | Nanite 渲染主入口，`RenderNanite()` 函数，Shadows |
-| `Renderer/Private/Nanite/NaniteCullRaster.cpp` | GPU 剔除 + 光栅化核心（合并原 NaniteCull + NaniteRendering） |
-| `Renderer/Private/Nanite/NaniteShading.cpp` | Shading Pipeline（`FNaniteRasterPipelines`、`FNaniteShadingPipelines`、`ShadeBinning`、`DispatchBasePass`） |
-| `Renderer/Private/Nanite/NaniteDrawList.cpp` | Nanite Draw List 收集 |
-| `Renderer/Private/Nanite/NaniteComposition.cpp` | 后处理组合（Depth/Stencil/HTile/CustomDepth 导出） |
+| `Engine/Source/Runtime/Engine/Public/Rendering/NaniteResources.h` | Nanite 资源定义（`FPackedHierarchyNode`、`FResources` 等） |
+| `Engine/Source/Runtime/Engine/Public/Rendering/NaniteStreamingManager.h` | `Nanite::FStreamingManager`，Page 加载/卸载/LOD 选择 |
+| `Engine/Source/Runtime/Engine/Public/Rendering/NaniteInterface.h` | Nanite 对外接口（`ERayTracingMode`、`GVertexFactoryResource`） |
+| `Engine/Source/Runtime/Engine/Classes/Engine/NaniteAssemblyData.h` | Assembly Part 数据结构（`FNaniteAssemblyNode`、`FNaniteAssemblyBoneInfluence`） |
+| `Engine/Source/Runtime/Engine/Public/NaniteSceneProxy.h` | Nanite Scene Proxy |
+| `Engine/Source/Runtime/Engine/Public/NaniteVertexFactory.h` | Nanite Vertex Factory |
+| `Engine/Source/Runtime/Engine/Private/Rendering/NaniteStreamingManager.cpp` | Streaming Manager 实现 |
+| `Engine/Source/Runtime/Engine/Private/Rendering/NaniteResources.cpp` | 资源加载/序列化 |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/Nanite.cpp` | Nanite 渲染主入口，`RenderNanite()` 函数，Shadows |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp` | GPU 剔除 + 光栅化核心（合并原 NaniteCull + NaniteRendering） |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteShading.cpp` | Shading Pipeline（`FNaniteRasterPipelines`、`FNaniteShadingPipelines`、`ShadeBinning`、`DispatchBasePass`） |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteDrawList.cpp` | Nanite Draw List 收集 |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteComposition.cpp` | 后处理组合（Depth/Stencil/HTile/CustomDepth 导出） |
 | `Renderer/Private/Nanite/NaniteTranslateTranslucency.cpp` | 半透明 Mesh Shader 路径 |
-| `Renderer/Private/Nanite/NaniteRayTracing.cpp` | Nanite Ray Tracing 管线（CLAS / StreamOut / Fallback） |
-| `Renderer/Private/Nanite/NaniteRayTracingASCache.cpp` | Ray Tracing Acceleration Structure 缓存 |
-| `Renderer/Private/Nanite/NaniteStreamOut.cpp` | Stream Out 路径（Cluster → 传统几何缓冲） |
-| `Renderer/Private/Nanite/NaniteVisibility.cpp` | 材质可见性测试 |
-| `Renderer/Private/Nanite/NaniteMaterials.cpp` | 材质加载与注册 |
-| `Renderer/Private/Nanite/NaniteMaterialsSceneExtension.cpp` | 材质场景扩展 |
-| `Renderer/Private/Nanite/NaniteFeedback.cpp` | 反馈系统 |
-| `Renderer/Private/Nanite/NaniteShared.cpp` | 共享资源（`FGlobalResources`、`MaxVisibleAssemblyParts`） |
-| `Renderer/Private/Nanite/NaniteEditor.cpp` | Editor 专用调试 |
-| `Renderer/Private/Nanite/NaniteVisualize.cpp` | 可视化调试工具（Overdraw/LOD/Page 驻留） |
-| `Renderer/Private/Nanite/Voxel.cpp` | 实验性 Voxel 渲染 |
-| `Renderer/Private/Nanite/TessellationTable.cpp` | Tessellation 表预处理 |
-| `Renderer/Private/Nanite/NaniteCurveRaster.inl` | 曲线图元光栅化 |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteRayTracing.cpp` | Nanite Ray Tracing 管线（CLAS / StreamOut / Fallback） |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteRayTracingASCache.cpp` | Ray Tracing Acceleration Structure 缓存 |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteStreamOut.cpp` | Stream Out 路径（Cluster → 传统几何缓冲） |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteVisibility.cpp` | 材质可见性测试 |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteMaterials.cpp` | 材质加载与注册 |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteMaterialsSceneExtension.cpp` | 材质场景扩展 |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteFeedback.cpp` | 反馈系统 |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteShared.cpp` | 共享资源（`FGlobalResources`、`MaxVisibleAssemblyParts`） |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteEditor.cpp` | Editor 专用调试 |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteVisualize.cpp` | 可视化调试工具（Overdraw/LOD/Page 驻留） |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/Voxel.cpp` | 实验性 Voxel 渲染 |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/TessellationTable.cpp` | Tessellation 表预处理 |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteCurveRaster.inl` | 曲线图元光栅化 |
 | `Engine/Shaders/Nanite/NaniteCull.usf` | GPU 剔除的 Compute Shader |
 | `Engine/Shaders/Nanite/NaniteMaterialResolve.ush` | Material Resolve 的 Shader 入口 |
 | `Engine/Shaders/Nanite/NaniteVS.usf` | Nanite 的 Vertex Shader |
 | `Engine/Shaders/Nanite/NanitePS.usf` | Nanite 的 Pixel Shader（Visibility Buffer 写入） |
-| `Engine/Shaders/Nanite/NaniteVertexFactory.ush` | Vertex Factory Shader（解码/变换） |
-| `Engine/Shaders/Nanite/NaniteRayTrace.ush` | Ray Tracing 相关 Shader |
-| `Engine/Shaders/Nanite/NaniteDataDecode.ush` | 数据解码 Shader |
+| `Engine/Shaders/Private/Nanite/NaniteVertexFactory.ush` | Vertex Factory Shader（解码/变换） |
+| `Engine/Shaders/Private/Nanite/NaniteRayTrace.ush` | Ray Tracing 相关 Shader |
+| `Engine/Shaders/Private/Nanite/NaniteDataDecode.ush` | 数据解码 Shader |
 | `Engine/Source/Programs/NaniteCook/NaniteCook.cpp` | 离线 Cook 工具（Cluster 生成/压缩） |
 | `Developer/NaniteBuilder/Private/Encode/` | Nanite 编码器（Cluster 编码/压缩/约束） |
-| `Developer/NaniteBuilder/Private/NaniteAssemblyBuild.cpp` | Assembly Part 构建 |
+| `Engine/Source/Developer/NaniteBuilder/Private/NaniteAssemblyBuild.cpp` | Assembly Part 构建 |
 
 **调试入口**：
 - `r.Nanite.ShowStats 1` — 实时显示 Nanite 各阶段耗时
