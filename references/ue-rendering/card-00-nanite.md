@@ -639,7 +639,7 @@ Nanite 渲染结果的后处理组合阶段：
 | `Engine/Shaders/Private/Nanite/NaniteVertexFactory.ush` | Vertex Factory Shader（解码/变换） |
 | `Engine/Shaders/Private/Nanite/NaniteRayTrace.ush` | Ray Tracing 相关 Shader |
 | `Engine/Shaders/Private/Nanite/NaniteDataDecode.ush` | 数据解码 Shader |
-| `Engine/Source/Developer/NaniteBuilder/Private/NaniteBuilder.cpp` | 离线构建（Cluster 生成 / 压缩，编码见 `Encode/NaniteEncode.cpp`） |
+| `Engine/Source/Developer/NaniteBuilder/Private/NaniteBuilder.cpp` | 离线构建（Cluster 生成 / 压缩，编码见 `Engine/Source/Developer/NaniteBuilder/Private/Encode/NaniteEncode.cpp`） |
 | `Developer/NaniteBuilder/Private/Encode/` | Nanite 编码器（Cluster 编码/压缩/约束） |
 | `Engine/Source/Developer/NaniteBuilder/Private/NaniteAssemblyBuild.cpp` | Assembly Part 构建 |
 

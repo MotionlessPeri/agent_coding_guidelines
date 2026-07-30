@@ -31,7 +31,9 @@
 
 | 断言类型 | 例子 | 怎么核 |
 |---|---|---|
-| **源码路径** | `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteRendering.cpp` | 直接看文件在不在。不在就按 basename 全树搜真实位置 |
+<!-- verify:ignore-start -->
+| **源码路径** | `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteRendering.cpp`（这是个假名字的例子） | 直接看文件在不在。不在就按 basename 全树搜真实位置 |
+<!-- verify:ignore-end -->
 <!-- verify:ignore-start -->
 | **CVar 名** | `r.Nanite.PagePoolSize` | 在引擎源码里搜这个字面量。搜不到就是不存在 |
 <!-- verify:ignore-end -->
@@ -178,7 +180,7 @@ CVar，代价远大于说一句「需要确认」。
 |---|---|
 | 子系统总开关（`r.Nanite`、`r.Lumen.DiffuseIndirect.Allow`） | 较稳，跨几个版本一般在 |
 | 子系统内部细调项（`r.Lumen.ScreenProbeGather.*`） | 不稳，改名 / 增删频繁 |
-| 源码文件路径 | 中等，模块重组时会挪（实测 `Materials/Material.h` 在 5.7 和 5.8 就不在同一层） |
+| 源码文件路径 | 中等，模块重组时会挪（实测 `Engine/Source/Runtime/Engine/Public/Materials/Material.h` 在 5.7 和 5.8 就不在同一层） |
 | 枚举成员名 | 不稳（实测 `EStereoscopicPass` 从 UE4 的 `eSSP_LEFT_EYE` 变成了 `eSSP_PRIMARY`） |
 
 ---

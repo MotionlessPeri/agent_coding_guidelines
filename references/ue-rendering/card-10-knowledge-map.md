@@ -517,7 +517,7 @@
 **要读的源码**：
 - `Engine/Source/Runtime/Renderer/Private/Lumen/LumenSceneRendering.cpp` — `ShouldRenderLumen()`、`RenderLumenScene()`
 - `Engine/Source/Runtime/Renderer/Private/Lumen/LumenReflections.cpp` — `CompositeLumenReflections()`
-- `Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp` — `RenderNanite()`
+- `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteCullRaster.cpp` — `RenderNanite()`
 <!-- verify:ignore-start -->
 - `Engine/Source/Runtime/Engine/Private/Rendering/NaniteStreamingManager.cpp` — Nanite Page 流送管理（类名在 `Nanite` 命名空间下，不是全局的 `FNaniteStreamingManager`）
 <!-- verify:ignore-end -->
@@ -544,9 +544,9 @@
 - `Engine/Source/Runtime/Renderer/Private/MobileShadingRenderer.cpp` — Mobile 渲染路径
 - `Engine/Source/Runtime/Engine/Private/ShaderCompiler/ShaderCompiler.cpp` — `ShouldCompilePermutation()`
 - `Engine/Source/Runtime/RenderCore/Public/ShaderPermutation.h` — `FShaderPermutationBool` 裁剪机制
-- `Runtime/RHI/Private/RHIBreadcrumbs.cpp` — GPU Crash 检测
-- `Runtime/D3D12RHI/Private/D3D12RayTracingDebug.cpp` — D3D12 Debug Layer
-- `Runtime/RHI/Private/RHIValidation.cpp` — Vulkan Validation
+- `Engine/Source/Runtime/RHI/Private/RHIBreadcrumbs.cpp` — GPU Crash 检测
+- `Engine/Source/Runtime/D3D12RHI/Private/D3D12RayTracingDebug.cpp` — D3D12 Debug Layer
+- `Engine/Source/Runtime/RHI/Private/RHIValidation.cpp` — Vulkan Validation
 
 **要实操的内容**：
 1. 搭建多平台测试场景（PC D3D12 + Vulkan + Mobile），对比渲染效果差异
@@ -567,8 +567,8 @@
 **要读的源码**：
 - `Engine/Source/Runtime/Engine/Private/Materials/HLSLMaterialTranslator.cpp` — 材质表达式 → HLSL 完整流程
 - `Engine/Source/Runtime/Engine/Public/MaterialShared.h` — `FMaterialShaderMap` 序列化
-- `Runtime/Renderer/Private/Nanite/NaniteMaterials.cpp` — Visibility Buffer → G-Buffer
-- `Runtime/Renderer/Private/Lumen/LumenTracingUtils.cpp` — 统一追踪接口
+- `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteMaterials.cpp` — Visibility Buffer → G-Buffer
+- `Engine/Source/Runtime/Renderer/Private/Lumen/LumenTracingUtils.cpp` — 统一追踪接口
 - `Engine/Source/Runtime/Renderer/Private/MeshPassProcessor.cpp` — `FMeshPassProcessor` 注册机制
 - Shaders/Private/Substrate/ — Substrate 完整 Shader 链
 

@@ -1355,7 +1355,7 @@ void SetPassWorkload(FRDGPass* Pass, uint32 Workload);
 
 | 文件 | 路径 | 核心内容 |
 |------|------|----------|
-| `RenderGraphBuilder.cpp` | `Private/RenderGraphBuilder.cpp` | `FRDGBuilder::Execute()` / `Compile()` 等核心实现 |
+| `RenderGraphBuilder.cpp` | `Engine/Source/Runtime/RenderCore/Private/RenderGraphBuilder.cpp` | `FRDGBuilder::Execute()` / `Compile()` 等核心实现 |
 | `DumpGPU.cpp` | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp` | `FRDGResourceDumpContext` 完整实现 |
 | `RenderGraphValidation.cpp` | `Engine/Source/Runtime/RenderCore/Private/RenderGraphValidation.cpp` | `FRDGUserValidation` 实现 |
 | `RenderGraphBlackboard.cpp` | `Engine/Source/Runtime/RenderCore/Private/RenderGraphBlackboard.cpp` | `FRDGBlackboard::AllocateIndex` 等 |
