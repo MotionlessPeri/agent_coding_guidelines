@@ -34,6 +34,13 @@ Learned from a multi-conversation cross-repo run (see skill `role-lane-coordinat
 | "Based on your findings, implement the fix" | Delegates understanding to the worker | Synthesize findings yourself, then give specific instructions |
 | "Create a PR for the recent changes" | Which changes? Which branch? Draft? | "Push branch `fix/session-expiry` to origin, create a draft PR targeting `main`, add team-x as reviewer" |
 | "Tests seem broken, take a look" | No error message, file path, or direction | "Test `validate.test.ts:58` fails — expects 'Invalid session' but gets 'Session expired'. Update the assertion." |
+| Fix agent returns only a summary instead of the full content | When told "fix document X", many agents summarize what they changed instead of outputting the fixed document. The summary is useless for the coordinator — it has no file to write. | **Always include in the prompt: "Output the complete fixed document, do not omit any content."** When the worker's output is meant to be written back to a file, make the expectation explicit. |
+
+## 反模式（中文摘要）
+
+| 反模式 | 后果 | 修法 |
+|--------|------|------|
+| Fix agent 只输出摘要不输出完整内容 | 协调者拿不到完整的修复后文件，无法写入 | prompt 里显式强调："必须输出完整的 Markdown 文档内容，不要省略" |
 
 ## Templates by Task Type
 

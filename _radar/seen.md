@@ -67,6 +67,13 @@
 - #2 → `3272c70` docs: refresh hook-conventions（33 事件 / 5 handler / env var）
 - #1+#5 → `e0b64e6` docs: context-budget-audit 加三档加载模型 + 决策表 + Anthropic 出处
 - #6 → `cafe883` docs: coordination-patterns 成本节 + adversarial-verification LLM-as-judge
-- #4 → `5e8c450` docs: workflow skills 加 Phase 4 收尾一致性 gate
+
+### 2026-07-25 首见（详见 `2026-07-25.md`; full-scope 研究，候选经三视角核验但仍需本地促成验证）
+- ✅ 已促成（2026-07-25）De-anchored Judge Evaluation —— 已写入 `techniques/adversarial-verification.md` 的 LLM-as-judge 小节：先独立推导预期行为 / 不变量 / 失败条件，再查看候选并逐项比较；保留“优先外部 oracle、论文数字不外推、本地 A/B 待做”的边界。
+- ✅ 已促成（2026-07-25）Chained Maintenance Regression Testing（ChainSWE）—— 已按收窄后的 autonomous-chain 形态写入 `skills/workflow/autonomous-workflow/SKILL.md` Phase 4：共享 checkout 上有多个相互影响的 Milestone 时，末尾做 full suite / full build + smoke、baseline diff、stale/orphan code、test pollution 检查并记录 Chain Validation；仅单 Milestone 或完全不相交文件可跳过并说明。论文的 Python/70% 数字仍不外推，C++/Windows CI 本地复现留作后续验证。
+- ✅ 已促成（2026-07-25）Phantom-Guardrail Gate —— 已按用户要求的范围（覆盖 workflow rules + bugfix-tdd）写入两处：`skills/workflow/bugfix-tdd/SKILL.md` 新增「修复过程产生持久化规则时的证据要求」节（confirmed / provisional / suggestion 三级 + 处理流程）；`skills/workflow/autonomous-workflow/SKILL.md` Phase 4 新增 PERSISTENT-RULE EVIDENCE CHECK（agent 提议新规则时要求证据分级，不得仅因当前测试通过就升格为 confirmed）。论文数字不外推，provisional 路径为 flaky 和环境依赖问题留了例外。
+- 👁 观察 MCP Stateless Protocol + MRTR —— MCP 官方 draft 的 stateless / MRTR / deprecation 迁移信号；稳定 2025-11-25 的 Tool Execution Error 边界可先检查，但当前项目无此场景，整体保持 radar 观察，等 draft 定稿或迁移窗口出现后再处理。
+- 👁 观察 Confidence-Thresholded Action Routing —— GitHub Issues 2026-07-23 的 confidence/rationale/held-suggestion 机制只验证到 Issues metadata action，不泛化到代码改动、PR 或 merge。
+- ✅ 已促成（2026-07-25）C++ 工具链全景 deep research（4 路 agent，214 次 tool call，~354k token）—— 按 8 环节（写/审/编/测/调/优/二进制/分发）产出工具矩阵 + hidden contract + agent 适用性判断。写入 `_radar/2026-07-25.md` 完整 digest。4 个优先吸收方向：① clang-tidy check 分组策略 ② Sanitizer CMake 集成 + 运行时选项 ③ 调试器脚本化（lldb Python / gdb batch / WinDbg cdb）④ CMake Presets 编排。自 2026-07-27 起逐步起草 `techniques/debugger-scripting.md`、`guidelines/cpp/cmake-presets.md` 等。待落地。
 - #3 已在 review 期落地（research-radar 迁 project-local skill）
 - #7 #8 observe（未 promote）；#5 借 #1 的 commit 落地

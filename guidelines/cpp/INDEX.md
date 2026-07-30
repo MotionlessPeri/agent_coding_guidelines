@@ -20,6 +20,9 @@ C++ / Windows DLL / cmake / MSVC 工程底座的 hidden contract——文档没�
 
 | Guideline | 解决的问题 |
 |---|---|
+| [`cmake-presets.md`](cmake-presets.md) | CMakePresets.json 三层设计（configure / build / test / workflow preset）、Ninja Multi-Config 策略、环境变量跨 Preset 传递规则、测试矩阵分层（per-commit / nightly / release）、ccache 集成 |
+| [`sanitizer-integration.md`](sanitizer-integration.md) | ASan/UBSan/TSan/MSan 的 CMake 集成、组合规则（ASan+UBSan ✅、ASan+TSan ❌）、运行时选项、平台限制（LSan Windows 不支持、MSan 全量插桩要求） |
+| [`static-analysis-clang-tidy.md`](static-analysis-clang-tidy.md) | clang-tidy check 分组策略（CI 常驻跑 `bugprone-* performance-* clang-analyzer-*`，不常驻 `modernize-*`）、性能陷阱（`--timeout`）、`HeaderFilterRegex` 默认不检查头文件、`NOLINTBEGIN` 版本要求、clang-format 冲突 |
 | [`build-incremental-and-cmake.md`](build-incremental-and-cmake.md) | 改跨 DLL 公共头后增量编译漏重编 → ABI 布局不一致崩（容器/虚函数），`--clean-first` 全量重编;`git mv` / 改 CMakeLists 目录树后 VS IDE 用 stale `.vcxproj`（命令行能编、IDE 报 `cmake_pch.cxx not found`）→ 删**整个** build 目录重 cmake |
 | [`make-format-args-lvalue.md`](make-format-args-lvalue.md) | 新版 MSVC STL（VS 2022 17.10+ / toolset 14.40+）的 `std::make_format_args` 只接受左值，`std::forward<Args>(args)...` 触发 `C2664`/`C2672`——传具名形参 `args...` 即可;**本地旧工具链编过、CI 新工具链 FAIL** 的高迷惑构建 bug |
 | [`modern-cpp-by-standard.md`](modern-cpp-by-standard.md) | 用项目配置的标准（C++17/20/23）的现代特性，别停在更旧方言;但「配置写 C++20」≠「C++20 生效」——SDK/DevKit 钳制标准 + 本地 vs CI toolchain 版本差异都要确认;别为现代化 drive-by churn 旧代码（edit-scope） |
