@@ -1037,7 +1037,7 @@ flowchart LR
 
 ## 8. RDG 调试与验证
 
-本节只收 RDG 专属的调试手段，CVar 名称与默认值逐条核对 5.8 源码 `Engine/Source/Runtime/RenderCore/Private/RenderGraph.cpp` 的声明。通用渲染调试（GPU 捕获、ShowFlags 可视化、GPU 崩溃取证、外部 profiler）见 [`card-03-debugging.md`](card-03-debugging.md)。
+本节只收 RDG 专属的调试手段，CVar 名称与默认值逐条核对 5.8 源码 `Engine/Source/Runtime/RenderCore/Private/RenderGraphBuilder.cpp` 等处的声明。通用渲染调试（GPU 捕获、ShowFlags 可视化、GPU 崩溃取证、外部 profiler）见 [`card-03-debugging.md`](card-03-debugging.md)。
 
 ### 8.1 验证与即时模式
 
@@ -1343,7 +1343,7 @@ void SetPassWorkload(FRDGPass* Pass, uint32 Workload);
 
 | 文件 | 路径 | 核心内容 |
 |------|------|----------|
-| `RenderGraph.cpp` | `Private/RenderGraph.cpp` | `FRDGBuilder::Execute()` / `Compile()` 等核心实现 |
+| `RenderGraphBuilder.cpp` | `Private/RenderGraphBuilder.cpp` | `FRDGBuilder::Execute()` / `Compile()` 等核心实现 |
 | `DumpGPU.cpp` | `Engine/Source/Runtime/RenderCore/Private/DumpGPU.cpp` | `FRDGResourceDumpContext` 完整实现 |
 | `RenderGraphValidation.cpp` | `Engine/Source/Runtime/RenderCore/Private/RenderGraphValidation.cpp` | `FRDGUserValidation` 实现 |
 | `RenderGraphBlackboard.cpp` | `Engine/Source/Runtime/RenderCore/Private/RenderGraphBlackboard.cpp` | `FRDGBlackboard::AllocateIndex` 等 |
@@ -1360,7 +1360,7 @@ void SetPassWorkload(FRDGPass* Pass, uint32 Workload);
 | `Engine/Source/Runtime/RenderCore/Public/RenderGraphUtils.h` | 工具函数：`AddCopyTexturePass`、`AddClearUAVPass`、`FComputeShaderUtils::AddPass`、`AddReadbackTexturePass`、`FRDGExternalAccessQueue` |
 | `Engine/Source/Runtime/RenderCore/Public/RenderGraphDefinitions.h` | `ERDGPassFlags`、`ERDGBufferFlags`、`ERDGTextureFlags`、`ERDGBuilderFlags`、`FRDGBlackboard` 前向声明 |
 | `Engine/Source/Runtime/RenderCore/Public/RenderGraphBlackboard.h` | `FRDGBlackboard` 实现 |
-| `Engine/Source/Runtime/RenderCore/Private/RenderGraph.cpp` | `FRDGBuilder::Execute`、Compile + Culling 实现 |
+| `Engine/Source/Runtime/RenderCore/Private/RenderGraphBuilder.cpp` | `FRDGBuilder::Execute`、Compile + Culling 实现 |
 | `Engine/Source/Runtime/RenderCore/Private/RenderGraphAllocator.cpp` | Transient 资源分配器、别名优化 |
 | `Engine/Source/Runtime/RenderCore/Private/RenderGraphValidation.cpp` | Debug 验证（`-rdgimmediate` 资源泄漏检测） |
 | `Engine/Source/Runtime/Renderer/Private/PostProcess/PostProcessing.cpp` | 后处理链 RDG 实现，`AddPostProcessingPasses` 入口 |

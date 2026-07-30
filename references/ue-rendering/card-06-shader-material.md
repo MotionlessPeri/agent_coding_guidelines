@@ -31,7 +31,7 @@
 
 - `Engine/Source/Runtime/Engine/Public/MaterialShared.h` — `FMaterial`、`FMaterialResource`、`FMaterialShaderMap` 核心声明（含完整定义、编译/序列化/查找）
 - `Engine/Source/Runtime/Engine/Public/Materials/Material.h` — `UMaterial` 资产 UObject 定义
-- `Engine/Source/Runtime/Engine/Private/MaterialShaderMap.cpp` — ShaderMap 编译调度
+- `Engine/Source/Runtime/Engine/Private/Materials/MaterialShader.cpp` — ShaderMap 编译调度
 
 ### 编译触发链
 
@@ -143,7 +143,7 @@ flowchart TB
 ### 关键源码
 
 - `Engine/Source/Runtime/Engine/Public/ShaderCompiler.h` — `FShaderCompileJob`、`FShaderCompileJobCollection`
-- `Engine/Source/Programs/ShaderCompileWorker/ShaderCompileWorker.cpp` — 外部进程入口
+- `Engine/Source/Programs/ShaderCompileWorker/Private/ShaderCompileWorker.cpp` — 外部进程入口（安装版引擎裁掉了 `Source/Programs/`，要看这个文件需源码版引擎）
 - `Engine/Source/Runtime/Engine/Private/ShaderCompiler/ShaderCompiler.cpp` — 主进程编译调度
 - `Engine/Source/Developer/ShaderFormatOpenGL/` — 各平台 Shader 编译后端
 
@@ -286,7 +286,7 @@ r.Substrate 1 → 完全走 Substrate 管线（MeshDrawPipeline 用 FSubstrateMe
 - `Engine/Shaders/Private/Substrate/SubstrateEvaluation.ush` — BSDF 评估计算（含 Glint 支持）
 - `Engine/Shaders/Private/Substrate/SubstrateToonBSDF.ush` — 卡通着色 BSDF
 - `Engine/Shaders/Private/Substrate/Glint/GlintThirdParty.ush` — 几何微闪实现
-- `Engine/Shaders/Private/Substrate/SubstrateDeferredShading.ush` — Deferred 路径
+- `Engine/Shaders/Private/Substrate/SubstrateDeferredLighting.ush` — Deferred 路径
 - `Engine/Source/Runtime/Engine/Public/Rendering/SubstrateMaterialShared.h` — C++ 端 Substrate 材质类型定义
 - `Engine/Source/Runtime/Engine/Private/ShaderCompiler/ShaderCompiler.cpp` — Glint 平台宏定义注入
 - `Engine/Source/Runtime/Renderer/Private/Substrate/Substrate.cpp` — AsyncClassification 等 CVar 定义

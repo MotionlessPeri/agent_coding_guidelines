@@ -455,7 +455,7 @@ flowchart TB
 **自定义扩展路径**：
 
 1. **材质 Graph 内做**：在 `Material Editor` 里用标准节点，Nanite 自动编译兼容版
-2. **自定义 Shader 层**：`Engine/Shaders/Nanite/MaterialResolve.ush` 是 Material Resolve 的入口，可修改 resolve 逻辑
+2. **自定义 Shader 层**：`Engine/Shaders/Private/Nanite/NaniteShadeBinning.usf` 是材质 shade binning 的入口，可修改分箱逻辑
 3. **Custom Node**：材质编辑器里插 `Custom` 节点，写入 HLSL，但必须符合 Nanite 约束
 
 **`r.Nanite.MaterialOverride`**：调试用，替换所有 Nanite 材质为指定材质（用于定位性能问题）。
@@ -616,7 +616,7 @@ Nanite 渲染结果的后处理组合阶段：
 | `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteShading.cpp` | Shading Pipeline（`FNaniteRasterPipelines`、`FNaniteShadingPipelines`、`ShadeBinning`、`DispatchBasePass`） |
 | `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteDrawList.cpp` | Nanite Draw List 收集 |
 | `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteComposition.cpp` | 后处理组合（Depth/Stencil/HTile/CustomDepth 导出） |
-| `Renderer/Private/Nanite/NaniteTranslateTranslucency.cpp` | 半透明 Mesh Shader 路径 |
+| `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteTranslucency.cpp` | 半透明 Mesh Shader 路径 |
 | `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteRayTracing.cpp` | Nanite Ray Tracing 管线（CLAS / StreamOut / Fallback） |
 | `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteRayTracingASCache.cpp` | Ray Tracing Acceleration Structure 缓存 |
 | `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteStreamOut.cpp` | Stream Out 路径（Cluster → 传统几何缓冲） |
@@ -630,14 +630,14 @@ Nanite 渲染结果的后处理组合阶段：
 | `Engine/Source/Runtime/Renderer/Private/Nanite/Voxel.cpp` | 实验性 Voxel 渲染 |
 | `Engine/Source/Runtime/Renderer/Private/Nanite/TessellationTable.cpp` | Tessellation 表预处理 |
 | `Engine/Source/Runtime/Renderer/Private/Nanite/NaniteCurveRaster.inl` | 曲线图元光栅化 |
-| `Engine/Shaders/Nanite/NaniteCull.usf` | GPU 剔除的 Compute Shader |
-| `Engine/Shaders/Nanite/NaniteMaterialResolve.ush` | Material Resolve 的 Shader 入口 |
-| `Engine/Shaders/Nanite/NaniteVS.usf` | Nanite 的 Vertex Shader |
-| `Engine/Shaders/Nanite/NanitePS.usf` | Nanite 的 Pixel Shader（Visibility Buffer 写入） |
+| `Engine/Shaders/Private/Nanite/NaniteClusterCulling.usf` | Cluster 级 GPU 剔除（实例级见 `NaniteInstanceCulling.usf`） |
+| `Engine/Shaders/Private/Nanite/NaniteShadeBinning.usf` | 材质 shade binning（把像素按材质分箱后着色） |
+| `Engine/Shaders/Private/Nanite/NaniteVertexFactory.ush` | Nanite 顶点工厂（Nanite 不走传统 VS/PS 对） |
+| `Engine/Shaders/Private/Nanite/NaniteRasterizer.usf` | 光栅化并写 Visibility Buffer |
 | `Engine/Shaders/Private/Nanite/NaniteVertexFactory.ush` | Vertex Factory Shader（解码/变换） |
 | `Engine/Shaders/Private/Nanite/NaniteRayTrace.ush` | Ray Tracing 相关 Shader |
 | `Engine/Shaders/Private/Nanite/NaniteDataDecode.ush` | 数据解码 Shader |
-| `Engine/Source/Programs/NaniteCook/NaniteCook.cpp` | 离线 Cook 工具（Cluster 生成/压缩） |
+| `Engine/Source/Developer/NaniteBuilder/Private/NaniteBuilder.cpp` | 离线构建（Cluster 生成 / 压缩，编码见 `Encode/NaniteEncode.cpp`） |
 | `Developer/NaniteBuilder/Private/Encode/` | Nanite 编码器（Cluster 编码/压缩/约束） |
 | `Engine/Source/Developer/NaniteBuilder/Private/NaniteAssemblyBuild.cpp` | Assembly Part 构建 |
 

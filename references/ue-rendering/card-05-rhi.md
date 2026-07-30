@@ -532,10 +532,10 @@ class FDynamicRHI {
 | 命令列表实现 | `Engine/Source/Runtime/RHI/Private/RHICommandList.cpp` |
 | Barrier/Transition 定义 | `Engine/Source/Runtime/RHI/Public/RHIAccess.h` |
 | D3D12 命令上下文 | `Engine/Source/Runtime/D3D12RHI/Private/D3D12CommandContext.cpp` |
-| D3D12 资源管理 | `Engine/Source/Runtime/D3D12RHI/Private/D3D12Resource.cpp` |
+| D3D12 资源管理 | `Engine/Source/Runtime/D3D12RHI/Private/D3D12Resources.cpp` |
 | D3D12 屏障生成 | `Engine/Source/Runtime/D3D12RHI/Private/D3D12CommandContext.cpp` → `RHITransitionResources` |
-| Vulkan 命令列表 | `Engine/Source/Runtime/VulkanRHI/Private/VulkanCommandList.cpp` |
+| Vulkan 命令列表 | `Engine/Source/Runtime/VulkanRHI/Private/VulkanCommands.cpp` |
 | Vulkan 屏障 | `Engine/Source/Runtime/VulkanRHI/Private/VulkanCommands.cpp` → `RHITransitionResources` |
-| Vulkan 状态缓存 | `Engine/Source/Runtime/VulkanRHI/Private/VulkanStateCache.h` |
-| Shader 格式 | `Engine/Source/Runtime/ShaderCore/Public/ShaderCode.h` |
-| GPU Fence | `Engine/Source/Runtime/RHI/Public/GPUFence.h` |
+| Vulkan 状态缓存 | `Engine/Source/Runtime/VulkanRHI/Private/VulkanState.h`（管线状态见 `VulkanPipelineState.h`） |
+| Shader 格式 | `Engine/Source/Runtime/RenderCore/Public/ShaderCore.h` |
+| GPU Fence | `Engine/Source/Runtime/RHI/Public/RHIResources.h`（`FRHIGPUFence` 声明处） |
