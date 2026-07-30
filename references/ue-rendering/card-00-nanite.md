@@ -238,12 +238,16 @@ BasePass(Nanite) → Visibility Buffer → ShadeBinning → Material Resolve →
 | Nanite 网格 | CullRaster → Visibility Buffer → ShadeBinning → Material Resolve → G-Buffer |
 | 非 Nanite 网格 | 传统 BasePass → G-Buffer |
 | 半透明 Nanite | Mesh Shader 路径（`NaniteTranslateTranslucency.cpp`，`r.Nanite.MeshShaderTranslucency`） |
-| 动态物体 | 可选 Nanite（通过 `r.Nanite.AllowMovingNanite`） |
+<!-- verify:ignore-start -->
+| 动态物体 | 可选 Nanite（按组件设置；5.8 无 `r.Nanite.AllowMovingNanite` 这个 CVar） |
+<!-- verify:ignore-end -->
 | Skinned Nanite | 可选（Assembly Part + Bone Influence 系统）|
 
 **G-Buffer 共存**：Nanite 的 Material Resolve 写入与传统 BasePass 写入的 G-Buffer 格式完全一致——后续的 Lighting Pass 不分来源。
 
-**关键点**：`r.Nanite.MaterialResolve` 控制 Material Resolve 采用的策略：
+<!-- verify:ignore-start -->
+**关键点**：5.8 里没有 "Material Resolve" 这一步，对应机制是材质可见性测试与 shade binning，开关是 `r.Nanite.MaterialVisibility`（并行化用 `r.Nanite.MaterialVisibility.Async`）。原调研稿写的 `r.Nanite.MaterialResolve` 不存在。相关策略：
+<!-- verify:ignore-end -->
 - `0` — 禁用，Nanite 物体不可见（debug）
 - `1` — 标准 Material Resolve（默认）
 - `2` — 逐像素 Resolve
@@ -263,7 +267,9 @@ BasePass(Nanite) → Visibility Buffer → ShadeBinning → Material Resolve →
 - 非 Nanite 物体走传统 BasePass
 - 两类物体的 G-Buffer 在同一个 RenderTarget 里合并
 
-**`r.Nanite.VisibilityBuffer`**：控制是否启用 Visibility Buffer 路径（默认 1）。
+<!-- verify:ignore-start -->
+**Visibility Buffer 路径**没有独立开关——它就是 Nanite 的渲染方式，随 `r.Nanite` 一起启用。原调研稿写的 `r.Nanite.VisibilityBuffer` 不存在。
+<!-- verify:ignore-end -->
 
 ---
 
@@ -310,17 +316,17 @@ BasePass(Nanite) → Visibility Buffer → ShadeBinning → Material Resolve →
 
 **Page Pool 是 GPU 上驻留所有 Nanite 几何数据的环形缓冲区**。
 
-**结构**：GPU Page Pool（环形缓冲区，大小由 `r.Nanite.PagePoolSize` 控制）中，每个 Page 存放 Cluster 数据（顶点 / 索引 / 包围盒）。驱逐策略为最近最少使用（LRU）。被驱逐的 Page 如果还在系统内存 cache 中，下次加载更快；如果不在 cache 中，需要从磁盘重新加载。
+**结构**：GPU 流送池（大小由 `r.Nanite.Streaming.StreamingPoolSize` 控制，单位 MB）中，每个 Page 存放 Cluster 数据（顶点 / 索引 / 包围盒）。驱逐策略为最近最少使用（LRU）。被驱逐的 Page 如果还在系统内存 cache 中，下次加载更快；如果不在 cache 中，需要从磁盘重新加载。
 
 **关键参数**：
-- `r.Nanite.PagePoolSize` — Page Pool 大小（MB，默认 2048）
-- `r.Nanite.MaxPageCount` — 最大 Page 数（默认 65536）
-- `r.Nanite.Streaming.PageSize` — 每个 Page 的目标大小（KB，默认 128）
+- `r.Nanite.Streaming.StreamingPoolSize` — 流送池大小（MB）
+- `r.Nanite.Streaming.MaxPageInstallsPerFrame` — 每帧最多安装多少 Page（限制它可降低卡顿峰值）
+- `r.Nanite.Streaming.BandwidthLimit` — 流送带宽上限（MB/s，负值不限）
 
 **显存压力的表现**：
 - Page thrashing（频繁换入换出）→ 帧率抖动
-- 降低 `r.Nanite.Streaming.PoolSize` → 更积极驱逐
-- 降低 `r.Nanite.Streaming.ResolutionScale` → 降低分辨率减少压力
+- 降低 `r.Nanite.Streaming.StreamingPoolSize` → 更积极驱逐
+- 提高 `r.Nanite.MaxPixelsPerEdge` → 目标三角形更大，几何需求下降
 
 ---
 
@@ -348,7 +354,7 @@ flowchart TB
 
 **调优参数**：
 - `r.Streaming.PoolSize` — 纹理池大小
-- `r.Nanite.PagePoolSize` — 几何池大小
+- `r.Nanite.Streaming.StreamingPoolSize` — 几何流送池大小
 - **两者之和不能超过 GPU 显存**，否则两者都会 thrashing
 
 ---
@@ -376,14 +382,14 @@ flowchart TB
 
 | 瓶颈位置 | 症状 | 定位工具 | 调优方向 |
 |----------|------|----------|----------|
-| **GPU 剔除 (CullKernel)** | GPU 管线的 Compute 阶段耗时 | `r.Nanite.ShowStats` | `r.Nanite.Culling` 调整剔除策略；`r.Nanite.PersistentThreadsCulling` |
+| **GPU 剔除 (CullKernel)** | GPU 管线的 Compute 阶段耗时 | `r.Nanite.ShowStats` | `r.Nanite.Culling.*` 家族（`Frustum` / `HZB` / `DrawDistance` / `MinLOD`）逐项关掉做对照；`r.Nanite.PersistentThreadsCulling` |
 | **ShadeBinning** | 材质分桶排序耗时 | `r.Nanite.ShowStats` / `ProfileGPU` | 减少 unique 材质 pipeline 数 |
-| **Material Resolve** | PS 阶段耗时，高分辨率下明显 | `GPU Profiler` / `ProfileGPU` | 降低材质复杂度，用 `r.Nanite.MaterialResolve` 调整 |
-| **Page 加载** | 帧率突然卡顿（hitches） | `r.Nanite.Streaming.Log` | 增大 `r.Nanite.Streaming.PageSize`，预加载 |
-| **Page Pool 不足** | 帧率抖动，纹理模糊 | `r.Nanite.PagePoolStats` | 增大 `r.Nanite.PagePoolSize` |
+| **Material Resolve** | PS 阶段耗时，高分辨率下明显 | `GPU Profiler` / `ProfileGPU` | 降低材质复杂度，用 `r.Nanite.MaterialVisibility` 调整 |
+| **Page 加载** | 帧率突然卡顿（hitches） | `r.Nanite.Streaming.Debug.GPURequests` | 提高 `r.Nanite.Streaming.MaxPageInstallsPerFrame` 或放宽 `BandwidthLimit` |
+| **Page Pool 不足** | 帧率抖动，纹理模糊 | `r.Nanite.ShowStats` | 增大 `r.Nanite.Streaming.StreamingPoolSize` |
 | **CPU 端 LOD 选择** | 大批量 Component 更新 | `stat Nanite` | 减少 Nanite Component 数量 |
 | **显存带宽** | 高分辨率下 Material Resolve 瓶颈 | `GPU Visualizer` | 降低分辨率，简化材质 |
-| **Hi-Z 构建** | 多 View 场景（分屏） | `r.Nanite.HiZB` | 减少分屏数量 |
+| **Hi-Z 构建** | 多 View 场景（分屏） | `r.Nanite.Culling.HZB` | 减少分屏数量 |
 
 **`r.Nanite.ShowStats`** 是调试 Nanite 性能的第一入口——输出 GPU 各阶段耗时。
 
@@ -391,48 +397,33 @@ flowchart TB
 
 ## 12. 关键配置参数 — `r.Nanite.*`
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `r.Nanite.VisibilityBuffer` | 1 | 启用 Nanite Visibility Buffer 路径 |
-| `r.Nanite.MaterialResolve` | 1 | Material Resolve 策略 (0=禁用, 1=标准, 2=逐像素) |
-| `r.Nanite.Culling` | 1 | 启用 Nanite GPU 剔除 |
-| `r.Nanite.Culling.TwoPass` | 1 | 启用两阶段遮挡剔除（Main + Post 两遍，捕获漏网之鱼）|
-| `r.Nanite.PersistentThreadsCulling` | 1 | 启用 Persistent Threads 模式剔除（提高 GPU 占用率，避免 wave 空闲）|
-| `r.Nanite.Culling.ShowAssemblyParts` | 0 | 调试：显示 Assembly Part 边界 |
-| `r.Nanite.Culling.MaxNodes` | 65536 | 剔除节点上限 |
-| `r.Nanite.Streaming` | 1 | 启用 Nanite 流式加载 |
-| `r.Nanite.Streaming.Async` | 1 | 异步加载 Page |
-| `r.Nanite.Streaming.PageSize` | 128 | Page 目标大小 (KB) |
-| `r.Nanite.PagePoolSize` | 2048 | GPU Page Pool 大小 (MB) |
-| `r.Nanite.MaxPageCount` | 65536 | 最大 Page 数 |
-| `r.Nanite.MaxVisibleAssemblyParts` | 262144 | 最大可见 Assembly Part 数 |
-| `r.Nanite.HiZB` | 1 | 启用 Hierarchical Z-Buffer |
-| `r.Nanite.AllowMovingNanite` | 1 | 允许动态物体走 Nanite |
-| `r.Nanite.FrustumCulling` | 1 | 启用视锥剔除 |
-| `r.Nanite.OcclusionCulling` | 1 | 启用遮挡剔除 |
-| `r.Nanite.OverdrawVisualization` | 0 | Overdraw 可视化调试 |
-| `r.Nanite.ShowStats` | 0 | 显示 Nanite 性能统计 |
-| `r.Nanite.ComputeRasterization` | 1 | 启用 Compute Shader 光栅化路径 |
-| `r.Nanite.AsyncRasterization` | 1 | 异步 Compute 光栅化 |
-| `r.Nanite.MeshShaderTranslucency` | 1 | Mesh Shader 半透明路径 |
-| `r.Nanite.ResummarizeHTile` | 1 | 重新汇总 HTile |
-| `r.Nanite.DecompressDepth` | 0 | 深度解压缩调试 |
-| `r.Nanite.CustomDepth.ExportMethod` | 1 | CustomDepth 导出方式 (0=PS, 1=CS) |
-| `r.Nanite.MaterialVisibility` | 0 | 启用 Nanite 材质可见性测试 |
-| `r.Nanite.MaterialVisibility.Async` | 0 | 材质可见性异步并行测试 |
-| `r.Nanite.MaterialVisibility.Primitives` | 0 | 图元级别可见性 |
-| `r.Nanite.MaterialVisibility.Instances` | 0 | 实例级别可见性 |
-| `r.Nanite.MaterialVisibility.RasterBins` | 0 | Raster Bin 级别可见性 |
-| `r.Nanite.MaterialVisibility.ShadingBins` | 0 | Shading Bin 级别可见性 |
-| `r.Nanite.StreamOut.CacheTraversalData` | 1 | 缓存遍历数据（Stream Out 路径）|
-| `r.Nanite.Curve.TiledRasterization` | 0 | 曲线分块光栅化 (0=关, 1=主视图, 2=主+阴影) |
-| `r.Nanite.Curve.TiledRasterization.TileCapacity` | 128 | 每 Tile 最大线段数 |
-| `r.Nanite.Curve.TiledRasterization.UseClusterBound` | 1 | 使用 Cluster 边界分配 Tile 数 |
-| `r.RayTracing.Nanite.Update` | 1 | 处理 Nanite RayTracing 更新请求 |
-| `r.RayTracing.Nanite.LODBias` | 0.0 | Ray Tracing 中 Nanite 的 LOD 偏移 |
-| `r.RayTracing.Nanite.MinCutError` | 0.0 | Ray Tracing 最小裁剪误差 |
-| `r.RayTracing.Nanite.Offscreen.LODBias` | 1.0 | 离屏 Nanite 的 RT LOD 偏移 |
-| `r.RayTracing.Nanite.Offscreen.MinCutError` | 4.0 | 离屏 Nanite 的 RT 最小裁剪误差 |
+下表全部由 `scripts/ue-cvar-dump.py` 从 5.8 源码生成，作用说明取引擎自己的帮助文本。`r.Nanite.*` 家族在 5.8 有 170 个，这里只列常调项——完整清单用 `python scripts/ue-cvar-dump.py r.Nanite --md` 现查。
+
+| CVar | 作用 |
+|---|---|
+| `r.Nanite` | Render static meshes using Nanite. |
+| `r.Nanite.MaxPixelsPerEdge` | The triangle edge length that the Nanite runtime targets, measured in pixels. |
+| `r.Nanite.FilterPrimitives` | Whether per-view filtering of primitive is enabled. |
+| `r.Nanite.Culling.Frustum` | Set to 0 to test disabling Nanite culling due to being outside of the view frustum. |
+| `r.Nanite.Culling.HZB` | Set to 0 to test disabling Nanite culling due to occlusion by the hierarchical depth buffer. |
+| `r.Nanite.Culling.DrawDistance` | Set to 0 to test disabling Nanite culling due to instance draw distance. |
+| `r.Nanite.Culling.GlobalClipPlane` | Set to 0 to test disabling Nanite culling due to being beyond the global clip plane. NOTE: Has no effect if r.AllowGlobalClipPlane=0. |
+| `r.Nanite.Culling.MinLOD` | Set to 0 to test disabling Nanite culling based on cluster group MinLOD. |
+| `r.Nanite.MaterialVisibility` | Whether to enable Nanite material visibility tests |
+| `r.Nanite.MaterialVisibility.Async` | Whether to enable parallelization of Nanite material visibility tests |
+| `r.Nanite.AllowMaskedMaterials` | Whether to allow meshes using masked materials to render using Nanite. |
+| `r.Nanite.AllowMeshShaders` | Whether to enable support for Nanite mesh shaders (if supported) |
+| `r.Nanite.AllowCurves` | Whether to enable support for Nanite curve rasterization |
+| `r.Nanite.AllowAssemblies` | Whether to enable support for Nanite Assemblies |
+| `r.Nanite.Streaming.Async` | Perform most of the Nanite streaming on an asynchronous worker thread instead of the rendering thread. |
+| `r.Nanite.Streaming.AsyncCompute` | Schedule GPU work in async compute queue. |
+| `r.Nanite.Streaming.StreamingPoolSize` | Size of streaming pool in MB. Does not include memory used for root pages. Be careful with setting this close to the GPU resource size limit (typically 2-4GB) a… |
+| `r.Nanite.Streaming.BandwidthLimit` | Streaming bandwidth limit in megabytes per second. Negatives values are interpreted as unlimited. |
+| `r.Nanite.Streaming.MaxPageInstallsPerFrame` | Maximum number of pages that can be installed per frame. Limiting this can limit the overhead of streaming. |
+| `r.Nanite.ShowStats` | — |
+| `r.Nanite.StatsFilter` | Sets the name of a specific Nanite raster pass to capture stats from - enumerate available filters with `NaniteStats List` cmd. |
+| `r.Nanite.Visualize.OverdrawScale` | — |
+| `r.Nanite.EmitMaterialPerformanceWarnings` | Emit log and on-screen messages to warn when a Nanite material is both programmable and using either masking or pixel depth offset (PDO). |
 
 ---
 
@@ -458,7 +449,9 @@ flowchart TB
 2. **自定义 Shader 层**：`Engine/Shaders/Private/Nanite/NaniteShadeBinning.usf` 是材质 shade binning 的入口，可修改分箱逻辑
 3. **Custom Node**：材质编辑器里插 `Custom` 节点，写入 HLSL，但必须符合 Nanite 约束
 
-**`r.Nanite.MaterialOverride`**：调试用，替换所有 Nanite 材质为指定材质（用于定位性能问题）。
+<!-- verify:ignore-start -->
+**定位材质开销**：5.8 无 `r.Nanite.MaterialOverride` 这个 CVar。用 `r.Nanite.ShowStats` 配 `r.Nanite.StatsFilter` 定位到具体 raster pass，再用 `r.Nanite.EmitMaterialPerformanceWarnings` 让引擎主动报告开销大的 Nanite 材质。
+<!-- verify:ignore-end -->
 
 ---
 
@@ -668,7 +661,9 @@ Static Mesh 源 → Nanite Cook（UE Cooker）→ 输出：
 5. **LOD 层级表生成** — 预计算每个 SSE 阈值的 Cluster 可见性
 6. **Assembly Part 构建** — 如果启用了 Assembly，构建 Part 间依赖和骨骼绑定
 
-**`r.Nanite.Cook.ForceSingle`**：强制单线程 Cook（调试用）。
+<!-- verify:ignore-start -->
+**Cook 调试**：5.8 无 `r.Nanite.Cook.ForceSingle` 这个 CVar。Nanite 离线构建在 `Engine/Source/Developer/NaniteBuilder/`，调试构建行为看那里的日志类别。
+<!-- verify:ignore-end -->
 
 ---
 

@@ -35,7 +35,9 @@ flowchart TB
 **常见坑**：
 - 若 `r.RHIThread.Enable` 为 0，RHI 命令在渲染线程直接执行（immediate mode），排查同步问题时先确认这个 cvar。
 - `FRenderCommandFence::Wait()` 会在主线程阻塞，不能频繁调用；`ENQUEUE_RENDER_COMMAND` 的 lambda 内不能持有主线程同步对象（死锁风险）。
-- 渲染线程 crash 时常用 `r.RenderThread.Suspend` 冻结后 attach 调试器，或在 `RenderThread.cpp` 的 `FRenderingThread` 函数设断点。
+<!-- verify:ignore-start -->
+- 渲染线程 crash 时在 `Engine/Source/Runtime/RenderCore/Private/RenderingThread.cpp` 的渲染线程主循环设断点。想让渲染落后一帧便于观察可用 `r.OneFrameThreadLag`（`r.RenderThread.Suspend` 这个 CVar 不存在）。
+<!-- verify:ignore-end -->
 
 ---
 
@@ -85,7 +87,9 @@ flowchart LR
 **关键源码/类名**：
 - `FDeferredShadingSceneRenderer::Render` — `DeferredShadingRenderer.cpp`
 - `FMobileSceneRenderer::Render` — `MobileShadingRenderer.cpp`
-- `FSceneRenderer::CreateSceneRenderer` — 工厂函数，根据 `r.MobileContent` 和 `ShaderPlatform` 选择分支
+<!-- verify:ignore-start -->
+- `FSceneRenderer::CreateSceneRenderer` — 工厂函数，根据 `ShaderPlatform` 与 Feature Level 选择分支（不存在 `r.MobileContent` 这个 CVar）
+<!-- verify:ignore-end -->
 
 **关系**：
 
@@ -165,7 +169,7 @@ flowchart TB
 6. 视口可见性后处理—— 编辑器 gizmo、调试可视化叠加
 
 **常见坑**：
-- `InitViews` 的耗时中，Primitive 数越多越慢（O(N^2) 的 worst-case 存在于 Parallel Relevance）。`r.MaxVisiblePrimitives` 可以限制，但会引入可见性漏。
+- `InitViews` 的耗时中，Primitive 数越多越慢（O(N^2) 的 worst-case 存在于 Parallel Relevance）。没有「限制可见图元总数」的 CVar；实际手段是收紧剔除（`r.Nanite.Culling.DrawDistance`、遮挡剔除相关项）和降低场景图元数。
 - 自定义 Primitive 类型若未正确实现 `GetViewRelevance`，可能被错误裁剪或永远可见。
 - 遮挡查询是异步的：当前帧提交的查询，结果在下一帧的 `InitViews` 才可用，第一帧所有物体视为可见。
 
@@ -394,8 +398,10 @@ flowchart TB
 **常见坑**：
 - Lumen 需要场景表达（Surface Cache / Voxel），在 `InitViews` 中更新。如果 Primitive 在 `InitViews` 之后才加进场景，Lumen 无法感知它，直到下一帧。
 - Nanite 运行时强制使用 Compute-based culling 和 rasterization，不经过传统 Vertex Shader 管线。自定义材质如果依赖 Vertex Shader 的特定运算（如 `VertexFactory` 的自定义），需确认在 Nanite 路径下是否生效。
-- `r.Nanite.VisibilityBuffer` 和 `r.Nanite.BasePassVisibility` 影响 Nanite 的写入路径，调试 Nanite 问题时先检查这两个 cvar。
-- Lumen 和 Nanite 的 GPU 开销在 `r.Lumen.DiffuseGI.Enable` 和 `r.Nanite.Enabled` 为 0 时可完全关闭，返回纯传统渲染管线。
+<!-- verify:ignore-start -->
+- 调试 Nanite 写入路径时先看 `r.Nanite`（总开关）与 `r.Nanite.Culling.*` 家族；原文写的 `r.Nanite.VisibilityBuffer` / `r.Nanite.BasePassVisibility` 在 5.8 中不存在。
+<!-- verify:ignore-end -->
+- Lumen 和 Nanite 的 GPU 开销在 `r.Lumen.DiffuseIndirect.Allow 0` 和 `r.Nanite 0` 时可完全关闭，回到传统渲染管线。
 
 ---
 

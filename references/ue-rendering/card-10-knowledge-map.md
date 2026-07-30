@@ -543,10 +543,10 @@
 **要实操的内容**：
 1. 搭建多平台测试场景（PC D3D12 + Vulkan + Mobile），对比渲染效果差异
 2. 用 `r.MobileHDR 0` + `r.ForwardShading 1` 模拟移动端渲染，优化至 30fps
-3. 用 `r.ShaderCompiler.Stats` 观察 Shader 编译队列，定位 Permutation 爆炸源
+3. 用 `stat ShaderCompiling` 观察 Shader 编译队列，定位 Permutation 爆炸源
 4. 用 `bUsedWith*` 开关裁剪不必要的 Shader 变体，对比编译时间变化
 5. 模拟 GPU Crash（用非法 Shader 参数），用 `r.GPUCrashDebugging` 取证
-6. 用 D3D12 Debug Layer 捕获资源泄漏，用 `r.RHIResourceStats` 验证
+6. 用 `r.D3D12.EnableD3DDebug 1` 开 D3D12 debug layer 捕获资源泄漏，用 `stat RHI` 验证
 
 **里程碑**：能独立处理跨平台渲染适配咨询，能给出 Shader 编译优化方案，能诊断 GPU Crash 根因
 

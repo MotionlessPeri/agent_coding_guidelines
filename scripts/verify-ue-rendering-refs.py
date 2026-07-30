@@ -53,8 +53,10 @@ PATH_RE = re.compile(r"`([A-Za-z][A-Za-z0-9_./+-]*\.(?:h|cpp|inl|ush|usf|cs))`")
 COMBINED_RE = re.compile(r"^(?P<stem>.+?)\.(?P<first>[a-z]+)/\.(?P<second>[a-z]+)$")
 
 # 反引号里的 CVar 名。UE 的渲染 CVar 前缀不止 `r.`。
+# 末尾的负向断言排掉源码文件名——`Nanite.cpp` / `Lumen.h` 这类会被点分模式误匹配成 CVar。
 CVAR_RE = re.compile(
-    r"`((?:r|D3D12|vk|vr|sg|fx|au|p|net|Slate|Nanite|Lumen)\.[A-Za-z0-9_.]*[A-Za-z0-9_])`"
+    r"`((?:r|D3D12|vk|vr|sg|fx|au|p|net|Slate|Nanite|Lumen|renderdoc)"
+    r"\.[A-Za-z0-9_.]*[A-Za-z0-9_])`(?<!\.cpp`)(?<!\.h`)(?<!\.inl`)(?<!\.ush`)(?<!\.usf`)(?<!\.cs`)"
 )
 
 # 引擎源码里 CVar 名的字面量出现形式。

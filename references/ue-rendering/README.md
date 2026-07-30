@@ -55,7 +55,9 @@ flowchart TD
 
 这批内容不是引擎官方文档，**不要当权威直接答客户**。里面每条 API 名、CVar 名、源码路径都可能是
 调研阶段生成的似真内容。已知的失败模式：编造出读起来完全合理的文件名（`NaniteRendering.cpp`）、
+<!-- verify:ignore-start -->
 不存在的 CVar 家族（`r.RDG.Debug.VerifyBarriers`）、以及不成立的版本变更说法。
+<!-- verify:ignore-end -->
 
 所以：
 

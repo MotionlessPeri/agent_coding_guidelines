@@ -163,7 +163,9 @@ flowchart TD
 
 **关键文件**：`MobileShadingRenderer.cpp`, `MobileBasePassRendering.cpp`
 
-**UE 5.8 说明**：Mobile 默认 Forward；部分高端移动 GPU 支持 `r.Mobile.DeferredShading` 启用 Mobile Deferred 路径。
+<!-- verify:ignore-start -->
+**UE 5.8 说明**：Mobile 默认 Forward；部分高端移动 GPU 可通过 `r.Mobile.ShadingPath` 切到 Mobile Deferred 路径（`r.Mobile.DeferredShading` 这个名字在 5.8 中不存在）。
+<!-- verify:ignore-end -->
 
 ---
 
@@ -188,7 +190,7 @@ flowchart TD
   - **Mesh Shader**：原生支持 (DX12 Ultimate)
   - **Sampler Feedback**：用于纹理流送与 mip 管理
   - **VRS Tier 2**：硬件 shading rate image
-  - **Series S 限制**：`r.HLOD.DistributeBuildCells` 更少线程；`r.Shadow.MaxCSMResolution` 默认 1024 (Series S) vs 2048 (Series X)
+  - **Series S 限制**：`r.Shadow.MaxCSMResolution` 默认 1024（Series S）vs 2048（Series X）；HLOD 相关可调项见 `r.HLOD.MaximumLevel` / `r.HLOD.DistanceOverride`
   - **BC 压缩**：统一使用 BC 纹理压缩（与 PC 一致）
 
 ---
@@ -282,7 +284,9 @@ bool FMyShader::ShouldCompilePermutation(const FShaderPermutationParameters& Par
 
 ### 运行时 Shader 裁剪
 
-通过 `r.ShadowQuality` `r.MaterialQualityLevel` `r.FeatureLevel` 等 CVar 控制 Shader 变体选择。UE 5.8 新增 `r.RayTracing.ForceBuild` 控制 Ray Tracing 仅构建 BVH 不渲染。
+<!-- verify:ignore-start -->
+通过 `r.ShadowQuality`、`r.MaterialQualityLevel` 等 CVar 控制 Shader 变体选择。Feature Level 本身不是 CVar——运行期取自 `GMaxRHIFeatureLevel`，编辑器预览开关是 `r.FeatureLevelPreview`。光追整体开关是 `r.RayTracing.ForceAllRayTracingEffects`。原文写的 `r.RayTracing.ForceBuild` 控制 Ray Tracing 仅构建 BVH 不渲染。
+<!-- verify:ignore-end -->
 
 ---
 
@@ -293,8 +297,8 @@ bool FMyShader::ShouldCompilePermutation(const FShaderPermutationParameters& Par
 | CVar / 设置 | 效果 | 目标平台 |
 |---|---|---|
 | `r.Streaming.PoolSize` | 纹理池大小 (MB) | 所有平台 |
-| `r.MobileObeyThumbnailTextureRes` | 移动端缩略图纹理降级 | Mobile |
-| `r.HLOD.MaxTextureResolution` | HLOD 纹理最大分辨率 | Console/Mobile |
+| `r.MobileContentScaleFactor` | 移动端渲染分辨率缩放 | Mobile |
+| `r.HLOD.MaximumLevel` | HLOD 层级上限（控制最多降到哪一级） | Console/Mobile |
 | `r.Shadow.MaxCSMResolution` | 级联阴影贴图分辨率 | Console (XSX 2048, XSS 1024) |
 
 ### 渲染目标精度裁剪
@@ -346,10 +350,10 @@ Instanced Stereo 通过 `FRHIDrawIndexedPrimitive` 的 `InstanceCount` 参数，
 Fixed Foveated Rendering (FFR) 降低屏幕边缘 (peripheral) 的着色率，中心区域保持全分辨率。FFR 的输入源是引擎的 VRS (Variable Rate Shading) 系统。
 
 **CVar 控制**：
-- `r.VR.FoveatedShafts` — 轴辐式渐变密度
-- `r.VR.FoveatedShafts.Density` — 密度系数 (0.0~1.0)
-- `r.VR.FoveatedShafts.InnerRadius` — 中心高分辨率区域半径
-- `r.VR.FoveatedShafts.OuterRadius` — 边缘低分辨率区域起始半径
+- `xr.OpenXRFBFoveationLevel` — 注视点渲染档位（OpenXR FB 扩展）
+- `xr.OpenXRFBFoveationDynamic` — 是否按 GPU 负载动态调整档位
+- `xr.OpenXRFBFoveationVerticalOffset` — 注视中心的垂直偏移
+- `xr.OpenXRFBFoveation.Preview` — 编辑器内预览注视点渲染效果
 
 ### 实现方式
 
@@ -359,11 +363,11 @@ Fixed Foveated Rendering (FFR) 降低屏幕边缘 (peripheral) 的着色率，�
 
 2. **Software 方案**（不支持 VRS 的 VR 头显）：
    - 渲染到低分辨率 Render Target，然后通过 `Distortion Pass` 上采样
-   - 使用 `r.Mobile.FoveatedRendering` 在移动 VR 上启用
+   - 移动 VR 上通过 `xr.OpenXRFBFoveationLevel` 启用，动态档位用 `xr.OpenXRFBFoveationDynamic`
 
 ### UE 5.8 变化
 
-- Meta Quest 系列：`r.VR.MobileFoveatedRendering` 默认启用，基于 Eye Tracking 的眼动追踪 Foveated Rendering (ETFR) 在 Quest Pro / Quest 3 上支持
+- Meta Quest 系列：注视点渲染走 `xr.OpenXRFBFoveation*` 家族（`Level` / `Dynamic` / `VerticalOffset`）；基于 Eye Tracking 的 ETFR 在 Quest Pro / Quest 3 上支持
 - PSVR2：硬件层面支持 FFR，引擎通过 GDK 调用
 
 ---
@@ -408,7 +412,7 @@ flowchart TB
 
 ### UE 5.8 变化
 
-- `r.VR.MultiView` 支持原生 Multi-View 扩展（Vulkan / Metal）
+- `r.InstancedStereoIsMultiViewport` 控制 instanced stereo 是否走多视口路径（Vulkan / Metal 的原生 Multi-View）
 - 头显 `HMD` 的 `IXRTrackingSystem` 接口提供 `GetStereoOffsets()` 返回左右眼偏移
 
 ---

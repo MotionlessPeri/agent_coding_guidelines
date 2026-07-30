@@ -125,7 +125,9 @@ flowchart TB
 | 方面 | 细节 |
 |------|------|
 | **进程模型** | SCW 是独立 EXE，不加载 Editor DLL，编译时 Editor 不会 OOM |
-| **并行度** | 默认 `(CPU 核心数 - 1)` 个 SCW 进程，可配置 `r.ShaderCompileWorker.NumWorkers` |
+<!-- verify:ignore-start -->
+| **并行度** | 默认按 CPU 核心数起 SCW 进程；数量由引擎 ini 的 shader 编译线程配置控制，不存在 `r.ShaderCompileWorker.NumWorkers` 这个 CVar。分布式编译开关是 `r.ShaderCompiler.AllowDistributedCompilation` |
+<!-- verify:ignore-end -->
 | **通信方式** | 命名管道（Windows）/ 文件映射（跨平台）— 见 `ShaderCompilerCommon.cpp` |
 | **分布式编译** | 5.4+ 支持 `ShaderCompilerServer` — 局域网多机器共享编译队列 |
 | **编译优先级** | `FShaderCompileJob` 有优先级（`EShaderCompileJobPriority::High/Normal/Low/None`），影响出队顺序 |
@@ -302,7 +304,7 @@ Substrate 提供 `FSubstrateVisualizationData` 调试可视化系统，通过以
 | `r.Substrate.ViewMode <N>` | 设置视图模式，取值见下 |
 | `r.Substrate.Debug.AdvancedVisualizationShaders` | 启用高级调试着色器 |
 
-通过 `r.Substrate.ViewMode` 可切换的可视化模式（`FSubstrateViewMode` 枚举）：
+Substrate 的可视化通过 viewmode 切换，调试开关在 `r.Substrate.Debug.*` 家族（`AdvancedVisualizationShaders` / `PeelLayersAboveDepth` / `RoughnessTracking` / `ClearMaterialBuffer`）。可切换的模式：
 
 | 模式 | 值 | 说明 |
 |------|-----|------|
@@ -458,7 +460,7 @@ void MainCS(
 | `FShaderCompilerOutput: Compiled with errors` | 参数类型不匹配 | 检查 `C++ FParameters` 与 `.usf` 参数声明 |
 | `ERROR: Invalid binding for resource` | RDG 资源绑定错误 | 检查 `RDG_*` 参数是否在正确 Pass 中声明 |
 | `FShaderCache: Serialize failed` | Shader 缓存损坏 | 删除 `DerivedDataCache` 或禁用缓存 |
-| `FShaderCompileJob: Timeout` | SCW 进程卡死 | 检查 `r.ShaderCompileWorker.NumWorkers` 配置 |
+| `FShaderCompileJob: Timeout` | SCW 进程卡死 | 检查引擎 ini 里的 shader 编译线程配置 |
 | `Sony: shader took too long to compile` | 编译时间超限（PS5 平台） | 简化 Shader 复杂度 |
 
 ### 关键源码
@@ -501,4 +503,4 @@ UE 5.8 的 Shader 编译管线已经是一个非常成熟的工业化系统：
 3. **Permutation 系统** — 组合爆炸是现实约束，但通过 `bUsedWith*`、`QualityLevel`、`ShaderPermutationBool`、`SHADER_PERMUTATION_BOOL/INT` 等机制裁剪控制
 4. **Substrate** — 5.x 的重点方向，5.8 新增 Glint 微闪、Toon 卡通着色、Stochastic Lighting 随机化光照、Async Classification 异步材质分类等特性
 5. **自定义 Shader** — `FGlobalShader` + `SHADER_PARAMETER_STRUCT` + RDG `AddPass` 模式清晰，模板化编写
-6. **调试** — 工具链完善（`r.ShaderDevelopmentMode`、`UE_SaveShaderDebugInfo`、`ProfileGPU`、`r.Substrate.ViewMode`）
+6. **调试** — 工具链完善（`r.ShaderDevelopmentMode`、`UE_SaveShaderDebugInfo`、`ProfileGPU`、`r.Substrate.Debug.*`）

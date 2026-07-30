@@ -1052,7 +1052,9 @@ flowchart LR
 | `r.RDG.Events` | 控制 RDG event 如何发出 |
 | `r.RDG.VerboseCSVStats` | 输出更详细的 CSV 统计 |
 
+<!-- verify:ignore-start -->
 `r.RDG.Validation` 在 5.7 和 5.8 里是同一个名字。网上流传的「5.8 把 `r.RDG.Validate` 改名成 `r.RDG.Validation`」并不成立——5.7 源码里就已经是 `r.RDG.Validation`，不存在 `r.RDG.Validate` 这个 CVar。
+<!-- verify:ignore-end -->
 
 ### 8.2 `r.RDG.Debug.*` 细粒度开关
 

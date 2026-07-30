@@ -37,7 +37,9 @@ Lumen 的三种追踪后端**与 Final Gather 方法正交**——无论哪种 G
 | **Mesh Card（软件追踪）** | 自动降级 | 无特殊要求 | 将场景 Mesh 降采样为 Card 代理，在 Card 上渲染 Surface Cache，从 Cache 中采样光照 |
 | **Voxel（软件追踪）** | 自动降级 | 无特殊要求 | 使用 Global Distance Field（全局 SDF）做 Ray Marching 步进 |
 
+<!-- verify:ignore-start -->
 追踪后端的选择由 `Lumen::UseHardwareRayTracing()` 和 `Lumen::UseHardwareInlineRayTracing()` 等函数决定，不再使用 `r.Lumen.DiffuseIndirect.Method`（该 CVar 在 UE 5.8 已废弃）。
+<!-- verify:ignore-end -->
 
 ### 1.3 EDiffuseIndirectMethod 枚举
 
@@ -93,7 +95,7 @@ flowchart TD
 
 核心文件：`Engine/Source/Runtime/Renderer/Private/Lumen/LumenScreenProbeGather.{cpp,h}`、`LumenScreenProbeTracing.cpp`、`LumenScreenProbeFiltering.cpp`、`LumenScreenProbeImportanceSampling.cpp`、`LumenScreenProbeGBuffer.cpp`、`LumenScreenProbeHardwareRayTracing.cpp`。
 
-- **Probe 网格**：在屏幕空间生成一个规则的 Probe 网格，密度由 `r.Lumen.ScreenProbe.Distribution` 控制。
+- **Probe 网格**：在屏幕空间生成一个规则的 Probe 网格，密度由 `r.Lumen.ScreenProbeGather.DownsampleFactor` 控制（值 = 一个 probe 覆盖的屏幕 tile 边长像素数）。
 - **每帧重建**：每帧从零重建 Probe 网格（不跨帧保持），因为屏幕内容变化时 Probe 的位置需要重新计算。
 - **每个像素选 Probe**：每个像素选取最近的 4-9 个 Probe，做加权插值。权重基于屏幕空间距离、深度差、法线差异。
 
@@ -101,13 +103,15 @@ flowchart TD
 
 - **分布策略**：Probe 的间隔在屏幕中心区域更密，边缘更疏。使用 `LumenScreenProbeGather()` 在 Compute Shader 里计算分布。
 - **方向采样**：每个 Probe 沿多个方向（典型 32-64 条）发射追踪 Ray，方向选择基于 **Importance Sampling**——优先朝亮度贡献大的方向（朝向亮表面、光源方向）。
-- **Adaptive Sampling**：`r.Lumen.ScreenProbe.NumRays`（默认 64）控制每条 Probe 的 Ray 数。在低差异区域 Ray 可减少。
+- **Adaptive Sampling**：每个 probe 的追踪方向数由 `r.Lumen.ScreenProbeGather.TracingOctahedronResolution` 决定（八面体分辨率，边长 N 对应 N² 个方向）。低差异区域方向数可减少。
 
 ### 2.3 时间积累与降噪
 
-- **Temporal Accumulation**：Lumen 使用 **Temporal Reprojection**，将上一帧 Probe 的 GI 结果通过 Motion Vector 投影到当前帧。帧间累积提高信噪比。控制 CVar：`r.Lumen.TemporalFilter`。
+<!-- verify:ignore-start -->
+- **Temporal Accumulation**：Lumen 使用 **Temporal Reprojection**，将上一帧 Probe 的 GI 结果通过 Motion Vector 投影到当前帧。帧间累积提高信噪比。控制 CVar：`r.Lumen.ScreenProbeGather.Temporal`（原调研稿的 `r.Lumen.TemporalFilter` 不存在）。旧文其余部分：`r.Lumen.TemporalFilter`。
+<!-- verify:ignore-end -->
 - **Spatial Denoise**：跨帧积累后，再做一次空间降噪（Bilateral Filter / A-Trous Wavelet），在保持边缘的前提下平滑噪声。
-- **History Validity**：出现遮挡变化、相机突然移动、新物体出现时，History 被标记为无效，需要重新积累。`r.Lumen.TemporalFilter.NumFrames` 控制最大积累帧数。
+- **History Validity**：出现遮挡变化、相机突然移动、新物体出现时，History 被标记为无效，需要重新积累。`r.Lumen.ScreenProbeGather.Temporal` 是时间滤波总开关；历史丢弃的判据见 `r.Lumen.ScreenProbeGather.Temporal.DistanceThreshold`。
 
 ---
 
@@ -165,7 +169,9 @@ ReSTIR 的时序复用与 ScreenProbe 的 Temporal Accumulation 不同：
 ### 5.2 Surface Cache
 
 - **Surface Cache** 是一张巨大的 Atlas 纹理，存储所有可见 Mesh Card 的表面属性（Albedo、Normal、Emissive、Roughness、Metallic）。
-- **更新策略**：每帧用 `RasterizeLumenSceneCards()` 将可见 Card 的 GBuffer 属性渲染到 Cache Atlas 中。Cache 的分辨率受 `r.LumenScene.SurfaceCacheResolution` 控制。
+<!-- verify:ignore-start -->
+- **更新策略**：每帧用 `RasterizeLumenSceneCards()` 将可见 Card 的 GBuffer 属性渲染到 Cache Atlas 中。Cache 的图集尺寸受 `r.LumenScene.SurfaceCache.AtlasSize` 控制（原调研稿写的 `r.LumenScene.SurfaceCacheResolution` 控制。
+<!-- verify:ignore-end -->
 - **采样方式**：Lumen 的追踪 Ray 命中某个 Card 后，从 Surface Cache 中采样该点的材质属性，避免走完整的 Shading 路径。
 - **Surface Cache Feedback**：`LumenSurfaceCacheFeedback.cpp` 管理 Cache 的反馈更新机制，确保高需求的页面优先更新。
 
@@ -175,7 +181,7 @@ ReSTIR 的时序复用与 ScreenProbe 的 Temporal Accumulation 不同：
 - 当 Ray 追踪时，Lumen 先用 **Global Distance Field**（全局 SDF，由 `VoxelizeLumenScene()` 生成）做大步进，快速逼近表面。
 - 逼近到表面附近后，用 **Mesh Signed Distance Field**（每个 Mesh 自身的 SDF）做精细步进，确定精确命中点。
 - 命中点确定后，去 Surface Cache 中采样光照。
-- `r.LumenScene.DistanceField` 控制 Distance Field 的分辨率。
+- Mesh SDF 追踪由 `r.Lumen.TraceMeshSDFs` 控制，追踪距离是 `r.Lumen.TraceMeshSDFs.TraceDistance`；距离场本身的分辨率走 `r.DistanceFields.DefaultVoxelDensity`。
 
 ---
 
@@ -250,9 +256,9 @@ Radiance Cache 是 Lumen 的**世界空间 Probe 缓存系统**，用于：
 
 ### 7.2 关键参数
 
-- `r.Lumen.RadianceCache.NumProbes`：Probe 数量
-- `r.Lumen.RadianceCache.NumClipmaps`：Clipmap 层级数
-- `r.Lumen.RadianceCache.ProbeWorldSpace`：Probe 世界空间间距
+- `r.Lumen.ScreenProbeGather.RadianceCache.NumProbesToTraceBudget`：每帧可更新的 probe 预算
+- `r.Lumen.ScreenProbeGather.RadianceCache.NumClipmaps`：Clipmap 层级数
+- `r.Lumen.ScreenProbeGather.RadianceCache.ClipmapWorldExtent`：第一层 clipmap 的世界空间范围
 
 ---
 
@@ -321,7 +327,7 @@ Lumen Reflections 有两种追踪路径，与 Diffuse GI 的 Final Gather 方法
 | **Trace 模式** | `r.Lumen.Reflections.Method=1` | 逐像素发射 Reflection Ray，走 Mesh Card / Hardware RT 追踪后端 |
 
 - **Probe 模式**：在屏幕空间分布稀疏的 Reflection Probe（32-64 个），每个 Probe 发射多条 Ray 采集反射环境，然后插值到每个像素。开销低，但镜面反射细节丢失。
-- **Trace 模式**：对每个像素沿反射方向发射一条 Ray（或由 `r.Lumen.Reflections.NumRays` 控制多条），按 GGX 重要性采样方向写入 Roughness。开销大，但反射细节保留好。
+- **Trace 模式**：对每个像素沿反射方向发射一条 Ray（追踪分辨率由 `r.Lumen.Reflections.DownsampleFactor` 控制），按 GGX 重要性采样方向写入 Roughness。开销大，但反射细节保留好。
 
 ### 10.2 Roughness 退化与 SSR 混合
 
@@ -340,7 +346,7 @@ Lumen Reflections 不是独立工作的——它根据材质的 **Roughness** �
 
 Lumen 默认**不处理半透明表面的反射**。半透明物体：
 
-- 走 `r.Translucency.VolumeRayTracing` 或 Standard Translucency 渲染路径。
+- 走 Lumen 半透明体积（`r.Lumen.TranslucencyVolume.Enable`）或 Standard Translucency 渲染路径。
 - Lumen Reflection 只处理 Opaque GBuffer 中的像素。
 - 半透明表面如果需要反射效果，需要手动将 `Roughness` 和 `Metallic` 写入 GBuffer，然后走 Screen Space Reflection 兜底。
 
@@ -352,7 +358,7 @@ Lumen 默认**不处理半透明表面的反射**。半透明物体：
 
 Lumen 也处理场景中的**直接光照**（Sun Sky、反射光之外的直接光照贡献）：
 
-- **开关**：`r.Lumen.DiffuseIndirect.DirectLighting`（默认 0，通过 `GLumenGatherCvars.DirectLighting` 控制）
+- **开关**：`r.LumenScene.DirectLighting` —— 是否为 surface cache 计算直接光照
 - **启用条件**：`ShouldRenderLumenDirectLighting()` 要求 `ShouldRenderLumenDiffuseGI()` 为 true 且非 IrradianceFieldGather 模式
 - **作用**：在 Lumen 的间接光照计算中同时包含直接光照贡献，使 GI 更加完整
 
@@ -374,32 +380,30 @@ Lumen 对**半透明体积**的间接光照支持：
 
 ### 13.1 主要性能开销
 
-| 开销项 | 占比（典型场景） | 影响因素 |
-|---|---|---|
-| **Scene Voxelization** | 5-10% | 场景复杂度、`r.LumenScene.DetailVoxelSize` |
-| **Mesh Card Rasterization** | 5-15% | 可见 Mesh 数量、Surface Cache 分辨率 |
-| **Screen Probe 追踪** | 15-30% | Probe 数量、每条 Probe 的 Ray 数 |
-| **Hardware RT 追踪** | 20-40% | Ray 数、BVH 复杂度、TLAS 更新频率 |
-| **Denoising** | 10-15% | 降噪质量（A-Trous 迭代次数） |
-| **Reflections** | 10-20% | 反射 Ray 数、是否开启 Trace 模式 |
-| **Radiance Cache** | 5-10% | Probe 数量、Clipmap 层级数 |
-| **Radiosity** | 5-15% | Probe 间距、半球分辨率 |
+下表全部由 `scripts/ue-cvar-dump.py` 从 5.8 源码生成，作用说明取引擎自己的帮助文本。`r.Lumen.*` 家族在 5.8 有 396 个、`r.LumenScene.*` 有 137 个，这里只列常调项——完整清单用 `python scripts/ue-cvar-dump.py r.Lumen r.LumenScene --md` 现查。
 
-### 13.2 关键配置项
-
-| CVar | 默认值 | 说明 | 调优方向 |
-|---|---|---|---|
-| `r.Lumen.FinalGatherMethod` | 1 | 0=IrradianceFieldGather, 1=ScreenProbeGather | 低端设备用 0 |
-| `r.Lumen.Reflections.Method` | 1 | 0=Probe, 1=Trace | 性能敏感场景用 0 |
-| `r.Lumen.ScreenProbe.NumRays` | 64 | 每个 Probe 的 Ray 数 | 调到 32 省约 40% 开销 |
-| `r.Lumen.Scene.RayIterations` | 4 | 追踪的最大步进次数 | 调到 2 省约 20% 开销 |
-| `r.LumenScene.SurfaceCacheResolution` | 512 | Surface Cache Atlas 分辨率 | 低端设备调至 256 |
-| `r.LumenScene.DetailVoxelSize` | 0.15 | 体素大小（世界单位） | 0.3 以上省约 30% |
-| `r.Lumen.Reflections.NumRays` | 1 | 每像素反射 Ray 数 | 0 关闭反射 |
-| `r.Lumen.TemporalFilter` | 1 | 时间降噪开关 | 0 关闭（画面噪声增加） |
-| `r.Lumen.TemporalFilter.NumFrames` | 8 | 时间积累帧数 | 4 帧减少 Ghosting |
-| `r.LumenScene.Radiosity` | 1 | 多次反弹间接光照开关 | 性能敏感场景关闭 |
-| `r.LumenScene.Radiosity.ProbeSpacing` | 4 | Radiosity Probe 间距（texel） | 提高间距降低开销 |
+| CVar | 作用 |
+|---|---|
+| `r.Lumen.DiffuseIndirect.Allow` | Whether to allow Lumen Global Illumination. Lumen GI is enabled in the project settings, this cvar can only disable it. |
+| `r.Lumen.DiffuseIndirect.AsyncCompute` | Whether to run Lumen diffuse indirect passes on the compute pipe if possible. |
+| `r.Lumen.FinalGatherMethod` | Lumen Final Gather Method 0 - Irradiance Field Gather - places World Space Radiance Cache probes around pixels, pre-calculates their irradiance, and interpolate… |
+| `r.Lumen.ScreenProbeGather.DownsampleFactor` | Pixel size of the screen tile that a screen probe will be placed on. |
+| `r.Lumen.ScreenProbeGather.TracingOctahedronResolution` | Resolution of the tracing octahedron. Determines how many traces are done per probe. |
+| `r.Lumen.ScreenProbeGather.ScreenTraces` | Whether to trace against the screen before falling back to other tracing methods. |
+| `r.Lumen.ScreenProbeGather.Temporal` | Whether to use a temporal filter |
+| `r.Lumen.ScreenProbeGather.MaxRayIntensity` | Clamps the maximum ray lighting intensity (with PreExposure) to reduce fireflies. Lower values reduce noise, but also remove some interesting GI features. |
+| `r.Lumen.ScreenProbeGather.RadianceCache.NumClipmaps` | Number of radiance cache clipmaps. |
+| `r.Lumen.ScreenProbeGather.RadianceCache.ClipmapWorldExtent` | World space extent of the first clipmap |
+| `r.Lumen.ScreenProbeGather.RadianceCache.NumProbesToTraceBudget` | Number of radiance cache probes that can be updated per frame. |
+| `r.Lumen.Reflections.Allow` | Whether to allow Lumen Reflections. Lumen Reflections is enabled in the project settings, this cvar can only disable it. |
+| `r.Lumen.Reflections.DownsampleFactor` | Downsample factor from the main viewport to trace rays. This is the main performance control for the tracing part of the reflections. |
+| `r.Lumen.Reflections.MaxRoughnessToTrace` | Max roughness value for which Lumen still traces dedicated reflection rays. Overrides Post Process Volume settings when set to anything >= 0. |
+| `r.Lumen.TraceMeshSDFs` | Whether Lumen should trace against Mesh Signed Distance fields. When enabled, Lumen's Software Tracing will be more accurate, but scenes with high instance dens… |
+| `r.Lumen.TraceMeshSDFs.TraceDistance` | Max trace distance against Mesh Distance Fields and Heightfields. |
+| `r.Lumen.HardwareRayTracing` | Uses Hardware Ray Tracing for Lumen features, when available. Lumen will fall back to Software Ray Tracing otherwise. Note: Hardware ray tracing has significant… |
+| `r.Lumen.TranslucencyVolume.Enable` | — |
+| `r.LumenScene.SurfaceCache.AtlasSize` | Surface cache card atlas size. |
+| `r.LumenScene.DirectLighting` | Whether to compute direct ligshting for surface cache. |
 
 ### 13.3 降级路径（Fallback）
 
@@ -493,7 +497,7 @@ Lumen 是一套**完全动态、无烘焙的实时全局光照系统**，通过 
 
 UE 5.8 的主要架构变化：
 
-- **方法选择**：`r.Lumen.DiffuseIndirect.Method` 废弃，改用 `r.Lumen.FinalGatherMethod`，三种方法：IrradianceFieldGather(0)、ScreenProbeGather(1)、ReSTIRGather（自动）
+- **方法选择**：追踪方法选择用 `r.Lumen.FinalGatherMethod`，三种方法：IrradianceFieldGather(0)、ScreenProbeGather(1)、ReSTIRGather（自动）
 - **函数名**：`ShouldRenderLumen()` 改为 `ShouldRenderLumenDiffuseGI()`，`RenderLumenScene()` 改为 `UpdateLumenScene()`
 - **新增系统**：Radiance Cache、Radiosity（多 bounce）、GPU Driven Update（实验性）、ReSTIR Gather
 - **文件拆分**：Hardware RT 拆分为通用基类（`LumenHardwareRayTracingCommon`）+ 8 个域专用文件，Screen Probe 主文件从 `LumenScreenProbe` 更名为 `LumenScreenProbeGather`，关联 5 个专用文件

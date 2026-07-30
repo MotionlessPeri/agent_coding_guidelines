@@ -10,7 +10,7 @@
 
 ### 核心结论
 
-1. **性能优化是最高频的客户场景**，约占 60% 以上的技术支持请求。熟练掌握 `ProfileGPU` / `stat GPU` / `r.VisualizeGPU` 三件套加 Lumen 降级策略，能解决 80% 的帧率问题。
+1. **性能优化是最高频的客户场景**，约占 60% 以上的技术支持请求。熟练掌握 `ProfileGPU` / `stat GPU` / Unreal Insights 三件套加 Lumen 降级策略，能解决 80% 的帧率问题。
 
 2. **效果定制在中国区是第二高频场景**，以自定义后处理、Lumen 调优、材质系统扩展为主。核心能力是 RDG 编程模型、`FGlobalShader` 编写和 UE 渲染管线 Hook 点知识。
 
@@ -495,8 +495,8 @@ flowchart TD
 | 物体边缘闪烁 (Z-Fighting) | 两个面在同一位置，深度冲突 | `r.Wireframe 1` 看面重叠<br>调整物体位置，增大深度偏移 |
 | 阴影闪烁 (Shadow Acne / Peter Panning) | Shadow Bias 过小 / CSM 级数不足 | `r.Shadow.CSM.MaxCascades 4`（加级数）<br>调大 Shadow Bias 值 |
 | Lumen 闪烁 (Lumen 光照/反射闪烁) | Screen Probe 采样稀疏 / 时间积累不够 | `r.Lumen.ScreenProbe.NumRays 128`（加 Ray 数）<br>`r.Lumen.TemporalFilter.NumFrames 16`（加积累帧数）<br>`r.Lumen.ScreenProbe.SpatialAccuracy 2`（提高精度） |
-| 物体突然消失/出现 (LOD 切换/遮挡剔除) | LOD 过渡区过窄 / 遮挡剔除过激进 | 检查 `r.LOD` 相关 CVar<br>`r.Nanite.FilterOutSmallObjects 0`（关 Nanite 小物体剔除） |
-| 屏幕边缘闪烁 (TSR 问题) | TSR 在边缘处历史数据不足 | `r.TSR.Sharpening 0` 或 `r.TSR.Rejection` 调低 |
+| 物体突然消失/出现 (LOD 切换/遮挡剔除) | LOD 过渡区过窄 / 遮挡剔除过激进 | 检查 `r.StaticMeshLODDistanceScale`<br>`r.Nanite.FilterPrimitives 0`（关 Nanite 逐视图图元过滤） |
+| 屏幕边缘闪烁 (TSR 问题) | TSR 在边缘处历史数据不足 | `r.TSR.RejectionAntiAliasingQuality` 调低 |
 
 **步骤 2: 隔离法定位**
 
@@ -585,7 +585,7 @@ flowchart TD
 - **1. Feature Level 确认**
   - 目标平台支持的 Feature Level（ES3_1 / SM5 / SM6）
   - 用 `IsFeatureLevelSupported()` 确认
-  - 检查 `r.FeatureLevel` 的输出
+  - 确认各平台实际生效的 Feature Level（运行期取自 `GMaxRHIFeatureLevel`，不是 CVar；编辑器预览开关是 `r.FeatureLevelPreview`）
 
 - **2. 渲染路径选择**
   - Desktop: Deferred 默认（D3D12/Vulkan）
@@ -598,8 +598,8 @@ flowchart TD
   - 检查 Feature Level 隔离（ES3_1 不允许的功能）
 
 - **4. 渲染效果一致性检查**
-  - 用 `r.VisualizeBuffer` 对比各平台 GBuffer 输出
-  - 用 `r.VisualizeLighting` 对比光照效果
+  - 用 `ShowFlag.VisualizeBuffer` 对比各平台 GBuffer 输出（配 `r.BufferVisualizationOverviewTargets` 选通道）
+  - 用 `viewmode lightingonly` 对比光照效果
   - 重点检查: SSR / Lumen / 阴影 / 半透明
 
 - **5. 性能基准测试**
@@ -608,7 +608,7 @@ flowchart TD
   - 标记差异 Pass 做针对性优化
 
 - **6. 内存/显存适配**
-  - 检查 `r.RenderTargetPool` 输出
+  - 用 `r.DumpRenderTargetPoolMemory` 导出 RT 池占用，或开 `r.RenderTargetPool.LogCreationSizes`
   - 调整资源精度（32f→16f→8unorm）
   - 调整纹理池大小
 
@@ -658,7 +658,7 @@ flowchart TD
 |------|---------|
 | Shader 编译错误 → 执行时 GPU 读不到有效指令 | 检查 `r.DumpShaderDebugInfo` 输出，检查 Shader 编译日志，改用 `r.ShaderDevelopmentMode 1` 开发模式 |
 | 资源越界 (Out-of-Bounds) | 检查 RHI 资源绑定是否正确，检查 Buffer/Texture 尺寸是否一致，用 D3D12 Debug Layer 捕获 GPU Page Fault |
-| 资源状态错 (Invalid Resource State) | RDG 自动管理，但跨帧资源/外部资源容易出问题。用 `r.RDG.Validate` 检查，检查 `RegisterExternalResource` 的初始状态 |
+| 资源状态错 (Invalid Resource State) | RDG 自动管理，但跨帧资源/外部资源容易出问题。用 `r.RDG.Validation` 检查，检查 `RegisterExternalResource` 的初始状态 |
 | TDR (GPU 超时) | `ProfileGPU` 看是否有 Pass 消耗异常，检查是否有无限循环 Shader，考虑降低 GPU 负载临时绕过 |
 | 驱动 Bug | 更新驱动版本，尝试不同驱动版本对比，简化场景定位最小复现 |
 
@@ -696,7 +696,9 @@ flowchart TD
 
 **2. 诊断工具**
 
-- `r.ShaderCompiler.Stats` 观察编译队列
+<!-- verify:ignore-start -->
+- `stat ShaderCompiling` 观察编译队列（`r.ShaderCompiler.*` 家族里没有 `Stats` 这一项）
+<!-- verify:ignore-end -->
 - `r.DumpShaderDebugInfo` 看哪些 Shader 在编译
 - 查看 `Saved/ShaderDebugInfo/` 目录
 
@@ -706,7 +708,7 @@ flowchart TD
 |------|------|---------|
 | **方案 A: 裁剪 Permutation（最有效）** | 用 `ShouldCompilePermutation()` 关闭不需要的变体<br>检查 `bUsedWith*` 标志是否正确设置<br>检查材质中 Feature Level 隔离<br>平台专属: `#if PLATFORM_*` 裁剪 | 30-70% 编译时间减少 |
 | **方案 B: 预编译** | `r.Mobile.UsePreprocessedShaders 1`（移动端）<br>使用 DerivedDataCache 缓存<br>使用 Shader Library（Substrate 材质） | 运行时编译消失 |
-| **方案 C: 并行编译** | 增加 SCW 进程数（`r.ShaderCompiler.NumWorkerThreads`）<br>增加编译任务并行度 | 多核加速，但受 I/O 限制 |
+| **方案 C: 并行编译** | 增加 SCW 进程数（由引擎 ini 的 shader 编译线程配置控制，不是 CVar）<br>或开 `r.ShaderCompiler.AllowDistributedCompilation` 走分布式编译 | 多核加速，但受 I/O 限制 |
 | **方案 D: 材质优化** | 减少材质中复杂表达式节点<br>减少 Override Shading Model 的使用<br>减少 Substrate 材质层数 | 每个材质编译时间减少 |
 
 **4. 常见 Pitfall**
@@ -863,9 +865,9 @@ flowchart TD
 
 **实操练习**：
 
-1. 搭建多平台测试场景（PC D3D12 + Vulkan + Mobile），对比渲染效果差异，用 `r.VisualizeBuffer` 逐通道对比
+1. 搭建多平台测试场景（PC D3D12 + Vulkan + Mobile），对比渲染效果差异，用 `ShowFlag.VisualizeBuffer` 逐通道对比
 2. 用 `r.MobileHDR 0` + `r.ForwardShading 1` 模拟移动端渲染，优化至 30fps，记录每步优化效果
-3. 用 `r.ShaderCompiler.Stats` 观察 Shader 编译队列，用 `bUsedWith*` 开关裁剪不必要的 Shader 变体，对比编译时间变化
+3. 用 `stat ShaderCompiling` 观察 Shader 编译队列，用 `bUsedWith*` 开关裁剪不必要的 Shader 变体，对比编译时间变化
 4. 模拟 GPU Crash（用非法 Shader 参数），用 `r.GPUCrashDebugging` 取证，用 D3D12 Debug Layer 捕获资源泄漏
 5. 实现一个完整的自定义渲染功能（如自定义 GI 替代 Lumen 或自定义 Shading Model）
 6. 对真实项目做一次完整的性能审计（从 ProfileGPU 到硬件级分析），输出优化报告
