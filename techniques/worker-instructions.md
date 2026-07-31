@@ -26,6 +26,36 @@ A prompt can be **complete** (has everything the worker needs) yet **assert wron
 
 Learned from a multi-conversation cross-repo run (see skill `role-lane-coordination`): a coordinator twice baked confidently-wrong ground-truth into self-contained briefs; each error was a full round-trip, caught only by the dev lane's adversarial verification — not by the human.
 
+### 记号歧义：完整且正确的 brief 仍会被读错
+
+上一节管「brief 里的 claim 对不对」。但 claim 全对、oracle 也随任务给了，跨边界的**公式与作用域**
+仍然会静默走样：对方拿到的信息足够开工，于是照着实现，歧义只在对拍时才暴露——一次一个往返。
+
+同一轮跨 lane 工作里命中三次，三次走样的地方各不相同：
+
+| 走样在哪 | 发出方写的 | 接收方合理地读成 | 后果 |
+|---|---|---|---|
+| **作用域** | 「只在重定向入口生效」 | 另一个入口档位 | 据此写进契约「该修正在这一档两边行为不一致」，并要求另一 lane 换实现路径。实测那个属性在这一档下是惰的（三个取值输出逐位相同），前提整个不成立 |
+| **符号** | 「横移量 ≈ 两侧髋距之差的一半」（写成绝对值形式） | 幅度对了就行，方向按语义猜 | 4 个骨架的符号全反。发出方另给的一句自然语言解释，字面读**正好是反的** |
+| **参照系** | 「Δ = 该骨本应承担的扭转**增量**」 | 该骨当前的**全部**扭转 | 把整根骨的扭转都拿去重分配（参照实现只分 IK 阶段新引入的那部分：恒 8.12°，对方的随注入量线性增长到 89°）。生产后果是把动画师做的扭转整根抹掉 |
+
+四条修法：
+
+1. **公式带符号，把正方向写进式子。** 不给 `|a − b|` 这种绝对值形式——写 `Δ = (b − a) / 2，外移为正`，
+   「哪个减哪个」「正方向指哪」都钉死。自然语言解释只是辅助，冲突时以式子为准（这一点也要写明）。
+2. **「增量」必须写清相对什么。** 相对求解前 / 相对静止姿势 / 相对源，是三个差一个数量级的量。
+3. **作用域写标识符，不写自然语言。** 同一个词在两套命名里常指不同东西（例：「重定向入口」在被
+   刻画的库里指含 IK 的那个入口，在契约里指不含 IK 的那一档）。写 `HIKSolveForCharacter` /
+   `HIKSolveForCharacterRetarget`，歧义当场消失。
+4. **随规格给一份 oracle 数值表，并预先点出哪些数不该拿来验。** 本轮给出的期望值表里手部精确吻合、
+   脚部按设计必然不吻合——不预先说明，接收方拿脚部验会以为自己做错了。给表之前先确认量具自身
+   可信，见 [`adversarial-verification.md`](adversarial-verification.md) 的「量具先自证」。
+
+**诚实边界**：同一项目内 3 次独立命中、跨项目未验（不满足
+[`knowledge-promotion.md`](../guidelines/workflow/knowledge-promotion.md) 的两击规则）——apply-and-refine。
+两点让它比一般单项目经验强些：第 3 次是**接收方**独立指认出的 pattern，不是发出方事后归纳；
+三次的机制不同（作用域 / 符号 / 参照系），是同族的三个面，不是同一个坑踩三遍。
+
 ## Anti-Patterns
 
 | Bad | Why | Good |

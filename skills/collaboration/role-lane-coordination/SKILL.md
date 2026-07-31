@@ -30,7 +30,7 @@ description: 把一个较重的项目拆到**多个常驻对话**(每个对话 =
 6. **自主度 = 拓扑旋钮**:**notify**(propose→你拍板,peer,你在场)/ **act**(oracle-gated 自动 + park,coordinator 拥 goal)。**checkpoint 落在人判断点**(契约 settle / 集成前 / 画面验)。
 7. **park-and-continue**:碰只有人能定 / 无 oracle / 跨 lane 分歧 → 写 `parked/` 注明,**继续做别的,别卡住、别乱猜、别 fabricate**。loop 驱动时**park 还是停 loop,看 backlog 有没有别的活**:有 → park 这项、loop 继续;卡住的这项**就是** backlog(或剩下的都依赖这个决定)→ **停 loop** + 写 flag(根因 + 备选 + 需要谁定什么)+ 通知人,别让 loop 在只能等人的点上反复醒来。(`/goal` 驱动时没有"停 loop"这个动作——Stop hook 拦着,唯一出口是把 park 预先写进条件文本。)
 8. **跨 lane 汇合 → 单一 coordinator 宿主**(拥共享 main/build/汇合点),**不是并行 peer**(peer 抢共享文件会 thrash)。宿主选拥自然汇合点的 lane。但**分档路由**:**结构化契约任务走 hub**(self-contained brief → 零往返);**领域知识重 / 紧耦合人眼(视觉·DCC)任务 → dev 直连用户/权威,别强穿 hub**(hub 缺该领域知识时经它转是**有损一跳**)。hub 的活 = **识别任务类型 + 早放行**,不是无差别转发;hub **报症状不定实现、下结论先读真代码**(远离 dev 代码易误诊)。
-9. **brief 正确性 ≠ 完整性**:brief self-contained(完整)还不够——**标清"我的假设(未证实)" vs "已验证 oracle(附 dump)",证据/oracle 随任务下发,不只发结论**。(最高价值教训:自信但错的 ground-truth baked 进完整 brief,每次纠错一整轮。见 `worker-instructions.md`。)
+9. **brief 正确性 ≠ 完整性**:brief self-contained(完整)还不够——**标清"我的假设(未证实)" vs "已验证 oracle(附 dump)",证据/oracle 随任务下发,不只发结论**。(最高价值教训:自信但错的 ground-truth baked 进完整 brief,每次纠错一整轮。见 `worker-instructions.md`。)再往下一层:claim 全对、oracle 也给了,**记号本身仍会走样**——公式带符号写死正方向 / 「增量」写清相对什么 / 作用域写标识符不写自然语言 / oracle 表预先点出哪些数不该拿来验(同一轮命中 3 次,详见同一份 `worker-instructions.md` 的「记号歧义」)。
 10. **durable 文件抗对话失忆**:contract = 项目记忆、worklog/resume-point = 工作记忆(补 guidelines 的 playbook 记忆)。**每增量 commit + 追加 worklog**。(实测真救过一次:某 dev 对话工具抽风误 rm 任务 + 捏造任务,靠 mailbox durable 记录重投递恢复。)跨 lane commit 顺序是硬约束:下游 import 上游未入库模块会被卡 → 上游先 commit / 或 hub 合成单 commit。
 
 ## setup
@@ -53,7 +53,7 @@ description: 把一个较重的项目拆到**多个常驻对话**(每个对话 =
 ## 实战校准
 
 - **scope 靠 propose→approve 增长,不是 loop 自扩**:实测从极简 v1 扩到一堆 feature,但每步都是**对话推荐、人 green-light**(notify 档正常工作)。**scope 控制在"你的批准"层,不在 loop safety gate**——要收就在批准时收 / 显式冻结。
-- **"错误结论的刹车"可由人 OR peer 的 oracle 纪律承担**:park-and-continue 覆盖不到**自主的错判**(误诊 / 过早放弃)。刹车不一定只靠人——**oracle 丰富的 peer lane 能自刹车**(实测 dev lane 用同-fixture 证据两次反驳 coordinator 误判、救回被误判放弃的整块工作);oracle 稀薄处才更依赖人纠偏。
+- **"错误结论的刹车"可由人 OR peer 的 oracle 纪律承担**:park-and-continue 覆盖不到**自主的错判**(误诊 / 过早放弃)。刹车不一定只靠人——**oracle 丰富的 peer lane 能自刹车**(实测 dev lane 用同-fixture 证据两次反驳 coordinator 误判、救回被误判放弃的整块工作);oracle 稀薄处才更依赖人纠偏。**对称的自律(少产生错判,而不只是被刹住)**:下结论前**量具先自证**(过一遍已知答案)、坏量具期间的中间数字一个都不外报、自己两份数据打架时先认"我这边不确定"——见 `adversarial-verification.md` 的「量具先自证」。
 
 ## validation status(诚实)
 
