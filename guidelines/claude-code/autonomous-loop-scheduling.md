@@ -25,7 +25,7 @@ Claude Code 另有一个原生的「朝目标自主推进」命令 `/goal`,跟�
 | 停止判定 | 独立小模型每轮判完成条件——**软**,且只看对话输出、不跑命令不读文件 | agent 自己按 backlog + 测试 + stop 纪律判 |
 | 跨回合 / 扛 compaction / 断线续跑 | 弱:单 session;`--resume` 恢复条件但**轮次/计时/token 基线全重置** | **强**:prompt 重放 + 指向 durable SoT |
 | 失败熔断 | **无原生熔断**——只能把上限写进条件(仍是软判)或另叠脚本 Stop hook | 靠 stop 纪律 + 账号 usage limit 兜底 |
-| 适合 | **短、单 session 能收敛、完成条件能自证**(如「修到 `npm run lint` 退 0」) | **长、多里程碑、无人值守、怕中途断** |
+| 适合 | **短、单 session 能收敛、完成条件能自证**(如「修到 `npm run lint` 退 0」) | **长、多里程碑、无人值守、怕中途断、常驻 lane**(无终态、靠文件事件驱动) |
 
 **选择判据**:一晚跑不完 / 会触发 compaction / 怕断线 → ScheduleWakeup(本条);任务短、单回合能收敛、且有一个「Claude 自己输出就能自证」的完成条件 → `/goal` 更省事(不用搭 worklog SoT 脚手架)。二者也可叠加(`/goal` 本身就是 session 级 prompt Stop hook),但叠加行为**未实测**,按需再验。
 
@@ -72,6 +72,8 @@ Stop hook 会一直拦着不让停,所以开放式条件(「持续探索 X」「
 - **arm 的时机**:开始一段较长自主工作时 arm(兼续跑 + 断线韧性);短问答 / 一次性任务不需要。
 - **stop 的时机**(两类,都要主动 stop 不要让它空转):
   1. **决策 gate**:碰到「只有用户能定」的岔口(要不要跨过某硬约束 / 某语义取舍 / 优先级),停下问。
+     前提是**没有别的活可做**了;还有独立 backlog 项就先做那些,别一撞岔口就整个停(对应
+     `skills/collaboration/role-lane-coordination` 的 park-and-continue)。
   2. **边际递减**:backlog 做完、剩下的都是 speculative/busywork,停;诚实告诉用户「到此为止,再往下没真价值」。
 - **re-arm**:用户拍板后,带更新过的 backlog prompt 重新 arm。
 - **opt-in only**:只有用户**明确**要 autonomous/loop 才用(它烧 token、且是无人值守授权);别自作主张挂 loop。

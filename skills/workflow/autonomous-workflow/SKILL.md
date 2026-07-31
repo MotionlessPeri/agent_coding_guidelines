@@ -432,6 +432,11 @@ Other escalation triggers (immediate, no retry):
 - Scope ambiguity that brief.md cannot resolve
 - A decision that touches architecture not anticipated in Phase 1
 - A safety boundary (would need destructive action, would push, would touch shared infra)
+- **The approved approach turns out infeasible** — not an execution failure, but the plan
+  itself cannot reach the acceptance criteria (structural convergence problem, unreachable
+  oracle). Gather the evidence, then stop and return with root cause + alternatives for a
+  re-decision. Do **not** spend the 3-strike budget on it, and do not silently switch
+  approach: plan approval covers the approved plan, so replacing it needs the user again.
 
 When escalating: write current state to worklog.md, then notify user with: which Milestone, what failed, what was tried, what's needed.
 
@@ -493,5 +498,6 @@ When composing these, **follow each composed skill's discipline fully**. Autonom
 - `guidelines/code/validation.md` — verification at each Milestone
 - `guidelines/workflow/commits.md` — commit format
 - `techniques/claude-code-autonomous-permissions.md` — full rationale for commit permission lift; operational core is inlined above in Commit Permission Pre-Flight
+- `guidelines/claude-code/autonomous-loop-scheduling.md` — Claude Code only: driving the gateless Phase 3 across turns / compaction / disconnects with `/loop` dynamic + `ScheduleWakeup`, plus when `/goal` is the better driver instead
 - `skills/tdd-with-fixtures/SKILL.md` — mandatory test discipline, the safety net
 - `skills/workflow/supervised-workflow/SKILL.md` — sibling workflow with gates; switch to this if user wants in-the-loop review
