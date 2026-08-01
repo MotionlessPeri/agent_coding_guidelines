@@ -78,6 +78,27 @@ Invoke-Test "workflow skills define platform-neutral roots" {
     }
 }
 
+Invoke-Test "autonomous workflow records and compares an executable task baseline" {
+    $Path = "skills/workflow/autonomous-workflow/SKILL.md"
+    Assert-TextContains $Path 'TASK_BASELINE.*git rev-parse HEAD' "autonomous workflow does not record the starting commit"
+    Assert-TextContains $Path 'git status --short.*verbatim' "autonomous workflow does not preserve the initial dirty-state manifest"
+    Assert-TextContains $Path '(?s)overlap.*plan gate' "autonomous workflow does not resolve overlap with pre-existing edits before implementation"
+    Assert-TextContains $Path 'SCOPE ATTRIBUTION \(all tasks' "scope attribution is not an unconditional Phase 4 gate"
+    Assert-TextContains $Path 'git diff --name-status <TASK_BASELINE>\.\.HEAD' "autonomous workflow does not compare committed task changes"
+    Assert-TextContains $Path 'git diff --cached' "autonomous workflow does not inspect staged task changes"
+    Assert-TextContains $Path 'git ls-files --others --exclude-standard' "autonomous workflow does not enumerate untracked task changes"
+}
+
+Invoke-Test "workflow skills leave promotion decisions to knowledge-promotion" {
+    foreach ($Path in @(
+        "skills/workflow/autonomous-workflow/SKILL.md",
+        "skills/workflow/bugfix-tdd/SKILL.md"
+    )) {
+        Assert-TextContains $Path 'knowledge-promotion\.md' "$Path does not route promotion decisions to the canonical policy"
+        Assert-TextExcludes $Path 'confirmed[^\r\n]*(?:可进入规则库|may be promoted)' "$Path lets evidence level authorize promotion"
+    }
+}
+
 Invoke-Test "Claude hook coordination skill declares its platform limit" {
     Assert-TextContains "skills/collaboration/multi-session-coordination/SKILL.md" 'Claude Code[- ]only' "multi-session skill does not declare its Claude-only limit"
 }

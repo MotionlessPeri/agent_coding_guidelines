@@ -59,6 +59,10 @@ Phase 0: Setup
     (date prefix is mandatory — see "Task Slug Convention" below)
   → create handoff dir at <handoff-root>/<task-slug>/
   → initialize four files: brief.md, context.md, worklog.md, result.md (placeholder)
+  → record `TASK_BASELINE = git rev-parse HEAD` and the output of
+    `git status --short` verbatim in context.md. If a planned Milestone overlaps a
+    pre-existing dirty path, surface the overlap at the plan gate and do not start
+    implementation until the user resolves it or explicitly defines ownership.
   → PRE-FLIGHT: check commit permission state (see "Commit Permission Pre-Flight"
     section below). If commit is gated by `ask`, surface finding at plan gate so
     user picks a handling option before Phase 3 starts.
@@ -137,6 +141,50 @@ Phase 4: Self-Review and Result
         TODO / ??? / placeholder shipped?
       - Record gaps in result.md with severity (CRITICAL / HIGH / MEDIUM / LOW). A CRITICAL
         coverage gap means the task is NOT done — fix or escalate, do not write result.md as complete.
+  → SCOPE ATTRIBUTION (all tasks; never skip):
+      Compare every task-owned change with the approved Milestones:
+        - committed: `git diff --name-status <TASK_BASELINE>..HEAD` and
+          `git diff <TASK_BASELINE>..HEAD`;
+        - staged: `git diff --cached --name-status` and `git diff --cached`;
+        - unstaged: `git diff --name-status` and `git diff`;
+        - untracked: `git ls-files --others --exclude-standard`, then inspect each
+          task-owned file's content.
+      Pre-existing dirty paths are already resolved at the plan gate; do not exclude
+      them wholesale or guess which edits belong to the task afterward. Every change
+      must trace to a Milestone goal. Flag silent scope creep in result.md and fix it
+      before completion.
+  → CHAIN VALIDATION (if the task had 2+ Milestones that touched shared files):
+      The Milestone-level validation (build / tests / smoke) only checks current-Milestone
+      correctness. When multiple Milestones touch the same checkout sequentially, cumulative
+      damage — cross-Milestone interference, stale artifacts, unnoticed side effects — can
+      escape per-Milestone checks. Validate:
+        1. Run the full test suite (not just the last Milestone's tests). All tests that
+           passed before must still pass. If the project has no test suite, run a full build
+           and a smoke test end-to-end.
+        2. Check for stale / orphaned code: any code path that an earlier Milestone added
+           but a later Milestone bypassed or replaced should be cleaned up, not left dormant.
+        3. Check for test pollution: if tests are stateful (shared databases, caches, temp
+           directories, environment variables), verify that earlier Milestone tests did not
+           leave residues that affect later test results.
+        4. Record findings in worklog.md under a "Chain Validation" entry.
+      If any of these fail, do not declare completion — fix the cumulative damage first.
+      If the task had only 1 Milestone, or Milestones touched entirely disjoint files,
+      this step can be skipped (document why briefly in result.md).
+  → PERSISTENT-RULE EVIDENCE CHECK (when the task proposes a new workflow rule, test
+    constraint, guardrail, or memory entry):
+      Treat the proposed rule as a separate deliverable from the code change. Classify
+      the evidence before proposing it for an AGENTS.md, CLAUDE.md, skill, or other
+      persistent rule store:
+        - confirmed: a reproducible triggering trace plus an independent oracle,
+          authoritative source / documentation, or other trustworthy external evidence;
+        - provisional: credible log / incident evidence exists but reproduction or scope
+          is unstable or environment-dependent;
+        - suggestion: only a plausibility argument or a single unverified observation.
+      Evidence level does not authorize promotion. Evaluate eligibility exclusively under
+      `guidelines/workflow/knowledge-promotion.md`, then surface the candidate for user
+      approval; never auto-write a promoted rule. Record the proposed rule, evidence level,
+      policy route, and disposition in result.md. A rule cannot become confirmed merely
+      because adding it leaves the current tests green.
   → invoke superpowers:requesting-code-review adversarially against your own work
     (focus: cross-Milestone consistency, integration risks not visible per Milestone)
   → IF Option B was chosen at plan gate (agent lifted commit gate at Phase 0):

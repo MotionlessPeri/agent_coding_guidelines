@@ -184,6 +184,43 @@ fall back 到 manual reproduction case + 跑前后对比数据。
 | Fix 涉及多文件、红测只覆盖一部分 | 部分 case 修了部分没修 | 红测覆盖所有 manifest case，或拆多个红测 |
 | commit message 没说修了什么 bug（`fix: bug fix`） | 以后定位"哪个 commit 修的"难 | 写清 bug 症状 + root cause + 怎么发现 |
 
+## 扩展：修复过程产生持久化规则时的证据要求
+
+bug-fix TDD 的红测原则是"先 demonstrate bug 存在，再修"。当 bug fix 过程产生
+**超出当前代码修复范围的持久化规则**时，同一原则应扩展到规则本身：
+
+可能产生持久化规则的时机：
+
+- agent 提议加一条 workflow rule（"今后所有 X 类改动必须先做 Y"）
+- agent 提议一条新测试约束（"所有涉及 X 的测试必须包含 Y 断言"）
+- agent 提议把本次经验写入 agent memory 或 skill 作为长期规则
+- 调试过程中，agent 认为发现了"一个普遍性风险"并建议加护栏
+
+不应自动接受为持久化规则的情形：
+
+- 凭局部观察推测"这里可能有问题"但无实际失败证据
+- 凭单次修复经验推测"这种情况以后都会发生"
+- 某种写法看起来"不够安全"，但框架契约已保证其正确性
+
+处理流程：
+
+1. **区分"当前修复必需"和"可推广的规则"**：当前修复所需的代码改动（红测→绿测→回归）按现有流程走。可推广的规则是独立产物，不在当前修复的验证范围内。
+2. **要求证据**：提议的规则应附带真实触发 trace、可信日志、权威源码 / 文档或其他可靠外部证据。如果只有"可能有问题"的推测，只能记作待评估建议。
+3. **分级证据**：
+   - 有可复现失败 + 独立 oracle，或有权威源码 / 文档等可靠证据 → **confirmed**
+   - 有可信日志但无法稳定复现，或适用范围尚未确认 → **provisional**
+   - 只有推测或单次未验证观察 → **suggestion**
+4. **按唯一政策裁决**：证据等级本身不授予入库资格。是否值得提升，必须由 `guidelines/workflow/knowledge-promotion.md` 的 two-strike、hidden contract、工具 gotcha、已验证 workflow pattern 等条款判断，并由用户最终批准；agent 不得自动写入全局规则库。
+5. **记录**：在 commit message 或 result.md 中记录提议的规则、证据等级、命中的 promotion 条款和处理结果。
+
+如果在修复过程中无法提供证据，但规则感觉合理，正确做法是：
+
+```text
+在 commit message 中记录为 open question
+→ 按 knowledge-promotion.md 判断证据路径
+→ 普通经验通常等待 two-strike；hidden contract、工具 gotcha 或已有可靠外部证据的情形可提前进入人工评估
+```
+
 ## Composition
 
 - **`superpowers:test-driven-development`** —— feature TDD skill。base cycle
