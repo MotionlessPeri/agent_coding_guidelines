@@ -131,6 +131,7 @@ claude mcp remove --scope user model-worker
 1. 调用 `model_list`，确认 `kimi-k3`、credential 和所需 capability profile 可用。
 2. 调用 `task_submit`，保存返回的 `task_id` 和 `session_id`。
 3. 用同一个 `task_id` 调用 `task_get`；轮询不会产生新的模型请求。
+   默认配置下 `task_get.wait_ms` 的上限是 `0`；省略该字段或传 `0`，由 coordinator 定时轮询。只有 daemon 显式调高该上限后才使用长轮询值。
 4. 需要纠正时，对 session 当前 head 调用 `task_continue`，不要伪造新的首轮任务。
 5. 不再需要任务时调用 `task_cancel`。它请求取消 active task，不会删除历史记录。
 
