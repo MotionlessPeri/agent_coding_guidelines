@@ -4,7 +4,7 @@
 
 [ModelWorkerMCP](https://github.com/MotionlessPeri/ModelWorkerMCP) 是一个本机 MCP server。Codex、Claude Code 等 coordinator 可以把结构化任务提交给独立 worker daemon；任务被接受后，即使 coordinator 断开，daemon 仍会继续执行并保存状态。
 
-当前版本需要 Windows、Node.js 22.x 和可用的 Claude Code runtime，通过 Claude Code harness 调用 `kimi-k3`。公共 MCP 协议不绑定具体 provider 或 model。
+当前版本需要 Windows、Node.js 22.x、Git 2.35 或更新版本，以及可用的 Claude Code runtime，通过 Claude Code harness 调用 `kimi-k3`。公共 MCP 协议不绑定具体 provider 或 model。
 
 ## 术语说明
 
@@ -14,6 +14,19 @@
 | worker | 接受一个有边界任务并返回结构化结果的模型执行单元。 |
 | daemon | 在本机保存 task、session 和 artifact，并在 client 断开后继续执行的后台进程。 |
 | capability profile | daemon 强制执行的一组 workspace、shell 和写入权限。 |
+
+## 前置检查
+
+动手前先确认版本。`patch_proposal` 在建隔离工作区时要跑 `git apply --allow-empty`，这个选项从 Git 2.35 才有；更早的 Git 会让整条 patch 路径失败，`text_only` 和 `workspace_read` 不受影响。
+
+```powershell
+node --version   # 需要 22.x
+git --version    # 需要 2.35 或更新
+```
+
+Git 版本不够时的报错具有误导性：抛出的是 `unsupported_workspace_state` 加一句 "Git could not apply the source workspace state"，字面指向你的仓库状态，真因藏在 `diagnostic` 字段里的 `unknown option 'allow-empty'`。
+
+要跑项目自带的测试套件还需要装 Codex CLI——`client-registration` 的两条测试会真实调用 `codex`，缺失时报 `spawn codex.exe ENOENT`。日常安装和使用不需要它。
 
 ## 安装
 
@@ -158,6 +171,7 @@ model-worker-mcp doctor --json
 - `daemon restart` 会保留 queued task，但 active task 会变为 `interrupted`。
 - strict 写请求返回 `invalid_request` 时，先检查摘要是否缺失或请求字段是否在计算摘要后发生变化。
 - MCP 显示 disconnected 时，先确认 `model-worker-mcp version --json` 能从新终端运行，再检查 `doctor`。
+- `patch_proposal` 报 `unsupported_workspace_state` 时先看 `diagnostic` 字段：出现 `unknown option 'allow-empty'` 说明 Git 低于 2.35，该升级 Git 而不是改工作区。
 - 不要手工编辑 `%LOCALAPPDATA%\model-worker-mcp` 中的 SQLite、discovery 或 artifact。
 
 完整协议、运维细节和最新限制以远端仓库的 [README](https://github.com/MotionlessPeri/ModelWorkerMCP/blob/master/README.md)、[客户端注册](https://github.com/MotionlessPeri/ModelWorkerMCP/blob/master/docs/client-registration.md)和[运行维护](https://github.com/MotionlessPeri/ModelWorkerMCP/blob/master/docs/operations.md)为准。
