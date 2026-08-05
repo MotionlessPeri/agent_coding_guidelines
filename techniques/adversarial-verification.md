@@ -219,6 +219,29 @@ rubric 五维（可裁剪）：
 
 > 来源：Anthropic [How we built our multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system)。
 
+### De-anchored Judge：先独立判定，再查看候选
+
+普通的 LLM-as-judge 流程把任务和候选产物一起交给 judge。候选产物的叙述方式可能把 judge 锚定在“看起来合理”上，让它评估 plausibility，而不是独立判断 correctness。对复杂代码评审、研究报告和没有现成标准答案的验收，不要只依赖这种单阶段顺序。
+
+采用两阶段流程：
+
+```text
+Phase A：只提供任务、契约和验收标准
+  → judge 独立推导预期行为、关键不变量、边界和失败条件，并固定输出
+Phase B：再提供候选 patch / 答案 / 报告
+  → judge 逐项对照 Phase A 的判据，记录通过、失败、遗漏和未决风险
+```
+
+执行约束：
+
+1. Phase A 不得包含候选答案、候选 patch 或候选报告；否则独立判定已经被锚定。
+2. Phase A 至少固定三类内容：预期结果、关键不变量、能使判定失败的反例或边界条件。代码任务还应先列出可运行的测试、reference 或 invariant oracle。
+3. Phase B 必须引用 Phase A 的具体判据逐项比较，不能用“整体看起来合理”替代对照；无法从独立判据判断的项目标为未决，不要强行通过。
+4. De-anchoring 是评审顺序的增强，不是确定性验证的替代。能用编译、测试、round-trip、差分 reference 或不变量直接判定时，优先运行这些 oracle；LLM judge 只补充它们覆盖不到的部分。
+5. 这通常增加一次独立推理成本，且独立 judge 自身仍可能出错；只在候选内容容易影响判断、又缺少更强外部 oracle 时启用，不要给简单格式检查机械加一轮 LLM。
+
+来源：[`More Convincing, Not More Correct: Self-Play Reward Hacking of Reference-Free LLM Judges`](https://arxiv.org/abs/2607.05904)（2026 年 arXiv v1 预印本；实验主要来自 GSM8K / Qwen3）。该研究支持“候选条件化可能让 judge 奖励 plausibility 而非 correctness”这一机制，但其 false-positive 数字不能直接外推到本仓库的 C++、UE 或 Python 任务；落地前应做本地 A/B 复现。
+
 ## Diagnostic Log Discipline
 
 When debugging a bug that requires adding diagnostic logs:
