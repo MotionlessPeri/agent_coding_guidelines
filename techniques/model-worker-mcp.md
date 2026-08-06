@@ -28,6 +28,8 @@ Git 版本不够时的报错具有误导性：抛出的是 `unsupported_workspac
 
 要跑项目自带的测试套件还需要装 Codex CLI——`client-registration` 的两条测试会真实调用 `codex`，缺失时报 `spawn codex.exe ENOENT`。日常安装和使用不需要它。
 
+`npm test` 在 Windows 开发机上不是稳定的绿灯：几个重型集成测试文件（进程守护、Git baseline、discovery ACL、stdio bootstrap）跑一次挂几个，且每次挂的用例不同，干净的 master 上同样如此。判断自己的改动有没有引入回归，靠的是跟基线跑一遍对照失败的文件集合，而不是要求全绿。
+
 ## 安装
 
 不要把 API key 写进 clone 命令、shell 历史、MCP 配置或仓库文件。
@@ -145,8 +147,35 @@ claude mcp remove --scope user model-worker
 2. 调用 `task_submit`，保存返回的 `task_id` 和 `session_id`。
 3. 用同一个 `task_id` 调用 `task_get`；轮询不会产生新的模型请求。
    默认配置下 `task_get.wait_ms` 的上限是 `0`；省略该字段或传 `0`，由 coordinator 定时轮询。只有 daemon 显式调高该上限后才使用长轮询值。
-4. 需要纠正时，对 session 当前 head 调用 `task_continue`，不要伪造新的首轮任务。
+4. 需要纠正时，对 session 当前 head 调用 `task_continue`，不要伪造新的首轮任务。它会恢复上一轮的对话上下文，worker 记得自己说过什么，所以不必把前情复述进新任务。前提是 session 仍是 `open`、`after_task_id` 是当前 head 且已终结。
 5. 不再需要任务时调用 `task_cancel`。它请求取消 active task，不会删除历史记录。
+
+## 传文件给 worker
+
+大段内容不要内联进 `objective`——strict 模式下请求要跟摘要逐字节一致，长文本既笨重又容易出错。用 `local_file` 输入把文件冻结成附件：
+
+```json
+{
+  "inputs": [{ "kind": "local_file", "name": "readme", "path": "E:\\proj\\README.md" }]
+}
+```
+
+**操作者必须先授权目录**，否则一切 `local_file` 都被拒绝。授权写在数据根的 `model-registry.json` 顶层，跟换网关是同一份文档：
+
+```json
+{
+  "local_file_roots": ["E:\\proj"]
+}
+```
+
+改完执行 `model-worker-mcp daemon restart`。默认（未声明或空数组）是拒绝一切，这是刻意的——没有显式授权，daemon 不替操作者猜哪些本地文件可以交给 worker。
+
+几条使用边界：
+
+- 文本类附件的内容会被读进 worker 的上下文，上限 256 KiB；超限或二进制附件只给出元数据，并附一句说明为什么没有内容，不会静默截断。
+- 单个文件大小上限 16 MiB（硬上限 64 MiB）。
+- 可选 `expected_sha256` 做完整性校验。
+- 三种拒绝各有稳定错误码：越出授权目录是 `workspace_out_of_scope`，文件不存在、指向目录、摘要不匹配都是 `invalid_request`。都在任务被接受前返回。
 
 ## Capability profiles
 
@@ -157,6 +186,8 @@ claude mcp remove --scope user model-worker
 | `patch_proposal` | 修改代码并运行有限测试 | 在独立 Git clone 中工作，只返回 patch，不直接修改原 workspace。 |
 
 复杂任务优先选择能提供足够上下文的最低 profile。worker 可以使用 Claude Code harness 自带的 subagent 和网络能力，但 daemon 仍以 profile 限制 workspace 与写入边界。
+
+派 `patch_proposal` 任务时，brief 里要写清「不需要 commit，交付以相对 baseline 的 patch 自动生成」，并给出验收要跑的命令（构建 / 类型检查 / 测试）。worker 在隔离 clone 里工作，装依赖要自己跑一遍。
 
 ## 运行与排障
 
@@ -172,6 +203,10 @@ model-worker-mcp doctor --json
 - strict 写请求返回 `invalid_request` 时，先检查摘要是否缺失或请求字段是否在计算摘要后发生变化。
 - MCP 显示 disconnected 时，先确认 `model-worker-mcp version --json` 能从新终端运行，再检查 `doctor`。
 - `patch_proposal` 报 `unsupported_workspace_state` 时先看 `diagnostic` 字段：出现 `unknown option 'allow-empty'` 说明 Git 低于 2.35，该升级 Git 而不是改工作区。
+- `local_file` 报 `workspace_out_of_scope` 且信息提到 `local_file_roots`，说明操作者还没授权目录，见上「传文件给 worker」。
+- **重启 daemon 前先确认自己的终端里有 `MODEL_GATEWAY_API_KEY`**。新 daemon 继承的是执行 restart 那个进程的环境；从一个没有该变量的 shell 重启，daemon 会带着空凭据起来，之后所有任务都失败。
+- 重启会换端口，已连接的 MCP client 会指向已停止的旧 daemon，表现为工具调用 `fetch failed`。重连客户端即可。
+- 任务长时间没有新 event 不等于 deadline 失效——两者要分开看。`task_get` 的 event 序号不动是「worker 卡住」，而 deadline 到点会把任务转成 `timed_out`。判断挂死看 event 停滞，别看 deadline。
 - 不要手工编辑 `%LOCALAPPDATA%\model-worker-mcp` 中的 SQLite、discovery 或 artifact。
 
 完整协议、运维细节和最新限制以远端仓库的 [README](https://github.com/MotionlessPeri/ModelWorkerMCP/blob/master/README.md)、[客户端注册](https://github.com/MotionlessPeri/ModelWorkerMCP/blob/master/docs/client-registration.md)和[运行维护](https://github.com/MotionlessPeri/ModelWorkerMCP/blob/master/docs/operations.md)为准。
