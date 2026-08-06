@@ -147,8 +147,23 @@ claude mcp remove --scope user model-worker
 2. 调用 `task_submit`，保存返回的 `task_id` 和 `session_id`。
 3. 用同一个 `task_id` 调用 `task_get`；轮询不会产生新的模型请求。
    默认配置下 `task_get.wait_ms` 的上限是 `0`；省略该字段或传 `0`，由 coordinator 定时轮询。只有 daemon 显式调高该上限后才使用长轮询值。
+   不想自己轮询就用 `model-worker-mcp task wait <task-id>`：它阻塞到任务终结再退出，见下「做完主动唤醒」。
 4. 需要纠正时，对 session 当前 head 调用 `task_continue`，不要伪造新的首轮任务。它会恢复上一轮的对话上下文，worker 记得自己说过什么，所以不必把前情复述进新任务。前提是 session 仍是 `open`、`after_task_id` 是当前 head 且已终结。
 5. 不再需要任务时调用 `task_cancel`。它请求取消 active task，不会删除历史记录。
+
+## 做完主动唤醒
+
+派了任务之后不必反复问「好了没」。MCP 协议虽然有服务端通知，但**收到通知不会唤醒一个回合制的 agent 对话**——能叫醒它的是用户消息、定时器，以及**后台进程结束**。所以正道是把等待变成一个会退出的进程：
+
+```powershell
+model-worker-mcp task wait <task-id>
+```
+
+把它作为后台命令跑，进程退出就是「任务做完了」的信号，harness 会因此回到这个对话。轮询读的是本机数据库，不额外消耗上游额度。
+
+退出码分开表达结局，便于脚本分支：`0` 终结（stdout 是含 `result` 的最终快照）、`3` 事件停滞疑似卡死、`4` 超出整体预算、`5` 连不上 daemon 或任务不存在、`2` 参数错。默认 20 秒一轮询、12 分钟无事件判停滞、整体 2 小时；`--poll-ms` / `--stall-ms` / `--timeout-ms` 可调，后两者给 `0` 表示不设限。
+
+`3` 是提醒不是判决——任务可能只是卡在一次很长的工具调用里，它仍在 daemon 中运行。要真的结束用 `task_cancel`。
 
 ## 传文件给 worker
 
