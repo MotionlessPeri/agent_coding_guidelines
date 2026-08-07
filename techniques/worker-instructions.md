@@ -56,6 +56,11 @@ Learned from a multi-conversation cross-repo run (see skill `role-lane-coordinat
 两点让它比一般单项目经验强些：第 3 次是**接收方**独立指认出的 pattern，不是发出方事后归纳；
 三次的机制不同（作用域 / 符号 / 参照系），是同族的三个面，不是同一个坑踩三遍。
 
+> **回报方向的对称面**：上面管"派出去的规格被读错"，反方向是"报回来的结论本身错了" ——
+> 尤其把**自己这层的收窄**说成**下层 / 框架 / 对方的能力边界**，会让协调者放弃本来可行的路，
+> 且错结论的污染面按转发次数放大（协调者转发一次就多一个 lane 中毒）。收到"做不到"时追一句
+> **"哪一层做不到"**。见 [`../guidelines/code/reporting-limits-and-null-results.md`](../guidelines/code/reporting-limits-and-null-results.md) 规则 1。
+
 ## Anti-Patterns
 
 | Bad | Why | Good |

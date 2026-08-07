@@ -70,6 +70,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/code/diagnose-before-fixing.md
 
+@guidelines/code/reporting-limits-and-null-results.md
+
 @guidelines/code/validation.md
 
 @guidelines/code/test-purpose.md
