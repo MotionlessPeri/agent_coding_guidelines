@@ -4,6 +4,8 @@
 
 > **Handler 类型**：hook 不止「跑 shell 脚本」一种。Claude Code 现支持 5 种 handler `type`——`command`（shell，**本文 §1–§8 多数针对它**）/ `http`（把事件 JSON POST 到 URL）/ `mcp_tool`（调已连的 MCP server tool）/ `prompt`（发给 Claude 单轮评估、返回 yes/no JSON）/ `agent`（spawn 一个能 Read/Grep/Glob 的 subagent 查条件，**实验性**）。完整能力以 [官方 hooks 文档](https://code.claude.com/docs/en/hooks) 为准——事件集与 handler 类型持续演进。
 
+> **配置两层的分界**（[官方明文](https://code.claude.com/docs/en/claude-directory)）：CLAUDE.md / skills / rules 是 **guidance**——模型读了照做，会忘、会被长 context 稀释；settings.json（permissions / hooks 注册 / env / sandbox）是 **enforcement**——"enforced whether Claude follows them or not"，harness 代码执行、prompt 说不动。**要求零例外的规则放 enforcement 层，别写在 guidance 层指望自律**；反之偏好别放 enforcement 层，承受不了它的刚性。（advisory/hard 光谱的完整框架见 `techniques/fact-forcing-gate.md`；注意 §3 的 Stop hook 8 次上限——enforcement 层内部也有让路机制。）
+
 ## 1. Hook 命令字符串里**只有 Claude Code 自己的占位符变量**会展开
 
 写在 `command` 字段里的字符串被 Claude Code 在执行时做受限替换——**不是 shell 完整变量展开**。
