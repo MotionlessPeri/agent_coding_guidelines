@@ -77,3 +77,21 @@
 - ✅ 已促成（2026-07-25）C++ 工具链全景 deep research（4 路 agent，214 次 tool call，~354k token）—— 按 8 环节（写/审/编/测/调/优/二进制/分发）产出工具矩阵 + hidden contract + agent 适用性判断。写入 `_radar/2026-07-25.md` 完整 digest。4 个优先吸收方向：① clang-tidy check 分组策略 ② Sanitizer CMake 集成 + 运行时选项 ③ 调试器脚本化（lldb Python / gdb batch / WinDbg cdb）④ CMake Presets 编排。自 2026-07-27 起逐步起草 `techniques/debugger-scripting.md`、`guidelines/cpp/cmake-presets.md` 等。待落地。
 - #3 已在 review 期落地（research-radar 迁 project-local skill）
 - #7 #8 observe（未 promote）；#5 借 #1 的 commit 落地
+
+### 2026-08-06 首见（详见 `2026-08-06.md`；⚠️ Model Worker（kimi-k3）代跑首轮——计划 full-scope 因 worker 运行时 bug 退化为单线程手搜 16 源全官方；1/2 已核源、3 存在性确认、4/5 未核）
+- 📥 雷达中 Stop hook 连续阻断 8 次后被 override `[已核源:引语逐字属实]` —— 官方 best-practices 明文。补 `guidelines/claude-code/hook-conventions.md`（无此条）+ 冲击 `techniques/fact-forcing-gate.md`（Stop hook 原被视为最接近 hard 的一层，实为 advisory）。**本轮最推荐先促成**。源:code.claude.com/docs/en/best-practices
+- 📥 雷达中 动态 workflow 命名模式 Tournament / Generate-and-filter / Classify-and-act `[已核源+修正:blog 实际命名 6 种非 worker 报的 7 种;Quarantine 不是并列命名模式,是 Triaging at Scale 节里一句做法]` —— 补 `techniques/coordination-patterns.md`（现只有 fan-out/serial-chain/iterative-retrieval）；Tournament "comparative judgment is more reliable than absolute scoring"（引语核实）与 de-anchored judge 互补。源:claude.com/blog/a-harness-for-every-task-dynamic-workflows-in-claude-code
+- 📥 雷达中 Agent Teams（v2.1.178+ 实验）`[存在性已交叉确认,细节未核]` —— 队友=独立会话+直接通信+共享任务列表+自领+plan gate。跟 multi-session-coordination（hook）/ role-lane-coordination（mailbox）成第三种机制，三方 trade-off 值得补 collaboration 域。促成前真实体验一次。源:code.claude.com/docs/en/agent-teams
+- 📥 雷达中 Auto mode classifier 对 subagent 三阶段检查 `[未核源]` —— spawn 前查 description / 运行时逐动作过 classifier（frontmatter permissionMode 被忽略）/ 完成后 review action history 加警告。补 subagent-contracts.md。**促成前必核** permission-modes 官方页。源:code.claude.com/docs/en/permission-modes（worker 报告）
+- 📥 雷达中 Plugin 系统打包分发（v2.1.128+）`[未核源;且属官方已述,可能只值指针]` —— 命名空间/bin 入 PATH/settings 注入 agent 字段/marketplace。对照 sync-skills.ps1 评估。源:code.claude.com/docs/en/plugins（worker 报告）
+- ❌ worker 三问砍掉：/goal evaluator（autonomous-loop-scheduling 已覆盖）/ .claude/rules/ path-scoped（context-budget-audit 已覆盖）/ status line（不沾 niche）/ CLAUDE.md 行数甜区等（seen.md 已有）
+
+### 本轮运维产出（2026-08-06/07，非候选——worker 代跑边界，全文见 2026-08-06.md 附录）
+- Model Worker 代跑 5 轮+2 探针 ≈$26：B-007 字符串 args 被拒/B-008 StructuredOutput 不在白名单/B-010 后台 workflow 交付物丢失——三条已由 ModelWorkerMCP main lane 当天修复（4f4a142/9827cb3）；**B-009 大载荷 StructuredOutput 被取消未解**（12B 过/3-6KB 取消，toolDenialKind=cancelled，不在 daemon 层）→ schema-bound workflow 对该 worker 不可用，绕法=radar-textmode.js（纯文本 JSON+JS 解析）
+- 可复用判据：worker 说"跑了 workflow"不可信，看 wf_*.json 的 agentCount/totalTokens（0=没跑）；brief 对抗模型回合收敛 0/5 别再试；daemon 重启必换端口必须人工重连 MCP；kimi 网关无 prompt caching（长 context 多轮任务贵在这）
+
+### 2026-08-07 首见（run 6 radar-textmode 全扇出——54 agent / 9 claim 存活 3 票核验 / coordinator 逐条验收；详见 `2026-08-06.md` 补记）
+- 📥 雷达中 settings.json 强制执行语义（enforced vs guidance）`[已核源:引语逐字属实]` —— 配置层由 Claude Code 强制应用，prompt / CLAUDE.md 不可覆盖；与 CLAUDE.md 的 guidance 性质是两层。新槽位：guidelines/claude-code/ 缺 settings 层专项。源:code.claude.com/docs/en/claude-directory
+- 📥 雷达中 skill 正文跨 turn 持久驻留、后续不重读 SKILL.md `[已核源:引语逐字属实]` —— 加载后作为单条消息常驻会话，每行都是反复 token 成本；写法应是 standing instructions 而非一次性步骤。对本 repo 18+ skill 的正文写作直接可操作；补 AGENTS.md「skills 按需加载」认知的执行时另一半。源:code.claude.com/docs/en/skills
+- ❌ 拒（seen.md 旧货，worker 去重漏扫日期条目）：commands 并入 skills（2026-06-25 已行动）/ rules+paths 懒加载（2026-06-25 已促成 context-budget-audit）
+- ✗ Verify 阶段驳倒（2/3 票）：「CLAUDE.md 超 200 行降遵循度」——官方文档无此数字，博客货（2026-07-18 已标「数字矛盾须实测」）；对抗核验拦似真断言的首个实证

@@ -47,6 +47,12 @@ query 里明确写:**只要近 6-12 个月有动静的、有具体可操作内�
 
 > **逃生通道**:若某次焦点特别关键、需要当场对抗核验(不打算走事后人工促成),可显式改调全套
 > `deep-research` skill——但要预期它贵得多、可能撞额度。默认永远走 radar-lite。
+>
+> **worker 代跑（full-scope 且不吃本账号额度）**:把重活派给 model-worker MCP(kimi-k3)时,用本目录
+> `radar-textmode.js`(无 schema 全扇出:Scope/Search/Fetch/Verify/Synthesize,agent 全部纯文本 JSON)——
+> worker 运行时跑不了 schema-bound 的内置 deep-research(大 StructuredOutput 载荷被上游取消)。焦点烤进
+> 脚本 QUESTION 常量,派发/验收纪律见 [`techniques/model-worker-mcp.md`](../../../techniques/model-worker-mcp.md)
+> 「让 worker 跑扇出 workflow」+「委派的验收纪律」两节。实测 54 agent/15 分钟端到端,Verify 真拦似真断言。
 
 ### 2.5 candidates 本就未核验 —— digest 必须标注 + 检查搜索是否跑全
 radar-lite 返回的 `candidates` **按设计就没经过对抗核验**(`mode` 字段会写明)。这不是缺陷,是雷达
