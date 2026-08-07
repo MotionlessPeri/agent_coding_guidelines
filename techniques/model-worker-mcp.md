@@ -204,6 +204,27 @@ model-worker-mcp task wait <task-id>
 
 派 `patch_proposal` 任务时，brief 里要写清「不需要 commit，交付以相对 baseline 的 patch 自动生成」，并给出验收要跑的命令（构建 / 类型检查 / 测试）。worker 在隔离 clone 里工作，装依赖要自己跑一遍。
 
+## 让 worker 跑扇出 workflow（调研 / 审计类重活）
+
+worker 的 harness 带 `workflows` capability，可以跑几十个 subagent 的扇出任务（实测 54 agent / 15 分钟 / 五阶段全走完）。三条契约，都靠踩坑得到：
+
+1. **workflow 脚本必须写成纯文本模式，不能用 `agent({schema})`。** kimi-k3 这条网关路径上，大的 `StructuredOutput` 载荷会被上游取消——十几字节能过，3-6 KB 必死（`toolDenialKind: "cancelled"`，不是 daemon 的策略拒绝，daemon 侧已排除并结案）。而内置 workflow（`deep-research` 等）每个阶段都用 schema，所以**内置扇出 workflow 在该路径上整体不可用**。替代写法：`agent()` 不带 schema、让它返回 JSON 文本、脚本里剥围栏后取首个完整 JSON 值解析，配一次「重发一遍、只输出 JSON 本体」的重试。参考实现：`agent_coding_guidelines/.claude/skills/research-radar/radar-textmode.js`（含 `parseLoose` / `jsonAgent` 两个可搬走的 helper）。
+   同一个取消在上层有**两副面孔**：模型选择重试 → `StructuredOutput retry cap (5) exceeded`；模型服从取消话术里的「STOP and wait」→ `subagent completed without calling StructuredOutput`。排查时别当成两个 bug。
+2. **派发用 `Workflow({ scriptPath })`，脚本放进 workspace，参数烤进脚本常量。** brief 里明确「只传 scriptPath、不传 args」。
+3. **worker 提交 workflow 后必然立刻结束回合，别在 brief 里对抗。** 实测 0/5——包括它逐字复述指令并承诺「我不会提前结束回合」之后照犯。回合收敛是模型的默认行为，prompt 侧堵不住。daemon 的兜底（等后台任务清空才 finalize，交付物出现在 `task_get` 的 `result.summary`）是唯一可靠机制；起了后台 workflow 的任务会 running 到真实交付，`timeout_ms` 按 workflow 时长留（默认 2 小时一般够）。
+
+## 委派的验收纪律（coordinator 侧）
+
+- **worker 的自述会把误诊写成事实。** 实例：把自己的调用姿势错误报成「该 workflow 不可用（上轮已确认）」——「上轮」根本不存在。方法性结论（"X 不可用" / "已确认 Y"）一律要求附证据（错误原文 / runId），没有就当假设处理。
+- **扇出真跑没跑，看运行记录不听汇报**：workflow 落盘的 `wf_*.json` 里 `agentCount` / `totalTokens` 是硬判据（0 = 没跑）。daemon 新版交付物直接回 `task_get`，一般不用再扒；worker 声称与 result 对不上时再去。
+- **验收 ≠ 重跑核验**。抽查即可：URL 抽样可达 + 引语逐字比对 + stats 自洽（fetch 失败数异常高 = 「搜索没跑完」别读成「无 signal」）+ 与去重账本比对。成本是几次 WebFetch，不是把 worker 的活重做一遍。实测一次抽查抓出 worker 报告里 3 处错误。
+- **去重要指定「逐条对照」的粒度**。给了完整账本文件当输入，worker 仍可能只对照显眼的黑名单节、漏扫日期条目（实测漏了 2 条旧货）。brief 里写明对照范围，或 coordinator 侧机械 diff 兜底。
+
+## 计费口径
+
+- **成本看 `cost_amount`，不看 units。** `usage` 的三个数各是一个计量面：`input/output_units` 只计 worker 主循环（不含 subagent），workflow 自己的 `totalTokens` 另算，`cost_amount` 才是全量权威。拿 units 估成本会差一个数量级。
+- **kimi-k3 网关无 prompt caching**（`cache_write` 恒 0）：多轮长 context 任务每轮全量重发 context，这是费用大头。单线程长对话（几十轮工具调用）可能比一次扇出更贵——实测 95 轮手搜 $14 vs 54-agent 扇出同量级。
+
 ## 运行与排障
 
 ```powershell
@@ -214,13 +235,13 @@ model-worker-mcp doctor --json
 ```
 
 - client 断开不会自动取消已经接受的 task；重新连接后用 `task_get` 查询。
-- `daemon restart` 会保留 queued task，但 active task 会变为 `interrupted`。
+- `daemon restart` 会保留 queued task，但 active task 会变为 `interrupted`——且**首轮任务被打断后无法 `task_continue` 续接**（resume handle 只在任务完成时落库；工具侧已立项修复，修好前中断即全损）。**重启前先确认没有任务在跑**：实测一次为部署修复而重启，杀掉了一个已跑 40 分钟的扇出任务。
+- 重启换端口后 MCP client **必须人工重连**，实测 4 次无一自动恢复；症状是工具调用 `fetch failed`。多会话共用一个 daemon 时，重启会把所有会话的连接一起打断。
 - strict 写请求返回 `invalid_request` 时，先检查摘要是否缺失或请求字段是否在计算摘要后发生变化。
 - MCP 显示 disconnected 时，先确认 `model-worker-mcp version --json` 能从新终端运行，再检查 `doctor`。
 - `patch_proposal` 报 `unsupported_workspace_state` 时先看 `diagnostic` 字段：出现 `unknown option 'allow-empty'` 说明 Git 低于 2.35，该升级 Git 而不是改工作区。
 - `local_file` 报 `workspace_out_of_scope` 且信息提到 `local_file_roots`，说明操作者还没授权目录，见上「传文件给 worker」。
 - **重启 daemon 前先确认自己的终端里有 `MODEL_GATEWAY_API_KEY`**。新 daemon 继承的是执行 restart 那个进程的环境；从一个没有该变量的 shell 重启，daemon 会带着空凭据起来，之后所有任务都失败。
-- 重启会换端口，已连接的 MCP client 会指向已停止的旧 daemon，表现为工具调用 `fetch failed`。重连客户端即可。
 - 任务长时间没有新 event 不等于 deadline 失效——两者要分开看。`task_get` 的 event 序号不动是「worker 卡住」，而 deadline 到点会把任务转成 `timed_out`。判断挂死看 event 停滞，别看 deadline。
 - 不要手工编辑 `%LOCALAPPDATA%\model-worker-mcp` 中的 SQLite、discovery 或 artifact。
 
