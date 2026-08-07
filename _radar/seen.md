@@ -79,7 +79,7 @@
 - #7 #8 observe（未 promote）；#5 借 #1 的 commit 落地
 
 ### 2026-08-06 首见（详见 `2026-08-06.md`；⚠️ Model Worker（kimi-k3）代跑首轮——计划 full-scope 因 worker 运行时 bug 退化为单线程手搜 16 源全官方；1/2 已核源、3 存在性确认、4/5 未核）
-- 📥 雷达中 Stop hook 连续阻断 8 次后被 override `[已核源:引语逐字属实]` —— 官方 best-practices 明文。补 `guidelines/claude-code/hook-conventions.md`（无此条）+ 冲击 `techniques/fact-forcing-gate.md`（Stop hook 原被视为最接近 hard 的一层，实为 advisory）。**本轮最推荐先促成**。源:code.claude.com/docs/en/best-practices
+- ✅ 已促成(2026-08-07,commit `abf35d7`) Stop hook 连续阻断 8 次后被 override `[已核源:引语逐字属实]` —— hook-conventions §3 记硬上限 + fact-forcing-gate advisory 定性补「gate 自己会让路」。源:code.claude.com/docs/en/best-practices
 - 📥 雷达中 动态 workflow 命名模式 Tournament / Generate-and-filter / Classify-and-act `[已核源+修正:blog 实际命名 6 种非 worker 报的 7 种;Quarantine 不是并列命名模式,是 Triaging at Scale 节里一句做法]` —— 补 `techniques/coordination-patterns.md`（现只有 fan-out/serial-chain/iterative-retrieval）；Tournament "comparative judgment is more reliable than absolute scoring"（引语核实）与 de-anchored judge 互补。源:claude.com/blog/a-harness-for-every-task-dynamic-workflows-in-claude-code
 - 📥 雷达中 Agent Teams（v2.1.178+ 实验）`[存在性已交叉确认,细节未核]` —— 队友=独立会话+直接通信+共享任务列表+自领+plan gate。跟 multi-session-coordination（hook）/ role-lane-coordination（mailbox）成第三种机制，三方 trade-off 值得补 collaboration 域。促成前真实体验一次。源:code.claude.com/docs/en/agent-teams
 - 📥 雷达中 Auto mode classifier 对 subagent 三阶段检查 `[未核源]` —— spawn 前查 description / 运行时逐动作过 classifier（frontmatter permissionMode 被忽略）/ 完成后 review action history 加警告。补 subagent-contracts.md。**促成前必核** permission-modes 官方页。源:code.claude.com/docs/en/permission-modes（worker 报告）

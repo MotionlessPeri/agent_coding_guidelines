@@ -74,6 +74,7 @@ Agent 看到 deny + 提示后必须先跑 Grep / Read / etc.，再重试 Edit。
 
 - 层级 1 / 2（prompt / skill）——靠 agent 读 prompt 自律，最弱。
 - 层级 3（hook）——真拦得住"赶工者做显而易见的事"（这是现实威胁，价值很大），但控制方仍能绕过：换个工具、把 hook 关掉、改 settings.json。所以它是"合理保证"级的 advisory，不是 hard。
+  - 而且 hook 层的 advisory 性质不只来自"能被绕"，还来自"**它自己会让**"：Stop hook 连续 block 8 次即被 harness 强制 override、结束回合（官方明文，见 [`guidelines/claude-code/hook-conventions.md`](../guidelines/claude-code/hook-conventions.md) §3）——没人关 hook、没人改 settings，gate 在持续压力下自己放行。用 Stop hook 做验证 gate 的，8 次是内建天花板。
 
 真正的 **hard control** 是把能力拿走：一个独立 approver 用 agent 没有的私钥签名精确 artifact（commit 的 tree-hash / 命令+参数+`approved_at` 时间戳），agent 改不了的 verifier（protected remote / 隔离 CI runner）只认匹配且未过期的签名——agent 伪造不出签名、不能把批准挪到别的 artifact、不能自批。这**超出 fact-forcing gate 的范畴**（gate 是"逼你 surface 事实"，不是"没签名不让落地"），但值得知道天花板在哪：fact-forcing gate 最多做到 advisory，够用即止；真要 hard 得上"独立签名 + agent 改不了的 verifier"这类方案（本 repo 目前没有现成实施，最接近的一层 engine-side 硬约束是 [`claude-code-autonomous-permissions.md`](claude-code-autonomous-permissions.md) 讲的 auto-mode 破坏性命令护栏）。
 

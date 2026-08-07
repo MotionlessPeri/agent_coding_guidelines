@@ -79,6 +79,8 @@ def main(argv):
 
 **两套不混用**——给 PreToolUse 用 `decision: "block"` 会被 harness 忽略不阻塞。
 
+**Stop hook 有内建放行上限**：连续 block **8 次**后 harness 强制 override、结束回合（[官方 best-practices](https://code.claude.com/docs/en/best-practices) "Give Claude a way to verify its work" 节明文）。用 Stop hook 做「检查不过不许停」的验证 gate 时，8 次是硬天花板——长自主任务必然撞到。设计上要么让检查在 8 次内可收敛，要么在下游验收时确认「是否被 override 放行」，别把 Stop hook 当死门。（advisory/hard 定性的推论见 `techniques/fact-forcing-gate.md`。）
+
 ```json
 // PreToolUse deny — 正确
 {
