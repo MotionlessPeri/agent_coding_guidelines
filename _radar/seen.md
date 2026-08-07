@@ -95,3 +95,12 @@
 - ✅ 已促成(2026-08-07) skill 正文跨 turn 持久驻留、后续不重读 SKILL.md `[已核源:引语逐字属实]` —— AGENTS.md Skills 段加运行时契约 bullet（加载后每行反复成本 / standing instructions / 中途改文件对已加载会话无效），补「按需加载」认知的执行时另一半。源:code.claude.com/docs/en/skills
 - ❌ 拒（seen.md 旧货，worker 去重漏扫日期条目）：commands 并入 skills（2026-06-25 已行动）/ rules+paths 懒加载（2026-06-25 已促成 context-budget-audit）
 - ✗ Verify 阶段驳倒（2/3 票）：「CLAUDE.md 超 200 行降遵循度」——官方文档无此数字，博客货（2026-07-18 已标「数字矛盾须实测」）；对抗核验拦似真断言的首个实证
+
+### 本轮 promote 落地(2026-08-07)
+- #1 Stop hook 8 次上限 → `169aafe`（hook-conventions §3 + fact-forcing-gate「gate 自己会让路」）
+- #2 skill 正文常驻不重读 → `31aa8c4`（AGENTS.md Skills 段运行时契约 bullet）
+- #3 结果选优与路由三模式 → `2384f56`（coordination-patterns 新小节,Quarantine 按事实降为做法注记）
+- #4 settings.json enforcement 分界 → `2f323f8`（hook-conventions 开篇注记,最轻形态）
+- #5 Agent Teams / #6 auto-mode 三阶段 / #7 plugin 打包 → 观察（`8b1df6d` / `89d13b0`,各带触发条件;#7 挂 spike 到 open-items）
+- 工具与运维沉淀（非候选）→ `12038f1`（model-worker-mcp 委派三节）+ `f8a6a0f`（digest/账本/radar-textmode 管线）
+- **本轮验收教训**：worker 报告 4 处错误全被抽查抓获（"7 种模式"/"Quarantine 是模式"/"上轮已确认不可用"/"v2.1.128"）——似真编造不挑内容轻重,**未核源的版本号与专名一律不落地**;coordinator 抽查成本 4 次 WebFetch,远低于错误入库的清理成本
