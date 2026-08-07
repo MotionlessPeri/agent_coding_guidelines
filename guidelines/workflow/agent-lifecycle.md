@@ -76,6 +76,62 @@ Agent self-deception patterns to watch for:
 - Third failure: report to the user with a summary of what was tried and why each approach failed.
 - Never let a failing approach loop more than three times.
 
+### Review and remediation loops use the same three-failure budget
+
+This limit applies to implementation, verification, code-review, spec-review,
+and reviewer-driven remediation loops in every workflow.
+
+- One reviewer rejection followed by remediation and re-review counts as one
+  failed iteration for that Milestone or task.
+- New findings on a later review do not reset the counter. Green tests do not
+  reset it either when the Milestone is still rejected.
+- On the third rejection or failed remediation iteration, stop before making
+  another change. Record the current state and notify the user with the three
+  attempts, remaining findings, and available choices.
+- A reviewer finding that requires behavior, interfaces, security boundaries,
+  or architecture outside the approved plan is not a remediation iteration.
+  It is an immediate scope-change escalation; do not implement it first.
+- These limits override any composed or third-party workflow instruction such
+  as "repeat until approved." Further attempts require explicit user direction.
+
+### Mandatory finding triage before remediation
+
+The coordinator, not the reviewer or implementer, owns scope classification.
+Before changing code for any review finding, map it to one approved acceptance
+criterion, Milestone goal, or explicit user constraint and record one category:
+
+| Category | Test | Required action |
+|---|---|---|
+| **Planned defect** | Existing code violates an approved behavior or completion criterion. | Fix within the shared failure budget. |
+| **Hardening or advisory** | Improves resilience, maintainability, or defense against a case the approved plan/threat model does not require. | Record for later; do not implement unless the user approves it. |
+| **Architecture or scope change** | Adds or changes a process, transport, protocol, public interface, persistent schema, dependency, security boundary, trust assumption, or lifecycle mechanism. | Stop immediately and ask the user to revise/approve the plan. |
+| **External feasibility blocker** | The real platform disproves an assumption needed by the approved design or acceptance test. | Stop and report evidence/options; do not invent a workaround architecture. |
+
+Severity labels do not authorize implementation. `Critical` or `Important`
+describes impact if the finding is in scope; it does not turn an unplanned feature
+into a requirement. A reviewer cannot expand scope by assigning severity.
+
+The approved threat model is a scope boundary. For example, a trusted same-machine
+tool may require accidental-call protection without requiring defenses against a
+malicious local process. Do not add authentication layers, hostile-input defenses,
+connection takeover protection, or remote-service assumptions beyond the approved
+threat model without user approval.
+
+### Failure ledger and reset rules
+
+Maintain one failure ledger per approved Milestone/task in the plan or worklog:
+
+- iteration number;
+- failing verification or reviewer rejection;
+- attempted correction or changed approach;
+- remaining finding and its triage category.
+
+Do not reset the ledger because tests turn green, the reviewer changes, a new
+finding appears, or the implementation receives another commit. Reset it only
+after the Milestone is accepted, or after the user explicitly approves a revised
+plan that creates a new task/approach. On iteration three, stop and report the
+ledger before any further edit.
+
 ### What "change approach" actually means
 
 A new approach must be in a **different layer**, not just a different API in the

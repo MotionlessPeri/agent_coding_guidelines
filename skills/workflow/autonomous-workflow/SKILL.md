@@ -82,16 +82,28 @@ Phase 1: Self-Brainstorm
       - Novel pattern candidate → record draft in brief.md "Novel Pattern
         Candidates" section; Phase 4 audit will revisit
     If skill absent, skip silently.
+  → run the full scope audit after Self-Brainstorm using
+    `auditing-plan-scope` when its product-surface prefilter finds any
+    expansion signal. Store the complete table in brief.md.
 
 Phase 2: Self-Plan
   → invoke superpowers:writing-plans
   → break into 3-7 Milestones (see supervised-workflow for granularity guidance)
+  → if the work contains independently deliverable subsystems, split them into
+    separate plans/runs unless the user explicitly approves one combined run
   → append plan section to brief.md with Milestone list:
     each Milestone has goal, files touched, test approach, completion criteria
+  → record the approved threat model and architecture boundaries, including
+    which processes, transports, protocols, persistent schemas, public
+    interfaces, authentication layers, and lifecycle mechanisms are allowed
+  → run the delta scope audit after Self-Plan using `auditing-plan-scope`.
+    Compare the plan with the audited design and add any new, widened, or newly
+    public surface to the scope summary for the only user gate.
 
 [GATE — the only gate in this workflow]
   → output to user: framing summary (from brief.md) + Milestone list,
-    one-screen total. Concise, not the full file dump.
+    plus the one-screen scope-audit summary, one-screen total. Concise, not the
+    full file dump.
   → wait for explicit user response:
     - confirms → advance to Phase 3
     - redirects (scope wrong / milestones wrong / approach wrong)
@@ -102,6 +114,10 @@ Phase 2: Self-Plan
 
 Phase 3: Per-Milestone Implementation (TDD-strict, no gates)
   For each Milestone in order:
+    0. Use the exact canonical Milestone ID and name from the approved brief in
+       plans, commentary, worklog entries, reviewer prompts, and status reports.
+       Never renumber from a private checklist. If two representations disagree,
+       stop and reconcile them with the user-visible approved plan.
     a. Invoke superpowers:test-driven-development AND tdd-with-fixtures
        — tests come BEFORE implementation, milestone NOT done if tests fail
     b. Implement to pass tests
@@ -122,12 +138,30 @@ Phase 3: Per-Milestone Implementation (TDD-strict, no gates)
     d. Commit. Format: `<type>: <subject>` (e.g. `feat:` / `fix:` / `refactor:` /
        `docs:`). One theme per commit. Commit only at stable points
        (build passes, tests pass).
-    e. Append entry to worklog.md (format below)
+    e. Append entry to worklog.md (format below). Maintain the Milestone
+       failure ledger required by `agent-lifecycle.md`; reviewer changes, new findings,
+       green tests, and new commits do not reset it.
+
+  Before every reviewer-driven edit:
+    - perform the mandatory finding triage in `agent-lifecycle.md`;
+    - cite the exact approved acceptance criterion/Milestone goal it implements;
+    - treat `Critical` / `Important` only as severity, never as scope authority;
+    - stop immediately for a new process, transport, protocol, public interface,
+      persistent schema, dependency, authentication/trust boundary, threat model,
+      or lifecycle mechanism that the approved brief did not authorize;
+    - stop on a real platform result that disproves an architectural assumption;
+      report the evidence and options instead of designing around it silently.
 
   Escalation conditions (stop and notify user):
     - Same milestone fails verification 3 times in a row → escalate per agent-lifecycle.md
+    - Same milestone is rejected by spec/code review 3 times → stop before a
+      fourth remediation, even if every intermediate test run is green and
+      each review reports different findings
     - Build broken and can't be fixed within one fix attempt → escalate
     - Scope ambiguity discovered (acceptance criteria insufficient) → escalate
+    - Reviewer asks for an interface, security boundary, behavior, or
+      architecture not traceable to the approved brief → treat as a scope
+      change and escalate immediately; do not convert it into a requirement
     - User explicitly interrupts asking for status → respond with current worklog state
 
 Phase 4: Self-Review and Result
@@ -521,6 +555,16 @@ This skill is an **orchestrator**:
 
 When composing these, **follow each composed skill's discipline fully**. Autonomous does not authorize skipping; it just removes the user-review pauses.
 
+The orchestration limits in this skill and `agent-lifecycle.md` take precedence
+over an imported workflow's unbounded review wording. In particular,
+`subagent-driven-development` phrases such as "repeat until approved" mean
+"repeat within the shared three-failure budget." They never authorize a fourth
+attempt or a silent scope/architecture expansion.
+
+The root coordinator owns this decision. Do not delegate scope authority to a
+spec reviewer, quality reviewer, or implementer. Their findings are evidence to
+triage against the approved plan, not amendments to it.
+
 ## Failure Modes
 
 | Failure | Looks like | Correct action |
@@ -530,9 +574,15 @@ When composing these, **follow each composed skill's discipline fully**. Autonom
 | Skipping documentation | "I implemented it, no need to write worklog" | All four files are mandatory artifacts, not optional. Write them. |
 | Advancing past failing tests | Mark Milestone done with red tests | Milestone NOT done. Fix or escalate. |
 | Looping on a failed approach | 5th attempt on same Milestone | Stop at attempt 3, escalate per agent-lifecycle.md |
+| Resetting the counter because tests are green or a reviewer found a different issue | Fourth review/remediation pass on one Milestone | Review rejection is still a failed iteration; stop after the third and notify the user |
+| Treating `repeat until approved` as unbounded | Continuing because a composed skill requests another re-review | The shared three-failure budget overrides it |
 | Editing past worklog entries | Rewriting Milestone 1 entry after Milestone 3 found issues | worklog is append-only. Add a new entry noting the correction. |
 | Treating autonomous as "no rules" | Skipping commits, skipping tests, skipping docs | Autonomous removes per-Milestone gates, not discipline. Discipline + plan gate are the substitutes. |
 | Silent scope expansion | Realizing brief.md was too narrow, expanding without notifying user | Escalate. Scope changes require user input. |
+| Severity becomes authorization | Reviewer labels an unplanned hardening idea `Important`, so it is implemented | Classify against the approved plan; record advisory work or escalate scope |
+| Architecture called an implementation detail | Adding a process, transport, protocol, auth layer, schema, or lifecycle hook to finish a Milestone | Stop immediately and return to the user; naming it a detail does not keep it in scope |
+| Threat-model drift | Trusted same-machine scope grows defenses against malicious local or remote actors | Preserve the approved threat model; propose the expansion to the user |
+| Milestone identity drift | Private handoff says M5 while the user-visible plan says M4 | Stop, use the canonical user-approved Milestone ID, and reconcile records before continuing |
 | Committing handoff docs | brief.md ends up in `git status` | Move to private location per `private-docs-policy.md` |
 | Stalling on commit prompt | Phase 3 halts at first Milestone commit because `Bash(git commit:*)` is in `ask` list | Pre-flight should have caught this. Escalate; workflow cannot continue without commit gate lifted. See Commit Permission Pre-Flight section. |
 | Skipping pre-flight | Started Phase 1 / 2 without checking commit settings | Restart Phase 0 to do the check. Better caught early than at first commit. |

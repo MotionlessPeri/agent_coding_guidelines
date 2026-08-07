@@ -89,6 +89,80 @@ Invoke-Test "autonomous workflow records and compares an executable task baselin
     Assert-TextContains $Path 'git ls-files --others --exclude-standard' "autonomous workflow does not enumerate untracked task changes"
 }
 
+Invoke-Test "workflow review loops stop after three failures without scope creep" {
+    Assert-TextContains "guidelines/workflow/agent-lifecycle.md" 'reviewer rejection[\s\S]*counts as one[\s\S]*failed iteration' "lifecycle policy does not count reviewer rejection as a failed iteration"
+    Assert-TextContains "guidelines/workflow/agent-lifecycle.md" 'Green tests do not[\s\S]*reset' "lifecycle policy lets green tests reset a rejected review loop"
+    Assert-TextContains "guidelines/workflow/agent-lifecycle.md" 'override[\s\S]*repeat until approved' "lifecycle policy does not override unbounded composed review loops"
+    foreach ($Path in @(
+        "skills/workflow/autonomous-workflow/SKILL.md",
+        "skills/workflow/supervised-workflow/SKILL.md"
+    )) {
+        Assert-TextContains $Path 'three-failure budget' "$Path does not inherit the shared three-failure budget"
+        Assert-TextContains $Path 'scope change' "$Path does not stop reviewer-driven scope expansion"
+        Assert-TextContains $Path 'repeat\s+until approved' "$Path does not override the third-party unbounded review loop"
+    }
+}
+
+Invoke-Test "workflow rules triage findings and preserve approved plan identity" {
+    $Lifecycle = "guidelines/workflow/agent-lifecycle.md"
+    Assert-TextContains $Lifecycle 'Mandatory finding triage' "lifecycle policy lacks a mandatory pre-remediation triage"
+    foreach ($Category in @('Planned defect', 'Hardening or advisory', 'Architecture or scope change', 'External feasibility blocker')) {
+        Assert-TextContains $Lifecycle $Category "lifecycle policy lacks finding category: $Category"
+    }
+    Assert-TextContains $Lifecycle 'Severity labels do not authorize implementation' "review severity can still be mistaken for scope authorization"
+    Assert-TextContains $Lifecycle 'threat model' "lifecycle policy does not prevent silent threat-model expansion"
+    Assert-TextContains $Lifecycle 'failure ledger' "lifecycle policy does not require an explicit review-failure counter"
+
+    $Autonomous = "skills/workflow/autonomous-workflow/SKILL.md"
+    Assert-TextContains $Autonomous 'canonical Milestone' "autonomous workflow does not preserve the approved milestone numbering"
+    Assert-TextContains $Autonomous 'failure ledger' "autonomous workflow does not maintain a review-failure ledger"
+    Assert-TextContains $Autonomous 'new (?:process|transport|protocol)' "autonomous workflow does not recognize concrete architecture-change signals"
+    Assert-TextContains $Autonomous 'threat model' "autonomous workflow does not lock the approved trust assumptions"
+
+    $Supervised = "skills/workflow/supervised-workflow/SKILL.md"
+    Assert-TextContains $Supervised 'canonical Milestone' "supervised workflow does not preserve the approved milestone numbering"
+    Assert-TextContains $Supervised 'finding triage' "supervised workflow does not require finding classification before remediation"
+}
+
+Invoke-Test "plans prove product surface before whole-plan approval" {
+    $Constraints = "guidelines/code/constraints.md"
+    Assert-TextContains $Constraints 'Whole-plan approval[\s\S]*(?:does not|cannot)[\s\S]*requirement' "constraints let whole-plan approval manufacture requirement justification"
+    Assert-TextContains $Constraints 'deletion test' "constraints do not require deleting unjustified plan surface"
+
+    $Audit = "skills/workflow/auditing-plan-scope/SKILL.md"
+    Assert-TextContains $Audit 'scope baseline' "scope audit does not establish a de-anchored baseline before reading candidate rationale"
+    Assert-TextContains $Audit 'candidate mechanism[\s\S]*(?:does not|cannot)[\s\S]*(?:create|become)[\s\S]*requirement' "scope audit lets a candidate mechanism manufacture its own requirement"
+    Assert-TextContains $Audit 'broad quality label[\s\S]*smallest observable' "scope audit lets broad quality language authorize an arbitrary mechanism set"
+    Assert-TextContains $Audit 'Requirement basis[\s\S]*explicit[\s\S]*inferred' "scope audit does not distinguish explicit requirements from agent inference"
+    Assert-TextContains $Audit 'reviewer[\s\S]*cannot establish[\s\S]*current[\s\S]*user flow' "scope audit lets reviewer framing manufacture a current user flow"
+    Assert-TextContains $Audit 'existing request boundary' "scope audit does not prefer boundary validation before a new session lifecycle"
+    Assert-TextContains $Audit 'Keep[\s\S]*Merge[\s\S]*Internalize[\s\S]*Temporary validation[\s\S]*explicit current requirement' "scope audit lets inclusion dispositions bypass explicit current requirement evidence"
+    Assert-TextContains $Audit 'inferred[\s\S]*(?:Defer|Delete)[\s\S]*unresolved' "scope audit lets inferred scope enter the plan through Merge or Internalize"
+    Assert-TextContains $Audit 'For every non-trivial design' "scope audit does not run the product-surface prefilter for every non-trivial design"
+    Assert-TextContains $Audit 'If the list is empty[\s\S]*Otherwise run the full audit' "scope audit does not distinguish a clean prefilter from a triggered full audit"
+    Assert-TextContains $Audit 'process[\s\S]*transport[\s\S]*protocol[\s\S]*persistent state[\s\S]*public interface[\s\S]*command[\s\S]*configuration[\s\S]*security or trust boundary[\s\S]*lifecycle mechanism' "scope audit misses product-surface expansion signals"
+    Assert-TextContains $Audit 'Consumer and frequency[\s\S]*Requirement basis[\s\S]*Deletion consequence[\s\S]*Existing alternative[\s\S]*Disposition[\s\S]*Closure condition' "scope audit table omits an approved adjudication field"
+    Assert-TextContains $Audit 'reverse traceability' "scope audit does not trace proposed surfaces upward to a current user flow"
+    Assert-TextContains $Audit 'deletion test' "scope audit lacks a mandatory deletion test"
+    Assert-TextContains $Audit 'Keep[\s\S]*Merge[\s\S]*Internalize[\s\S]*Temporary validation[\s\S]*Defer[\s\S]*Delete' "scope audit lacks the six approved per-candidate dispositions"
+    Assert-TextContains $Audit 'temporary validation' "scope audit does not govern temporary probe or test surfaces"
+    Assert-TextContains $Audit 'roadmap[\s\S]*TODO[\s\S]*issue' "scope audit silently converts deleted scope into future commitments"
+
+    $Autonomous = "skills/workflow/autonomous-workflow/SKILL.md"
+    Assert-TextContains $Autonomous 'full scope audit[\s\S]*Self-Brainstorm' "autonomous workflow does not run the full audit after self-brainstorm"
+    Assert-TextContains $Autonomous 'delta scope audit[\s\S]*Self-Plan' "autonomous workflow does not review plan deltas before its only gate"
+    $AutonomousContent = Get-Content -Raw -LiteralPath (Join-Path $RepoRoot $Autonomous)
+    if ([regex]::Matches($AutonomousContent, '(?m)^\[GATE[^\]]*\]').Count -ne 1) {
+        throw "autonomous workflow no longer has exactly one top-level user gate"
+    }
+
+    $Supervised = "skills/workflow/supervised-workflow/SKILL.md"
+    Assert-TextContains $Supervised 'full scope audit[\s\S]*Gate 1' "supervised workflow does not require the full audit before design approval"
+    Assert-TextContains $Supervised 'delta scope audit[\s\S]*Gate 2' "supervised workflow does not require the delta audit before implementation-plan approval"
+
+    Assert-TextContains "AGENTS.md" 'auditing-plan-scope/SKILL\.md' "AGENTS does not register the on-demand scope-audit skill"
+}
+
 Invoke-Test "workflow skills leave promotion decisions to knowledge-promotion" {
     foreach ($Path in @(
         "skills/workflow/autonomous-workflow/SKILL.md",

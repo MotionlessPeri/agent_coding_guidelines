@@ -52,6 +52,10 @@ Phase 1: Brainstorm
       - Novel pattern candidate → record draft; Phase 4 audit revisits
     Findings are visible to user at GATE 1 review — user can redirect plan
     if pattern fit is wrong. If skill absent, skip silently.
+  → run the full scope audit from `auditing-plan-scope` before Gate 1 when its
+    product-surface prefilter finds any expansion signal. Keep the complete
+    audit table in the design artifact and add only its one-screen scope
+    summary to the Phase 1 output.
 
 [GATE 1] User reviews brainstorm output.
   Wait for explicit user confirmation. Do NOT proceed on silence or vague replies.
@@ -62,6 +66,12 @@ Phase 2: Implementation Plan
   → REQUIREMENT: plan must be broken into discrete Milestones or commits.
     Each Milestone = a coherent unit of work that ends at a stable point
     (code compiles, tests pass, intermediate state is reviewable).
+  → record the approved threat model and architecture boundaries; split
+    independently deliverable subsystems into separate plans unless the user
+    explicitly approves a combined run
+  → run the delta scope audit from `auditing-plan-scope` before Gate 2. Compare
+    the implementation plan with the Gate 1 design and expose every new,
+    widened, or newly public surface in the Gate 2 summary.
   → output: ordered Milestone list, each with: goal, files touched,
     test/verification approach, completion criteria.
 
@@ -71,6 +81,9 @@ Phase 2: Implementation Plan
 
 Phase 3: Per-Milestone Implementation
   For each Milestone in order:
+    → use the exact canonical Milestone ID/name from the user-approved plan in
+      status, commits, reviewer prompts, and Gate 3 output; stop and reconcile
+      any private/user-visible numbering mismatch
     → invoke superpowers:executing-plans for THIS Milestone only
     → invoke superpowers:test-driven-development AND tdd-with-fixtures
       for test discipline — milestone NOT done if tests fail
@@ -141,6 +154,28 @@ Each gate is a hard checkpoint. At each gate:
 
 4. **On vague reply** ("hmm", "let me think"): ask for explicit confirm/redirect. Do not interpret vague replies as approval.
 
+## Review and remediation limit
+
+All implementation, verification, spec-review, and code-review loops share the
+three-failure budget in `guidelines/workflow/agent-lifecycle.md`.
+
+- A reviewer rejection followed by remediation and re-review consumes one
+  iteration. Different findings or green intermediate tests do not reset it.
+- Stop before a fourth attempt and bring the three attempts, remaining findings,
+  and options to the next user gate.
+- If a reviewer requests behavior, interfaces, security boundaries, or
+  architecture outside the approved plan, stop immediately and present it as a
+  scope change. Do not implement it as an ordinary review fix.
+- This limit overrides composed or third-party instructions such as "repeat
+  until approved" unless the user explicitly authorizes another attempt.
+- Before every remediation, perform the mandatory finding triage in
+  `agent-lifecycle.md`. Reviewer severity is not scope authorization.
+- Preserve the approved threat model. A new process, transport, protocol,
+  schema, dependency, public interface, authentication/trust boundary, or
+  lifecycle mechanism is an immediate scope-change gate, not a review fix.
+- Maintain the Milestone failure ledger from `agent-lifecycle.md`; do not reset
+  it for green tests, new commits, different reviewers, or different findings.
+
 ## Milestone Granularity
 
 Agent proposes Milestone breakdown in Phase 2. User confirms or adjusts at Gate 2. Guidelines:
@@ -178,6 +213,9 @@ When invoking each composed skill, **follow that skill's own discipline fully**.
 | Forcing chain on trivial task | Running brainstorm for a typo fix | Detect early, ask user to switch to trivial mode |
 | Over-summarizing at gates | Output is too vague for user to actually review | Include concrete file paths, decisions, deviations |
 | Under-summarizing at gates | Dumping full diff or full plan | One-screen summary; user can request detail |
+| Unbounded reviewer loop | Fourth remediation/re-review because a composed skill says "until approved" | Stop after the third failed iteration and ask the user |
+| Reviewer-driven scope expansion | Adding an unplanned protocol, security layer, or architecture as a review fix | Stop immediately and return to the user gate |
+| Milestone numbering drift | Reporting a private-plan Milestone number that differs from the user-approved plan | Stop and reconcile; the user-visible approved plan is canonical |
 
 ## Related
 

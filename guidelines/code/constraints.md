@@ -28,6 +28,22 @@
 - Don't add features, abstractions, or configurability beyond what the current task needs.
 - Three similar lines of code is better than a premature abstraction.
 
+### Plan scope integrity
+
+- Whole-plan approval does not make every item in the plan a justified requirement.
+  Before approval, trace each new or expanded product surface to an explicit current
+  user flow and apply a deletion test: if removing it still satisfies the request and
+  acceptance criteria, remove it from the plan.
+- Treat processes, transports, protocols, persistent state, public interfaces,
+  commands, configuration, security or trust boundaries, and lifecycle mechanisms
+  as product surface, even when described as implementation details.
+- Reviewer preference, possible future use, test convenience, existing code, and
+  sunk effort are not sufficient justification by themselves.
+- Autonomous authority never authorizes a broader plan than the user's request.
+- A temporary validation surface may enter an approved plan only with a closure
+  point and verification method. At that point, delete it, internalize it, or make
+  it test-only; re-audit it before keeping it as a long-term product surface.
+
 ## Edit Scope Discipline
 
 - Every changed line must trace directly to the user's request. If you cannot explain
