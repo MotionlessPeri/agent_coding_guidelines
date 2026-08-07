@@ -59,6 +59,16 @@ Multiple research workers investigate different modules simultaneously. Coordina
 ### Fan-In (parallel implementation + unified verification)
 Multiple implementation workers edit different modules. A single verification pass covers all changes after all workers complete.
 
+### 结果选优与路由模式（Anthropic 官方命名）
+
+上面三种管「怎么分活」，下面三种管「怎么选结果 / 路由」（出处：[claude.com blog "dynamic workflows"](https://claude.com/blog/a-harness-for-every-task-dynamic-workflows-in-claude-code)，2026；官方共命名 6 种，另三种——fan-out-and-synthesize / adversarial verification / loop-until-done——corpus 已有对应物）：
+
+- **Tournament**——N 个 worker 用不同方法做同一任务，judge 做 **pairwise 比较**逐轮淘汰。官方论断："comparative judgment is more reliable than absolute scoring"——两两比较比绝对打分可靠。适合解空间宽、无客观 oracle 的选优（多方案设计、文案）；跟 [`adversarial-verification.md`](adversarial-verification.md) 的 LLM-as-judge（绝对分 0-1）/ de-anchored judge（防锚定）互补，是第三种 judge 形态。
+- **Generate-and-filter**——大量生成候选 → 按 rubric 过滤 + 去重 → 只留最优。与 Tournament 的分界：filter 是**绝对门槛**筛，tournament 是**相对比较**排——评估便宜、标准能写清用 filter；评估贵或标准说不清（只能比不能打分）用 tournament。
+- **Classify-and-act**——classifier agent 先判任务类型 / 复杂度，再路由到不同 agent 或模型档位。是上面「成本 & 何时值得用 multi-agent」的运行时版本：不靠人预判，先花一次小分类调用再分发。
+
+同篇 blog 的一句安全做法（**非**命名模式，别引成模式）：读不受信外部内容的 agent 不持高权限、持高权限的 agent 只收处理后的信息——跟 [`fact-forcing-gate.md`](fact-forcing-gate.md) 的权限分层同向。
+
 ## Continue vs. New Worker
 
 | Situation | Decision | Reason |
