@@ -130,6 +130,7 @@ Guidelines are grouped by topic under `guidelines/`:
 `skills/` 下是 Claude Code 与 Codex 共用的 Agent Skills。跟 guidelines / techniques 的核心区别：
 
 - **不通过 `@` 进 context**——两个平台都在匹配任务后按需加载
+- **加载后正文常驻、不重读**——skill 正文一旦触发即跨 turn 常驻会话，后续 turn 不会重读 SKILL.md（Claude Code [官方明文](https://code.claude.com/docs/en/skills)）。推论：正文每行都是加载后的反复 token 成本，写正文按「值得跨全任务常驻」取舍；持续适用的纪律写成 standing instructions 一次说清，别写「到时候回来看」；会话中途改 SKILL.md 对已加载的会话无效
 - 适合按 phase / domain 触发的内容（workflow 编排、跨工作流的 TDD discipline 等）
 - `skills/` 是 source of truth；`scripts/sync-skills.ps1` 默认同时同步到 `~/.claude/skills/` 与 `~/.agents/skills/`，也可用 `-ProjectPath` 安装到项目内对应目录
 - 双端共用的 portable frontmatter 只保留 `name` 与 `description`；`description` 必须自带触发和跳过条件，详细流程与平台分支放正文

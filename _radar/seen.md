@@ -92,6 +92,6 @@
 
 ### 2026-08-07 首见（run 6 radar-textmode 全扇出——54 agent / 9 claim 存活 3 票核验 / coordinator 逐条验收；详见 `2026-08-06.md` 补记）
 - 📥 雷达中 settings.json 强制执行语义（enforced vs guidance）`[已核源:引语逐字属实]` —— 配置层由 Claude Code 强制应用，prompt / CLAUDE.md 不可覆盖；与 CLAUDE.md 的 guidance 性质是两层。新槽位：guidelines/claude-code/ 缺 settings 层专项。源:code.claude.com/docs/en/claude-directory
-- 📥 雷达中 skill 正文跨 turn 持久驻留、后续不重读 SKILL.md `[已核源:引语逐字属实]` —— 加载后作为单条消息常驻会话，每行都是反复 token 成本；写法应是 standing instructions 而非一次性步骤。对本 repo 18+ skill 的正文写作直接可操作；补 AGENTS.md「skills 按需加载」认知的执行时另一半。源:code.claude.com/docs/en/skills
+- ✅ 已促成(2026-08-07) skill 正文跨 turn 持久驻留、后续不重读 SKILL.md `[已核源:引语逐字属实]` —— AGENTS.md Skills 段加运行时契约 bullet（加载后每行反复成本 / standing instructions / 中途改文件对已加载会话无效），补「按需加载」认知的执行时另一半。源:code.claude.com/docs/en/skills
 - ❌ 拒（seen.md 旧货，worker 去重漏扫日期条目）：commands 并入 skills（2026-06-25 已行动）/ rules+paths 懒加载（2026-06-25 已促成 context-budget-audit）
 - ✗ Verify 阶段驳倒（2/3 票）：「CLAUDE.md 超 200 行降遵循度」——官方文档无此数字，博客货（2026-07-18 已标「数字矛盾须实测」）；对抗核验拦似真断言的首个实证
