@@ -32,6 +32,12 @@ Allowed types: `feat`, `fix`, `refactor`, `docs`, `governance`, `chore`, `index`
   **project-dependent**. Some projects want agent rules tracked in git; others don't.
   Decide per project and document the choice in that project's AGENTS.md.
 
+## GitHub Remote Protocol and Push Authority
+
+- On this machine, use GitHub remotes through the user's existing SSH key. Do not invent or switch to an HTTPS remote, and do not trigger Git Credential Manager or browser login.
+- Push only to an already configured remote for which the user has write authority. An upstream repository is not a writable destination merely because it is the local checkout's `origin`.
+- If a required fork or writable remote does not exist, do not guess a fork URL or attempt the push. Ask the user to create the fork and provide its SSH remote, or leave the commit local when pushing is unnecessary.
+
 ## Pre-Commit Checks
 
 Before committing, confirm:
