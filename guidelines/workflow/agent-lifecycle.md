@@ -58,8 +58,8 @@ Agent self-deception patterns to watch for:
 | Excuse | Truth | Correct Action |
 |--------|-------|----------------|
 | "Tests already pass" | Tests can be self-referential | Verify independently |
-| "This edge case is unlikely" | Anything can happen in production | Handle it or document why not |
-| "Refactoring is too big, leave it for now" | Tech debt does not resolve itself | At minimum, record a TODO |
+| "This edge case is unlikely" | Likelihood alone does not decide scope; current safety, data integrity, and compatibility constraints still apply | Handle cases required by the approved flow or by unavoidable constraints at a boundary it already crosses. Otherwise, do not add or track speculative hardening. |
+| "Refactoring is too big, leave it for now" | Size does not decide whether the work belongs in scope | If the approved flow requires it, replan or escalate. Otherwise, do not create a TODO, roadmap item, or issue unless the user accepts the follow-up or an approved process requires tracking. |
 | "I'll add docs/comments later" | "Later" usually means never | Do it now |
 
 ### Delegation Failures
@@ -103,7 +103,7 @@ criterion, Milestone goal, or explicit user constraint and record one category:
 | Category | Test | Required action |
 |---|---|---|
 | **Planned defect** | Existing code violates an approved behavior or completion criterion. | Fix within the shared failure budget. |
-| **Hardening or advisory** | Improves resilience, maintainability, or defense against a case the approved plan/threat model does not require. | Record for later; do not implement unless the user approves it. |
+| **Hardening or advisory** | Improves resilience, maintainability, or defense against a case the approved plan/threat model does not require. | Do not implement it. Surface it for the current decision; create persistent follow-up only if the user accepts it or an approved process requires tracking. |
 | **Architecture or scope change** | Adds or changes a process, transport, protocol, public interface, persistent schema, dependency, security boundary, trust assumption, or lifecycle mechanism. | Stop immediately and ask the user to revise/approve the plan. |
 | **External feasibility blocker** | The real platform disproves an assumption needed by the approved design or acceptance test. | Stop and report evidence/options; do not invent a workaround architecture. |
 
