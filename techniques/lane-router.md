@@ -144,14 +144,14 @@ notification 可以重复，直到对应 ID 被 ack。只在对话里说“已�
 | offline-green | 约定的 focused tests 已通过，但尚未证明部署或 live 行为。 |
 | deployed | 精确 artifact 已复制，来源与目标 hash 已核对。 |
 | live-started | 目标进程或 runtime root 已确认存在；尚未证明终端验收通过。 |
-| live-passed | 终端 acceptance evidence 已取得。 |
+| live-passed | 终端 acceptance evidence 已取得，并明确对应的运行/产物根目录、确切命令、commit/hash、完整 unit/episode 数与适用的安全计数；打开或继续旧状态、只完成局部步骤都不算。 |
 | production-ready | 当前生产证据 gate 全部通过；必须列出 gate，不能由某个较低状态推断。 |
 
 不要用“done”代替上述不同状态。dispatch、ack、code review、build 或打开 UI 都不能单独证明 live-passed。
 
 ## 有界派活与失效同步
 
-一次 `lane_send` 只承载一个目标或 root cause 明确的有界 slice。推荐正文包含：
+一次 `lane_send` 只承载一个目标或 root cause 明确的有界 slice，并路由给最早出现原因的边界 owner。推荐正文包含：
 
 ```text
 目标 / owner / 精确 files 或 hunks
@@ -164,9 +164,11 @@ timebox
 共享 worktree / nested repo / deploy 注意事项
 ```
 
-timebox 是范围限制，不是成功判据。到时未 green，就回报已经复现的 red test、精确 blocker 和剩余范围；不能因为时间用完而改报成功。发送方保留 dispatch ID；回复尽量填写 `reply_to`。报告中分别标明 dispatch ID、reply ID、commit ID 和 live artifact ID，不能混成一个“版本号”。
+适合并行的窄任务可使用约 10 分钟的 timebox：每份任务只有一个具体交付物和明确 non-goals，例如只读审计、找出确切命令、给出一条 seam 诊断、准备验证清单，或实现一个已经定位根因的 red→green 修复。这个长度是经验默认值，不是所有任务的统一硬截止。
 
-用户修正改变语义时，coordinator 先更新 durable SoT，再向每个受影响 owner 发送 `correction`。消息必须同时给出新 SoT、被废止的旧证据/路径、当前 acceptance target 和禁止替代项；只在聊天里纠正一次，不能使已经在运行的其他 lane 自动失效旧前提。
+timebox 是收窄范围和同步证据的 checkpoint，不是成功判据，也不计入 goal `blocked` 的同一阻塞条件审计。到点时返回最小的已验证结果、证据、精确 blocker 和剩余范围；不能牺牲正确性、捏造完成、危险中断正在进行且不可安全拆分的操作，或把到时当成停止以结果为目标的自主任务的权限。长时间 live run 可以持续运行，同时把相关诊断/验证拆成约 10 分钟的有界任务。发送方保留 dispatch ID；回复尽量填写 `reply_to`。报告中分别标明 dispatch ID、reply ID、commit ID 和 live artifact ID，不能混成一个“版本号”。
+
+用户修正改变语义时，coordinator 先更新 durable SoT，再向每个受影响 owner 发送 `correction`。消息必须同时给出新 SoT、被废止的旧证据/路径、当前 acceptance target 和禁止替代项；只在聊天里纠正一次，不能使已经在运行的其他 lane 自动失效旧前提。修复只有进入 canonical script/program path、由 owner commit、经过独立验证，并在下一份 brief 中明确点名后，才算已经传播；pilot 或旧 chat 里出现过不算。
 
 ### 共享 worktree 与 nested repo
 
@@ -175,7 +177,7 @@ timebox 是范围限制，不是成功判据。到时未 green，就回报已经
 
 ## Router 与 runtime 的职责边界
 
-Lane Router 是 coordination transport，不是业务程序的逐步控制器。lane 可以设计、实现、测试、启动、停止或监控 canonical program，但 runtime action 必须由该程序产生；不要用 conversation 的直接点击或临时 MCP action 填补程序缺口，再把结果报告成完整运行。
+Lane Router 是 coordination transport，不是业务程序的逐步控制器。live runtime 只由一条明确的 operator lane 控制；其他验证/读数 lane 可以并行核对 artifact 与 metric，但不能同时发动作。lane 可以设计、实现、测试、启动、停止或监控 canonical program，但 runtime action 必须由该程序产生；不要用 conversation 的直接点击或临时 MCP action 填补程序缺口，再把结果报告成完整运行。
 
 ## 故障排查
 
