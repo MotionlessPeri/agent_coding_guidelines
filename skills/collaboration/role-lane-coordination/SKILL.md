@@ -1,6 +1,6 @@
 ---
 name: role-lane-coordination
-description: 把一个较重的项目拆到**多个常驻对话**(每个对话 = 一条 role-lane / context 边界)并协调它们时用。覆盖:role(持久 lane)⊥ task 拆对话、seam-contract 协同设计、分档 oracle(hard gate / advisory / park)门控自主、notify/act 自主度旋钮 + checkpoint、**唤醒机制**(mailbox 无通知原语 → 按预估 ETA 轮询 / 人推)、**分档路由**(结构化走 hub / 领域重·紧耦合人眼直连用户)、跨 lane 汇合用单一 coordinator 宿主、**brief 正确性≠完整性**、durable 文件抗失忆、**收件箱按发件人消歧 + ack 约定**。**跳过**:单对话任务;同 repo lease/inbox hook 底层(那是 `multi-session-coordination`,本 skill 同 repo 时复用它)。**operating model = 同机 + 共享 `~/.claude` 绝对路径 mailbox + 人作异步决策/唤醒层**;已跨 **2 项目 / 2 拓扑**验证(平级 peer + 跨 repo hub+fan-out)。**真分布式(跨机 / 无共享盘 / 跨人)未覆盖,别假设 skill 管它。**
+description: 把一个较重的项目拆到**多个常驻对话**(每个对话 = 一条 role-lane / context 边界)并协调它们时用。覆盖:role(持久 lane)⊥ task 拆对话、seam-contract 协同设计、分档 oracle(hard gate / advisory / park)门控自主、notify/act 自主度旋钮 + checkpoint、**唤醒机制**(有 Lane Router 时走事件通知;无 Router 时按预估 ETA 轮询 / 人推)、**分档路由**(结构化走 hub / 领域重·紧耦合人眼直连用户)、跨 lane 汇合用单一 coordinator 宿主、**brief 正确性≠完整性**、durable 文件抗失忆、**收件箱按发件人消歧 + ack 约定**。**跳过**:单对话任务;同 repo lease/inbox hook 底层(那是 `multi-session-coordination`,本 skill 同 repo 时复用它)。**方法论验证边界 = 同机 + 共享绝对路径 mailbox + 人作异步决策层**;已跨 **2 项目 / 2 拓扑**验证(平级 peer + 跨 repo hub+fan-out)。**真分布式(跨机 / 无共享盘 / 跨人)未覆盖,别假设 skill 管它。**
 ---
 
 # 多对话项目协调(role-lane + seam-contract + 分档 oracle)
@@ -24,8 +24,8 @@ description: 把一个较重的项目拆到**多个常驻对话**(每个对话 =
 
 1. **按 context 边界分 lane,不按 persona**。一 lane = 一常驻对话。专家性从积累的域上下文长出来。
 2. **seam = 契约**。每条 seam 一份 contract,连它的 oracle 一起定,住共享**家**。契约要**完整**——别留"MoBu 事实↔核心库命名"这类缺口逼 dev 自己去读源码补。
-3. **通信 = 异步 mailbox + 共享结果区**:mailbox **递证据 / 递一条失败 oracle,不递意见**;处理完移 `resolved/`。结果区**主动发** profile/benchmark(没硬 oracle 的软分歧靠"两边结果摆一起"一眼见)。**收件箱按发件人消歧**——`to-<lane>/` 定向 + 命名带发件人前缀,别让收件方"打开才知道是不是给自己的";**ack 约定二选一定死**(回原 lane 一条 ack / 静默归档到 `resolved/`),别留语义不定让人交叉核验"我的 done 有没有丢"。
-4. **唤醒机制**(mailbox 没有"新消息"通知原语,必须显式解决):**传输**(文件落盘)自动即时;但 **act 要对面对话在跑** = 靠唤醒。等别人任务的对话**先预估"对方这活大概多久"→ 按那个量级定 poll cadence**(等 30min 的活别 60s 猛轮),或直接跟对方 lane 协商 cadence;**人推醒作 fallback**。⚠️ **长跑事件 Monitor 会资源耗尽而死**(实测 exit `0xC000026B`)→ 别指望常驻事件监听,用 **CronCreate / ScheduleWakeup 定时轮询兜底**。自主 lane 的推荐实现是**让 `/loop` dynamic 当 lane 的驱动器**(不只当 mailbox 轮询器):每次 wake 固定做扫 `to-<lane>/` inbox → 推进自己 backlog(读 brief / TDD / commit / 回 ping)→ 以 `ScheduleWakeup` 收尾。"轮询别人"和"推进自己"合成一条循环,人插的消息也走同一通道(进对话 → 下次 wake 捡起 = 提前唤醒),不必另设一套。**不用 `/goal`**:lane 常驻、无终态完成条件;`/goal` 的判官只看对话输出、读不到 mailbox 文件;且它是 Stop hook——按住回合不放,跟"结束回合等下次唤醒"正相反(推自选择表,未实测)。机制细节 / delaySeconds 选值 / stop 纪律见 `guidelines/claude-code/autonomous-loop-scheduling.md`(Claude Code 专属)。**这段单项目单拓扑验证,apply-and-refine。**
+3. **通信 = 异步 mailbox + 共享结果区**:mailbox **递证据 / 递一条失败 oracle,不递意见**;处理完移 `resolved/`。结果区**主动发** profile/benchmark(没硬 oracle 的软分歧靠"两边结果摆一起"一眼见)。无 Router 的文件约定要**按发件人消歧**——`to-<lane>/` 定向 + 命名带发件人前缀,别让收件方"打开才知道是不是给自己的";**ack 约定二选一定死**(回原 lane 一条 ack / 静默归档到 `resolved/`),别留语义不定让人交叉核验"我的 done 有没有丢"。使用 Lane Router 时不要再造一套目录和 ack 约定:sender/target 在消息头里,处理完成后一律 `lane_ack`。
+4. **唤醒机制必须显式解决**。环境已接入 Lane Router 时,优先用它的事件通知 + 持久 mailbox,不要再叠一套常驻 Monitor 或手写轮询;安装、四项工具、收件与 ack 见 [`techniques/lane-router.md`](../../../techniques/lane-router.md)。没有 Lane Router 时,文件 mailbox 本身没有"新消息"通知原语:**传输**(文件落盘)自动即时;但 **act 要对面对话在跑** = 靠唤醒。等别人任务的对话**先预估"对方这活大概多久"→ 按那个量级定 poll cadence**(等 30min 的活别 60s 猛轮),或直接跟对方 lane 协商 cadence;**人推醒作 fallback**。⚠️ **长跑事件 Monitor 会资源耗尽而死**(实测 exit `0xC000026B`)→ 别指望常驻事件监听,用 **CronCreate / ScheduleWakeup 定时轮询兜底**。自主 lane 的推荐实现是**让 `/loop` dynamic 当 lane 的驱动器**(不只当 mailbox 轮询器):每次 wake 固定做扫 `to-<lane>/` inbox → 推进自己 backlog(读 brief / TDD / commit / 回 ping)→ 以 `ScheduleWakeup` 收尾。"轮询别人"和"推进自己"合成一条循环,人插的消息也走同一通道(进对话 → 下次 wake 捡起 = 提前唤醒),不必另设一套。**不用 `/goal`**:lane 常驻、无终态完成条件;`/goal` 的判官只看对话输出、读不到 mailbox 文件;且它是 Stop hook——按住回合不放,跟"结束回合等下次唤醒"正相反(推自选择表,未实测)。机制细节 / delaySeconds 选值 / stop 纪律见 `guidelines/claude-code/autonomous-loop-scheduling.md`(Claude Code 专属)。**fallback 轮询这段单项目单拓扑验证,apply-and-refine。**
 5. **oracle 三档,门控自主**:hard(代码 gate,**授权 auto-act**)/ advisory(fresh 对话 judge,只提醒)/ none(**park 给人**)。铁律:**auto-act 只在 hard 后面;oracle 覆盖率 = 能安全自主的面积**。(实测最强一环:golden 全绿 → hub 自主 commit,正确性不需人 gate。)
 6. **自主度 = 拓扑旋钮**:**notify**(propose→你拍板,peer,你在场)/ **act**(oracle-gated 自动 + park,coordinator 拥 goal)。**checkpoint 落在人判断点**(契约 settle / 集成前 / 画面验)。
 7. **park-and-continue**:碰只有人能定 / 无 oracle / 跨 lane 分歧 → 写 `parked/` 注明,**继续做别的,别卡住、别乱猜、别 fabricate**。loop 驱动时**park 还是停 loop,看 backlog 有没有别的活**:有 → park 这项、loop 继续;卡住的这项**就是** backlog(或剩下的都依赖这个决定)→ **停 loop** + 写 flag(根因 + 备选 + 需要谁定什么)+ 通知人,别让 loop 在只能等人的点上反复醒来。(`/goal` 驱动时没有"停 loop"这个动作——Stop hook 拦着,唯一出口是把 park 预先写进条件文本。)
@@ -35,7 +35,8 @@ description: 把一个较重的项目拆到**多个常驻对话**(每个对话 =
 
 ## setup
 
-- **manifest**:参与者 + 各自 mailbox / 家 / 结果区**位置**。**operating model = 同机 + 共享 `~/.claude` 绝对路径**——多 repo 的对话各自 cwd 不同,但都用**绝对路径**读写同一条 mailbox(不分布 mailbox,集中到一条机器级路径)。
+- **有 Lane Router**:manifest 只记录 lane 地址与 contract / oracle / 结果区的家;mailbox 路径和 ack 由 Router 管理,不要在项目里再建平行消息系统。具体操作见 [`techniques/lane-router.md`](../../../techniques/lane-router.md)。
+- **无 Lane Router fallback**:manifest 记录参与者 + 各自 mailbox / 家 / 结果区**位置**。**operating model = 同机 + 共享 `~/.claude` 绝对路径**——多 repo 的对话各自 cwd 不同,但都用**绝对路径**读写同一条 mailbox(不分布 mailbox,集中到一条机器级路径)。
 - **目录**:`contracts/`(seam stub)`oracles/` `mailbox/`(+ `to-<lane>/` + `resolved/`)`results/` `briefs/` `parked/` `lessons/`。
 - **同 repo 多对话共享工作树** → 直接复用 `multi-session-coordination`(hook)。**多 repo(同机)** → 共享绝对路径 + manifest 指路(已验证)。
 
@@ -70,3 +71,4 @@ description: 把一个较重的项目拆到**多个常驻对话**(每个对话 =
 - `techniques/adversarial-verification.md`(oracle 阶梯、独立判官、容差)/ `guidelines/code/gui-visual-machine-gating.md`(无 oracle→机器 gate 纯函数 + 画面人眼)/ `guidelines/code/dual-layer-data-ownership.md`(seam 数据归属)。
 - `guidelines/claude-code/autonomous-loop-scheduling.md` + `ScheduleWakeup` / `CronCreate`(唤醒 / 轮询 cadence;长跑 Monitor 会死,用定时轮询)。
 - `guidelines/workflow/knowledge-promotion.md`(收尾:harvest 不 promote → 策展 → 单一写手)。
+- `techniques/lane-router.md` —— Lane Router 的安装、绑定、收发、ack、恢复与排障;本 skill 只保留 role-lane 方法论和无 Router 时的 fallback。

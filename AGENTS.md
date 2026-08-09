@@ -119,6 +119,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 > [`techniques/model-worker-mcp.md`](techniques/model-worker-mcp.md) 是 Model Worker MCP 的安装、Codex/Claude 注册、strict 请求摘要与日常运维手册。只在安装或使用该工具时按需读取，不 `@`-import，避免把工具专属操作常驻到所有项目。
 
+> [`techniques/lane-router.md`](techniques/lane-router.md) 是 Lane Router 的安装、Claude/Codex 接入、四项对话工具、mailbox 处理、恢复与故障排查手册。只在安装、配置、使用或排查 Lane Router 时按需读取，不 `@`-import；role-lane 的通用拆分与协调方法仍由 `role-lane-coordination` skill 承担。
+
 > 条件域 techniques 不 eager `@`-import——`techniques/ci-deploy-to-p4.md`（P4 + Windows CI 部署链）与 `techniques/claude-code-autonomous-permissions.md`（Claude Code permission list 配置）随对应 guidelines 子目录懒加载，触发场景见上 Guidelines 段末 P4 / CI / Claude-Code 说明。`context-budget-audit` 已转成 skill（审计常驻成本时自动触发），见下 Skills 段。（2026-07-19 audit S2 Tier D）
 >
 > `techniques/cpp-coverage-and-crap-measurement.md`（C++ per-function 覆盖率 / CRAP 测量：lizard + gcov/gcovr + OpenCppCoverage，含 OpenCppCoverage 盘符 bug 等 pitfall）同样不 eager `@`-import——**只在 C++ 项目要拿覆盖率 / 算 CRAP 时按需读**，常驻侧的指标使用认知在 `guidelines/code/complexity-coverage-metrics.md`。（2026-07-24）
