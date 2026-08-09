@@ -69,6 +69,27 @@ Claude 的 user-scope MCP 保存的是 `dist` 的绝对路径。仓库移动、`
 
 lane 是长期 role/context 边界，不要为每个临时 task 创建一条 lane。创建、接替、轮换和修改 `role_description` 都是持久拓扑变化；先查目录、提出具体建议、取得确认，再 attach。当前 conversation 已绑定另一条 active lane 时，Router 会拒绝隐式换绑。
 
+### 接替与轮换的闭环检查
+
+计划让当前 conversation 接替已有 lane 时，不能只看地址存在就直接 attach。接替或轮换采用下面的闭环；只操作当前 conversation，绝不代表另一条 conversation 调用 `lane_attach_current`。
+
+```mermaid
+flowchart TD
+    A["读取 handoff、manifest 和当前状态"] --> B["核对 cwd、Git、关键 hash 与拓扑"]
+    B --> C["说明替换影响和角色边界"]
+    C --> D["取得用户明确确认"]
+    D --> E["当前 conversation 调用 lane_attach_current"]
+    E --> F["重新查询 topology"]
+    F --> G["向受影响 peer 发送独立 smoke"]
+    G --> H["直接读取回复并 lane_ack"]
+    H --> I["最终 topology 检查"]
+
+    classDef gate fill:#fff3e0,stroke:#e65100,color:#000;
+    class C,D gate;
+```
+
+smoke 回复至少回显原 dispatch ID、当前工作目录、handoff/SoT hash 和理解到的角色边界；smoke 本身不得顺手实现功能。保留每个 reply ID，逐条读完并 ack，不能把多条回复压成无法追溯的一句“都正常”。
+
 ## 收发主流程
 
 ```mermaid
@@ -90,11 +111,13 @@ sequenceDiagram
 
 收到 notification 后按以下顺序处理：
 
-1. 使用通知给出的 `pendingPath` 和 message ID 直接读取 `.md`；不要从 notification 猜正文，也不要等待不存在的 `lane_receive`。
+1. 先确认该 ID 对应的文件仍在 `pendingPath`，再直接读取 `.md`；不要从 notification 猜正文，也不要等待不存在的 `lane_receive`。已经 ack 的 ID 即使被旧 notification 再次提到，也不是新任务。
 2. 核对消息头中的 `sender`、`kind` 和 `reply_to`。同一 sender 或同一修正链的消息可在一个 turn 中一起处理。
 3. 完成消息要求的实际工作。跨 lane 回报应附证据、文件路径、验证结果和明确请求，不只发送结论。
 4. 需要回复时用 `lane_send`；回复具体消息时填写 `reply_to`。
 5. 最后用一次 `lane_ack` 覆盖本轮真正处理完成的每个 message ID。ack 是通信层的“已处理”，不是项目 worklog 或 durable result 的替代品。
+
+notification 可以重复，直到对应 ID 被 ack。只在对话里说“已处理”不会改变 mailbox 状态；它会造成同一 ID 反复提醒。重复轮询也不要重复向用户报告同一个状态变化。
 
 ### 消息到达繁忙或离线 lane 时
 
@@ -107,6 +130,52 @@ sequenceDiagram
 - 只需要把材料交给另一条 lane、发送方不等待结果时，单向 `lane_send` 即可；接收方离线不会丢消息。
 - 需要可靠往返时，双方都应是已绑定、可恢复和可唤醒的持久 lane。V1 的 `lane_send` 要求发送方已有 active binding；不要把一次性临时对话伪装成永久 role，也不要把未绑定对话当成可靠回复地址。
 - 多条 lane 的结果必须汇合时，只让一个 coordinator lane 持有共享接线和最终综合职责。发送给 coordinator 的 brief 要区分已验证事实与假设，并附 oracle 或原始输出。
+
+## 状态必须绑定证据
+
+`lane_directory` 只能证明 topology、角色说明和 binding，不能证明某条 lane 正在采样、编辑、测试、阻塞或空闲。没有 fresh evidence 时明确说“没有新证据”，不要把 UI 沉默、短时间未回复或 coordinator 的记忆写成活动状态，也不要仅因此唤醒或改派；先尊重已经约定的 ETA/timebox。
+
+| 状态词 | 最低证据 |
+|---|---|
+| dispatched | Router 已接受消息，并返回 dispatch message ID。 |
+| pending | 对应 ID 仍在目标 `pending`；这不等于目标正在工作。 |
+| acknowledged | `lane_ack` 已 resolve 对应 ID。 |
+| working | 有新的显式状态回复、相关 diff/status、运行进程或其他当前活动证据。 |
+| offline-green | 约定的 focused tests 已通过，但尚未证明部署或 live 行为。 |
+| deployed | 精确 artifact 已复制，来源与目标 hash 已核对。 |
+| live-started | 目标进程或 runtime root 已确认存在；尚未证明终端验收通过。 |
+| live-passed | 终端 acceptance evidence 已取得。 |
+| production-ready | 当前生产证据 gate 全部通过；必须列出 gate，不能由某个较低状态推断。 |
+
+不要用“done”代替上述不同状态。dispatch、ack、code review、build 或打开 UI 都不能单独证明 live-passed。
+
+## 有界派活与失效同步
+
+一次 `lane_send` 只承载一个目标或 root cause 明确的有界 slice。推荐正文包含：
+
+```text
+目标 / owner / 精确 files 或 hunks
+明确 non-goals
+当前 SoT path + commit/hash
+已经失效的 evidence、route 或 artifact
+精确 acceptance target + 禁止的替代证据
+red→green 证据、regression 和 stop condition
+timebox
+共享 worktree / nested repo / deploy 注意事项
+```
+
+timebox 是范围限制，不是成功判据。到时未 green，就回报已经复现的 red test、精确 blocker 和剩余范围；不能因为时间用完而改报成功。发送方保留 dispatch ID；回复尽量填写 `reply_to`。报告中分别标明 dispatch ID、reply ID、commit ID 和 live artifact ID，不能混成一个“版本号”。
+
+用户修正改变语义时，coordinator 先更新 durable SoT，再向每个受影响 owner 发送 `correction`。消息必须同时给出新 SoT、被废止的旧证据/路径、当前 acceptance target 和禁止替代项；只在聊天里纠正一次，不能使已经在运行的其他 lane 自动失效旧前提。
+
+### 共享 worktree 与 nested repo
+
+- 同一 workspace 的 lane 会立即看到彼此未提交的编辑，任一 commit 也会移动共享 HEAD。只 stage 精确文件/hunk，保留无关 dirty changes，回报实际 changed files；不要为了让状态“干净”而 broad clean/reset。
+- nested repo 有独立 HEAD、build 和 deploy provenance。主 repo HEAD 不能证明 nested HEAD，更不能证明已部署 artifact。声称 live validity 前，分别核对主 commit、nested commit、built artifact hash、deployed artifact hash，并确认真实进程已经 restart/reload。
+
+## Router 与 runtime 的职责边界
+
+Lane Router 是 coordination transport，不是业务程序的逐步控制器。lane 可以设计、实现、测试、启动、停止或监控 canonical program，但 runtime action 必须由该程序产生；不要用 conversation 的直接点击或临时 MCP action 填补程序缺口，再把结果报告成完整运行。
 
 ## 故障排查
 

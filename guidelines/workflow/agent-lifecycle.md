@@ -132,6 +132,20 @@ after the Milestone is accepted, or after the user explicitly approves a revised
 plan that creates a new task/approach. On iteration three, stop and report the
 ledger before any further edit.
 
+### Goal `blocked` status is a separate audit
+
+Do not reuse the review/remediation failure ledger to justify marking a long-running
+goal `blocked`. That status requires the **same blocking condition** to recur for at
+least three consecutive goal turns while no meaningful in-scope progress remains.
+
+- Three different bugs or external failures discovered in sequence are not three
+  repetitions of one blocker.
+- When the original blocker is fixed and a new blocker appears, start a fresh blocked
+  audit for the new condition.
+- A difficult, slow, uncertain, or incomplete task is not blocked while safe in-scope
+  diagnosis or another independent work item can still progress.
+- Record each failure root separately; do not use the threshold as a stopping excuse.
+
 ### What "change approach" actually means
 
 A new approach must be in a **different layer**, not just a different API in the
