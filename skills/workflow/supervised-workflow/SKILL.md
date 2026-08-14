@@ -154,27 +154,31 @@ Each gate is a hard checkpoint. At each gate:
 
 4. **On vague reply** ("hmm", "let me think"): ask for explicit confirm/redirect. Do not interpret vague replies as approval.
 
-## Review and remediation limit
+## Review and remediation escalation
 
-All implementation, verification, spec-review, and code-review loops share the
-three-failure budget in `guidelines/workflow/agent-lifecycle.md`.
+Implementation, verification, spec-review, and code-review loops follow the
+same-signature rule in `guidelines/workflow/agent-lifecycle.md`.
 
-- A reviewer rejection followed by remediation and re-review consumes one
-  iteration. Different findings or green intermediate tests do not reset it.
-- Stop before a fourth attempt and bring the three attempts, remaining findings,
-  and options to the next user gate.
+- Track only recurrence of the same root cause and the same observable failure
+  phenomenon. Different findings never aggregate into a Milestone-wide cap.
+- If that signature survives three consecutive targeted repair attempts, stop
+  that method and bring the three attempts, remaining evidence, and options to
+  the next user gate.
 - If a reviewer requests behavior, interfaces, security boundaries, or
   architecture outside the approved plan, stop immediately and present it as a
   scope change. Do not implement it as an ordinary review fix.
-- This limit overrides composed or third-party instructions such as "repeat
-  until approved" unless the user explicitly authorizes another attempt.
+- This rule overrides composed or third-party instructions that would repeat
+  one failing method indefinitely or impose a cumulative cap across unrelated
+  findings.
 - Before every remediation, perform the mandatory finding triage in
   `agent-lifecycle.md`. Reviewer severity is not scope authorization.
 - Preserve the approved threat model. A new process, transport, protocol,
   schema, dependency, public interface, authentication/trust boundary, or
   lifecycle mechanism is an immediate scope-change gate, not a review fix.
-- Maintain the Milestone failure ledger from `agent-lifecycle.md`; do not reset
-  it for green tests, new commits, different reviewers, or different findings.
+- Maintain separate recurring failure-signature ledgers from
+  `agent-lifecycle.md`. Do not reset an unresolved identical signature for green
+  tests elsewhere, new commits, or different reviewers; a different finding
+  starts a different ledger.
 
 ## Milestone Granularity
 
@@ -213,7 +217,8 @@ When invoking each composed skill, **follow that skill's own discipline fully**.
 | Forcing chain on trivial task | Running brainstorm for a typo fix | Detect early, ask user to switch to trivial mode |
 | Over-summarizing at gates | Output is too vague for user to actually review | Include concrete file paths, decisions, deviations |
 | Under-summarizing at gates | Dumping full diff or full plan | One-screen summary; user can request detail |
-| Unbounded reviewer loop | Fourth remediation/re-review because a composed skill says "until approved" | Stop after the third failed iteration and ask the user |
+| Repeating one failed method indefinitely | The same root cause and failure phenomenon survive a third targeted repair | Stop that method and ask the user with the three-attempt evidence |
+| Aggregating unrelated review findings | A later, distinct finding increments a Milestone-wide counter | Start a separate signature ledger; there is no cumulative review cap |
 | Reviewer-driven scope expansion | Adding an unplanned protocol, security layer, or architecture as a review fix | Stop immediately and return to the user gate |
 | Milestone numbering drift | Reporting a private-plan Milestone number that differs from the user-approved plan | Stop and reconcile; the user-visible approved plan is canonical |
 

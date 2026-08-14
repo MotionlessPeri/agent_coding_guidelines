@@ -71,28 +71,36 @@ Agent self-deception patterns to watch for:
 
 ## Failure Escalation
 
-- First failure: retry once with a focused fix based on the error.
-- Second failure: change approach entirely — do not repeat the same strategy.
-- Third failure: report to the user with a summary of what was tried and why each approach failed.
-- Never let a failing approach loop more than three times.
+- Track failures by a concrete signature: the same root cause and the same
+  observable failure phenomenon.
+- First failed targeted repair: diagnose the evidence and make a focused repair.
+- Second consecutive failed targeted repair for that signature: change the
+  approach instead of repeating the same strategy.
+- Third consecutive failed targeted repair for that signature: stop that method
+  and report what was tried and why the same phenomenon still persists.
+- Different root causes or different observable phenomena are separate work;
+  never aggregate them into a task-, Milestone-, review-, or session-wide cap.
 
-### Review and remediation loops use the same three-failure budget
+### Review and remediation loops have no cumulative iteration limit
 
-This limit applies to implementation, verification, code-review, spec-review,
+This rule applies to implementation, verification, code-review, spec-review,
 and reviewer-driven remediation loops in every workflow.
 
-- One reviewer rejection followed by remediation and re-review counts as one
-  failed iteration for that Milestone or task.
-- New findings on a later review do not reset the counter. Green tests do not
-  reset it either when the Milestone is still rejected.
-- On the third rejection or failed remediation iteration, stop before making
-  another change. Record the current state and notify the user with the three
-  attempts, remaining findings, and available choices.
+- A reviewer rejection counts toward escalation only when remediation is
+  followed by evidence that the same root cause and the same observable failure
+  phenomenon still persist.
+- A new finding is a new failure signature. Green tests, a new reviewer, a new
+  commit, or a later review neither erase an unresolved signature nor combine
+  distinct signatures into one counter.
+- After three consecutive targeted repairs fail for one signature, stop that
+  method and notify the user with those three attempts, the surviving evidence,
+  and available choices.
 - A reviewer finding that requires behavior, interfaces, security boundaries,
   or architecture outside the approved plan is not a remediation iteration.
   It is an immediate scope-change escalation; do not implement it first.
-- These limits override any composed or third-party workflow instruction such
-  as "repeat until approved." Further attempts require explicit user direction.
+- This same-signature rule overrides composed or third-party workflow wording
+  that would either loop one failing method indefinitely or impose a cumulative
+  cap across unrelated findings.
 
 ### Mandatory finding triage before remediation
 
@@ -102,7 +110,7 @@ criterion, Milestone goal, or explicit user constraint and record one category:
 
 | Category | Test | Required action |
 |---|---|---|
-| **Planned defect** | Existing code violates an approved behavior or completion criterion. | Fix within the shared failure budget. |
+| **Planned defect** | Existing code violates an approved behavior or completion criterion. | Fix it; apply the same-signature three-attempt rule only if the identical failure persists. |
 | **Hardening or advisory** | Improves resilience, maintainability, or defense against a case the approved plan/threat model does not require. | Do not implement it. Surface it for the current decision; create persistent follow-up only if the user accepts it or an approved process requires tracking. |
 | **Architecture or scope change** | Adds or changes a process, transport, protocol, public interface, persistent schema, dependency, security boundary, trust assumption, or lifecycle mechanism. | Stop immediately and ask the user to revise/approve the plan. |
 | **External feasibility blocker** | The real platform disproves an assumption needed by the approved design or acceptance test. | Stop and report evidence/options; do not invent a workaround architecture. |
@@ -117,24 +125,25 @@ malicious local process. Do not add authentication layers, hostile-input defense
 connection takeover protection, or remote-service assumptions beyond the approved
 threat model without user approval.
 
-### Failure ledger and reset rules
+### Failure-signature ledger and reset rules
 
-Maintain one failure ledger per approved Milestone/task in the plan or worklog:
+Maintain a separate ledger only for a recurring failure signature:
 
-- iteration number;
-- failing verification or reviewer rejection;
+- root cause and observable failure phenomenon;
+- consecutive targeted repair attempt number;
 - attempted correction or changed approach;
-- remaining finding and its triage category.
+- evidence that the same signature remains, plus its triage category.
 
-Do not reset the ledger because tests turn green, the reviewer changes, a new
-finding appears, or the implementation receives another commit. Reset it only
-after the Milestone is accepted, or after the user explicitly approves a revised
-plan that creates a new task/approach. On iteration three, stop and report the
-ledger before any further edit.
+Do not reset an unresolved signature merely because tests turn green elsewhere,
+the reviewer changes, or the implementation receives another commit. Close its
+ledger when that signature is fixed. A different finding starts a different
+ledger and does not inherit the old count. On the third consecutive failed
+targeted repair for one signature, stop that method and report before another
+edit aimed at that same signature.
 
 ### Goal `blocked` status is a separate audit
 
-Do not reuse the review/remediation failure ledger to justify marking a long-running
+Do not reuse a review/remediation failure-signature ledger to justify marking a long-running
 goal `blocked`. That status requires the **same blocking condition** to recur for at
 least three consecutive goal turns while no meaningful in-scope progress remains.
 
@@ -149,8 +158,8 @@ least three consecutive goal turns while no meaningful in-scope progress remains
 ### What "change approach" actually means
 
 A new approach must be in a **different layer**, not just a different API in the
-same layer. Same-layer API switching is still the same approach — repeating it
-just burns the failure budget without buying new information.
+same layer. Same-layer API switching is still the same method and usually adds
+no new information.
 
 Concrete examples of layers (the boundaries are domain-dependent; the point is
 each line below is "below" the one above it, with different mechanisms / contracts):
@@ -164,8 +173,9 @@ each line below is "below" the one above it, with different mechanisms / contrac
 | Domain logic / business rules | Where conditions / constraints / semantics live |
 
 **Anti-pattern (real case)**: three consecutive attempts that all stay in the *same
-layer* (e.g. three different UI / property-handle APIs for one task) count as **one**
-failed approach, not three — swapping APIs within a layer is not a real approach change.
+layer* (e.g. three different UI / property-handle APIs for one task) are not three
+different approaches. If the same root cause and failure phenomenon survive each
+variant, they are three consecutive targeted repair failures and trigger the stop.
 Worked UE example (with the actual API sequence): `guidelines/ue/details-customization-prefer-reflection.md`.
 
 **Correct escalation**: After 2 same-layer attempts fail, ask "is the problem

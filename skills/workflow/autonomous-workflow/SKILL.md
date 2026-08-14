@@ -138,9 +138,9 @@ Phase 3: Per-Milestone Implementation (TDD-strict, no gates)
     d. Commit. Format: `<type>: <subject>` (e.g. `feat:` / `fix:` / `refactor:` /
        `docs:`). One theme per commit. Commit only at stable points
        (build passes, tests pass).
-    e. Append entry to worklog.md (format below). Maintain the Milestone
-       failure ledger required by `agent-lifecycle.md`; reviewer changes, new findings,
-       green tests, and new commits do not reset it.
+    e. Append entry to worklog.md (format below). Maintain separate recurring
+       failure-signature ledgers required by `agent-lifecycle.md`; a different
+       finding starts a different ledger and does not inherit another count.
 
   Before every reviewer-driven edit:
     - perform the mandatory finding triage in `agent-lifecycle.md`;
@@ -153,10 +153,11 @@ Phase 3: Per-Milestone Implementation (TDD-strict, no gates)
       report the evidence and options instead of designing around it silently.
 
   Escalation conditions (stop and notify user):
-    - Same milestone fails verification 3 times in a row → escalate per agent-lifecycle.md
-    - Same milestone is rejected by spec/code review 3 times → stop before a
-      fourth remediation, even if every intermediate test run is green and
-      each review reports different findings
+    - The same root cause and the same observable failure phenomenon persist
+      after 3 consecutive targeted repair attempts → stop that method and
+      escalate per agent-lifecycle.md
+    - Different review findings do not aggregate into a Milestone-wide or
+      task-wide limit; review/remediation has no cumulative iteration cap
     - Build broken and can't be fixed within one fix attempt → escalate
     - Scope ambiguity discovered (acceptance criteria insufficient) → escalate
     - Reviewer asks for an interface, security boundary, behavior, or
@@ -555,11 +556,11 @@ This skill is an **orchestrator**:
 
 When composing these, **follow each composed skill's discipline fully**. Autonomous does not authorize skipping; it just removes the user-review pauses.
 
-The orchestration limits in this skill and `agent-lifecycle.md` take precedence
-over an imported workflow's unbounded review wording. In particular,
-`subagent-driven-development` phrases such as "repeat until approved" mean
-"repeat within the shared three-failure budget." They never authorize a fourth
-attempt or a silent scope/architecture expansion.
+The same-signature escalation rule in this skill and `agent-lifecycle.md` takes
+precedence over imported workflow wording. "Repeat until approved" does not
+authorize repeating one method after the same root cause and failure phenomenon
+survive three consecutive targeted repairs. It also does not create a cumulative
+limit across distinct findings or authorize silent scope/architecture expansion.
 
 The root coordinator owns this decision. Do not delegate scope authority to a
 spec reviewer, quality reviewer, or implementer. Their findings are evidence to
@@ -573,9 +574,9 @@ triage against the approved plan, not amendments to it.
 | Treating plan approval as carte blanche | Major scope expansion or design changes mid-implementation | Approval covers the approved plan. Anything outside it = scope change = escalate. |
 | Skipping documentation | "I implemented it, no need to write worklog" | All four files are mandatory artifacts, not optional. Write them. |
 | Advancing past failing tests | Mark Milestone done with red tests | Milestone NOT done. Fix or escalate. |
-| Looping on a failed approach | 5th attempt on same Milestone | Stop at attempt 3, escalate per agent-lifecycle.md |
-| Resetting the counter because tests are green or a reviewer found a different issue | Fourth review/remediation pass on one Milestone | Review rejection is still a failed iteration; stop after the third and notify the user |
-| Treating `repeat until approved` as unbounded | Continuing because a composed skill requests another re-review | The shared three-failure budget overrides it |
+| Looping on one failed method | The same root cause and failure phenomenon survive a third consecutive targeted repair | Stop that method and escalate per agent-lifecycle.md |
+| Aggregating unrelated findings | Treating a later, different review finding as another strike against the Milestone | Start a separate failure-signature ledger; there is no cumulative review cap |
+| Treating `repeat until approved` as permission to repeat one failed method forever | Continuing after the same signature survives three targeted repairs | Stop that method; continue only through a genuinely different authorized approach or user direction |
 | Editing past worklog entries | Rewriting Milestone 1 entry after Milestone 3 found issues | worklog is append-only. Add a new entry noting the correction. |
 | Treating autonomous as "no rules" | Skipping commits, skipping tests, skipping docs | Autonomous removes per-Milestone gates, not discipline. Discipline + plan gate are the substitutes. |
 | Silent scope expansion | Realizing brief.md was too narrow, expanding without notifying user | Escalate. Scope changes require user input. |
