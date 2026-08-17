@@ -6,6 +6,8 @@ description: Use only in Claude Code when installed coordination hooks report ot
 # Multi-Session Coordination
 
 > **Platform limit — Claude Code only.** This implementation depends on Claude Code's `settings.json` hook registration, hook event schema, and session identifiers. Codex may discover this skill after a shared sync, but must not run `install.ps1`, register these handlers, or assume the lease mechanism is active. A Codex port requires separate hook-schema validation.
+>
+> **Codex port references** (verified 2026-08-17 against `openai/codex` main): Codex hooks expose 11 events via TOML config with a startup trust review (`trusted_hash`), support Windows first-class (`commandWindows`), and PreToolUse carries a Claude-Code-shaped `permissionDecision` allow/deny/ask channel — so the lease-deny semantics may port nearly 1:1. Authoritative source: `codex-rs/hooks/` + `codex-rs/config/src/hook_config.rs`. Structural reference: deepseek-harness `packages/hooks/` (0.1.0-rc.5; shared wire-protocol lib + per-dialect bridges — note its Codex snapshot is stale on event count and decision channel). Re-verify against the installed Codex version before porting.
 
 This skill is the **agent-side policy layer** of the multi-session coordination system. The **mechanism layer** (hook scripts in `multi_session.py`) runs automatically via `settings.json` hooks and handles registry I/O, stale cleanup, lease checks on Edit/Write, touched-files tracking, and post-commit awareness. The mechanism cannot decide *what to do* when something goes wrong — that's this skill's job.
 

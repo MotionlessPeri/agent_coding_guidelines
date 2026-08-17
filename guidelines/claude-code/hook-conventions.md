@@ -109,6 +109,12 @@ def main(argv):
 
 SessionStart / UserPromptSubmit 最常用这个字段。
 
+### 注入内容可从 session transcript 重建(实测 v2.1.233,2026-08-17)
+
+hook 注入的内容会以独立的 `type: "attachment"` 记录落进 `~/.claude/projects/<encoded>/<session-id>.jsonl`:`attachment.stdout` 存 hook 原始 stdout(含完整 `hookSpecificOutput` JSON),`attachment.content[0]` 存提取后进 prompt 的文本。SessionStart 与 UserPromptSubmit 两类注入均实测命中。
+
+推论:排障「agent 这轮为什么突然转向」时,注入内容有据可查——翻 transcript 的 attachment 记录即可,hook 不必自己另落一份日志。未实测的面(PreToolUse 的 `permissionDecisionReason`、compaction 之后是否保留)不要外推。(对照:deepseek-harness 把「Model-visible ⟺ logged」立为架构不变量、请求 messages 直接从 session log 派生;Claude Code 是「顺手记」形态,但对 hook 注入这条实测记全了。)
+
 ## 5. Stdin payload 是 JSON，session_id / cwd 等从 stdin 拿
 
 每个 hook 调用 harness 把 JSON 写到 stdin：
