@@ -104,3 +104,26 @@
 - #5 Agent Teams / #6 auto-mode 三阶段 / #7 plugin 打包 → 观察（`8b1df6d` / `89d13b0`,各带触发条件;#7 挂 spike 到 open-items）
 - 工具与运维沉淀（非候选）→ `12038f1`（model-worker-mcp 委派三节）+ `f8a6a0f`（digest/账本/radar-textmode 管线）
 - **本轮验收教训**：worker 报告 4 处错误全被抽查抓获（"7 种模式"/"Quarantine 是模式"/"上轮已确认不可用"/"v2.1.128"）——似真编造不挑内容轻重,**未核源的版本号与专名一律不落地**;coordinator 抽查成本 4 次 WebFetch,远低于错误入库的清理成本
+
+### 2026-08-17 首见（详见 `2026-08-17.md`；full-scope textmode 焦点轮「DeepSeek harness」——15 源 / 37 claim / 10 central × 3 票核验 → 9 存活 1 驳倒；候选 1-4 的支撑 claim 均已核验,附注条目未核验）
+- 📥 雷达中 Model-visible ⟺ logged 审计不变量 `[3 票核验]` —— dsh 仓库级硬不变量:进 model request 的内容必须能从 session log 重建,新增模型可见输入必须配套 session event。对到 claude-code hidden-contract 槽位 + hook 注入面;可平台中立化。**本轮最推荐先评审**。促成门槛:核 enforcement 机制 + 实测 Claude Code transcript 可重建性缺口。源:github.com/deepseek-ai/deepseek-harness AGENTS.md
+- 📥 雷达中 Claude Code / Codex hook 桥 + wire-protocol 库 `[3 票核验]` —— dsh hooks 包内置双端 hook 互操作桥。对到 hook-conventions.md 单端局限 + multi-session-coordination 未移植 Codex 的缺口;是移植的最佳参考实现。促成门槛:读源码列事件/payload 对照三 trap,确认 Codex 侧真实现。源:同上
+- 📥 雷达中 Keyless snapshot + per-file 100% 覆盖 gate `[3 票核验]` —— 与 complexity-coverage-metrics(覆盖率不当 KPI)/test-purpose 的张力样本;snapshot-via-runnable-example 是 fixture 纪律同族。促成门槛:弄清 keyless 判官机制 + 防凑数配套,结论过 test-purpose 5 问。源:同上
+- 👁 观察 Harness 解剖样本(Cordis 插件内核 + two-tool 最小面 vs Code Mode)`[3 票核验]` —— 第三家 harness 一手架构对照点(agent loop 可换 / 模型写整段 TS 程序代替多轮工具调用)。偏 awareness,写 harness 对比时再深挖。源:deepseek.com/harness + README
+- 👁 观察(未核验,fetch 级)dsh-doctor 两条配置层静默失败契约(id-patch 整体替换非 merge / id 打错字 exit 0)/ SKILL.md 格式零迁移兼容 / AGENTS.md·CLAUDE.md 读取 + MCP client + ACP + Claude Code/Codex 可挂 subagent provider / dsh-movein·dsh-claude-move 迁移工具 —— 都只在真用 dsh 时才有直接用处;dsh 是 developer preview(官方明示 breaking changes),促成一律写版本锚
+- ✗ Verify 驳倒(2/3 票):「官网 landing page 有 append-only log 完整表述」——驳的是引语与该页的配对,事实本身在 docs/architecture.md 有 0/3 已核版本(即候选 1)
+
+### #1/#2/#3 评审处置(2026-08-17 晚,用户逐候选评审;详见 digest「#1/#2/#3 处理记录」节)
+- #3 → ✅ 已促成(两处纯引用):complexity-coverage-metrics.md 加外部佐证引语块;adversarial-verification.md oracle 阶梯加「录制-回放 oracle」存在性指针(未自用,判官弱点已注)。#4 → 👁 观察维持
+- #1 → ✅ 已促成(缩小形态)+ 👁 观察:实验证实 CC v2.1.233 transcript 以 attachment 记录 hook 注入(可重建)→ `hook-conventions.md` §4 加实测小节;「自建注入机制须落记录」规则本身转观察等真实咬合;「请求构造=日志投影」定为 harness 作者层,仅 awareness
+- #2 → ✅ 已促成(指针形态):对 openai/codex main 核实后落 `multi-session-coordination/SKILL.md` port references 段。**dsh 快照三处过时**:11 事件非 10 / TOML+trusted_hash 非 hooks.json / **现行 PreToolUse 有完整 permissionDecision allow|deny|ask 通道**(「Codex 只认 block」作废)→ lease-deny 近乎 1:1 可移植;Codex Windows 一等支持(commandWindows);用户环境:家里双 harness,Codex 侧是真实需求
+
+### 源码核验补记(2026-08-17 下午——详见 `2026-08-17.md` 补记节;候选 #1/#2/#3 的促成门槛已核,19 处引语抽查全命中)
+- #1 审计不变量:**成立且升优先**——「从 log 重建」是 dsh 生产路径本身(请求 messages = log 投影);enforcement 四层机械(闭合类型联合 / AST 生成器+CI / append 校验+读路径拒识 / THEOREM 测试)+ opt-in runtime 断言(默认 bundle 不装)。剩余门槛只剩「Claude Code transcript 可重建性对照」
+- #2 hook 桥:**成立**——hook-protocol 共享库 + CC 桥(7/30 事件)+ Codex 桥(5 事件,真实现 975 行全链路测试);6 轴差异表;exit-2/permissionDecision 与 hook-conventions.md 一致;第三方独立记录 CC Stop 8 次上限(佐证 `169aafe`)
+- #3 覆盖 gate:**定性反转**——dsh 不拿覆盖率当 KPI("necessary, never sufficient"),与 corpus 立场同向;改道两个小促成:(a) "assertion-free tests / mutation counterweight" 引语作第三方佐证补 complexity-coverage-metrics 或 test-purpose;(b) keyless snapshot(record-once/replay-deterministic,fixture 是系统产物非手写 mock)补 tdd-with-fixtures 或 oracle 阶梯
+
+### 本轮运维产出(2026-08-17,非候选)
+- 首轮 Verify 中途撞 session limit(用户切账号窗口),resume 补齐;两轮合计 ~10.3M subagent token(5.04M + 5.27M,烧了两个账号的额度)
+- **radar-textmode resume 缓存教训**:缓存只命中 Scope/Search 层,Fetch 及之后几乎全部重跑——推测(未证实)是 URL 去重依赖 search agent 完成顺序的竞态,两轮 fetch 集合不同(40 vs 37 claim)导致 prompt key 变化。若指望 resume 省钱,需把 fetch 输入排序钉死(如按 URL 字典序)再跑首轮
+- **sfkey 网关不可达事故**(下午):worker 三任务 + text_only 探针全部 ~9s 失败;真实错误码 `provider_unavailable` 藏在 `task_runs` 表 attempt 记录里,result envelope 统一包装成 `runtime_unavailable`(已向用户提议给 ModelWorkerMCP lane 反馈:envelope 应带出最后一次 attempt 的原始 code)。诊断链:text_only 探针排除 workspace 因素 → SQLite 取真实错误码 → 读 provider 源码定分类语义 → 双环境 curl + 对照组(github/api.deepseek.com)定位网关本身。后经用户决定改本地 subagent 路线完成核验
