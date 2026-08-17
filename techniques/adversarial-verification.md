@@ -91,6 +91,8 @@ Independence 不等于"永远要另找一个人 / agent review"。真正的分�
 
 > **round-trip 陷阱**：序列化器若做**自动版本迁移 / 规范化**（如 MaterialX 默认 `upgradeVersion`、格式化器重排属性 / 丢注释空白），`f⁻¹(f(x))` 会**故意非 identity** → round-trip oracle 误报。修：pin 版本 + 关自动迁移；且**比语义不比字节**（注释 / 空白 / 属性顺序与语义无关）。
 
+> **录制-回放 oracle**（存在性指针，本 repo 未自用）：期望值不手写——把系统一次真实运行的持久化输出收割为 fixture，之后无凭据确定性回放比对；参考 deepseek-harness 0.1.0-rc.5 的 keyless snapshot（"the fixture is a genuine product of the system rather than a hand-built mock"，replay 主动跳过 `.env` 防误触真实调用；2026-08-17 源码核实）。比手写期望值高一档，弱点也明确：**「哪一次运行算对」仍由录制者 + reviewer 裁决**——行为坏了重录一次，坏行为就固化成合法期望值，机械层不报警。真做第一个 record-replay fixture 时再展开成正式阶梯档。
+
 > 来源：pmarreck，[MFIC — Mechanically-Falsifiable Independent Control](https://gist.github.com/pmarreck/b30aa3ca69cb70a5526f8a63ab8c8d7e)。把企业内控（COSO / SOX：职责分离 / 预防-检测-纠正控制 / 控制测试）搬到"LLM 是不可信方"的语境。TDD 只提供四要素里的 Falsifiable（红相证明测试能咬），其余三个要另外补。
 
 ## 跨源逐帧对拍：先钉死并**打印**对齐三件事

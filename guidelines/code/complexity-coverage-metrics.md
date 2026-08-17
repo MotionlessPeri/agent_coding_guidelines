@@ -21,6 +21,8 @@ CC 数的是一个函数里**独立执行路径（判定点）的条数**——�
 
 **推论（Goodhart 定律）**：指标一旦变成目标就不再是好指标。为了把某函数 CC 数字做低，可以用 switch / 硬拆 / 查表——数字降了，复杂度只是搬进了指标照不到的地方（数据表、别的函数、更深的调用链）。
 
+> **外部佐证**（deepseek-harness 0.1.0-rc.5，2026-08-17 源码核实）：连把 per-file 100% 覆盖当 CI 硬 gate 的项目，官方立场也与本条同向——"Line coverage is necessary, never sufficient — it proves lines ran, not that the feature works as shipped"，未覆盖行首先当「该删的死代码」而非「该补的测试」；且自认 "100%-coverage pressure can produce assertion-free tests — mutation testing is the planned counterweight"（其 mutation 长期停在 proposed，缺口只靠 review 兜）。硬 gate 的真实形态 =「100% 减一张带理由的豁免表」，行为判官放在 snapshot / e2e / smoke 层。
+
 **什么时候降 CC 是真收益**：判据不是"数字降了没"，而是**拆出来的每一块能不能独立理解、独立测试**。真解耦（各块是自洽语义单元、可单测）→ 真收益；机械换语法 / 硬拆但各块仍紧耦合、必须凑一起读 → 数字降了是自欺。
 
 ## 二、CRAP 作 review triage 的正确用法
