@@ -6,6 +6,13 @@
   corresponding doc immediately. Do not wait for the user to prompt you.
 - When you modify code, update the doc that describes that flow in the same change.
 - When you find a doc is wrong, correct it immediately — do not preserve errors.
+  **例外:错误文档住在他人的备份 / 镜像 / vendored / 他队拥有的树里时,不要就地改。**
+  就地改会同时毁掉两样东西:(a) 镜像的**证据价值** —— 它不再是"源机当时的样子",
+  后续任何以它为基准的核对都失效;(b) 它会**静默分叉** —— 对方那份源文件不会因此
+  改变,两份内容从此不同,而没人知道哪份是真的。正确动作是把勘误**路由回上游作者**
+  (必要时经用户转交),镜像保持原样。
+  ⚠️ 这个例外要明写,是因为**上面那条常驻规则会指示你做错的事**:要改的往往只是
+  一段话,文件就在眼前且可写。
 - When a new important file, class, or interface is added, update the project index.
 
 ## Writing Style
