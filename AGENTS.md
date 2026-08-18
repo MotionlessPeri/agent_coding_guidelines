@@ -23,7 +23,7 @@ Guidelines are grouped by topic under `guidelines/`:
 | `guidelines/writing/` | 面向人读的散文（文档 / 代码注释 / 交付文字）通用文体规则——工作语言写散文 + 标识符保留原文 / 不说黑话 / 简洁⇔不丢信息 / 不翻译腔。跨「文档 + 注释」共享的 SoT，由 `skills/workflow/doc-writing-style`（+图示 discipline）与 `skills/workflow/conversation-walkthrough` Phase 3（+注释 stability / Doxygen 契约头）两个 skill 承接执行面 |
 | `guidelines/cpp/` | C++ / Windows DLL / cmake / MSVC 工程底座的 hidden contract——跨 DLL 单例内联陷阱 / 符号导出 / native 绑定可达面 / 增量编译 ABI 不一致 / stale `.vcxproj` / 热路径 move 与 dynamic_cast / `std::make_format_args` 左值契约 / perf 测量误测未优化二进制 / 现代 C++ 标准钳制 / Windows native crash-hang dump 取证。框架无关，多 DLL 插件（含 UE `.dll` / Maya `.mll`）高频命中。**非 C++ 项目可整段 skip**。索引 + 按场景导航见 [`guidelines/cpp/INDEX.md`](guidelines/cpp/INDEX.md) |
 | `guidelines/collaboration/` | Multi-agent setup, private docs policy |
-| `guidelines/ci-windows/` | Windows CI (PowerShell / GitLab runner) 跑 native command 时的 pitfall 集——PowerShell ↔ native exe 之间的抽象漏洞 |
+| `guidelines/ci-windows/` | Windows CI (PowerShell / GitLab runner) 跑 native command 时的 pitfall 集——PowerShell ↔ native exe 之间的抽象漏洞；另含 POSIX 工具 ↔ Windows 文件系统语义的漏洞（`sed -i` 不是原地编辑） |
 | `guidelines/claude-code/` | Claude Code 自身（harness / hooks / settings.json）的 hidden contract——文档没明说但实测如此的行为 |
 | `guidelines/p4/` | Perforce 特有 hidden contracts——charset transcoding / typemap / 跟 git 不同的字节保留语义 |
 | `guidelines/ue/` | Unreal Engine framework hidden contracts + idiom，meta-corpus 最重的框架子目录。两层：**14 份 broad guidelines**（常碰核心契约，**懒加载 via INDEX**、非 UE session 不常驻）+ **8 个懒加载 UE skills**（ultra-niche / 按场景触发的簇，bundle 进 `skills/ue/`：module-architecture / reference-engine-source / settings-persistence / custom-graph-editor / procedural-numerical / ml-animation / unrealmcp-usage / official-mcp-usage）。**非 UE 项目可整段 skip**。完整索引（broad + skill 双层）+ 按场景导航见 [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md) |
@@ -98,7 +98,7 @@ Guidelines are grouped by topic under `guidelines/`:
 
 > 条件域 guidelines（P4 / Windows CI / Claude Code harness）**不 eager `@`-import**——只对特定项目类型相关，接对应任务时按上方组织表 / 本说明按需读（省 ~945 行常驻）：
 > - `guidelines/p4/charset-pitfalls.md` —— Perforce unicode server 的 charset transcode 坑（含 typemap / binary 强制）。配套 technique `techniques/ci-deploy-to-p4.md`（CI 自动 submit 到 P4 的完整流程）。
-> - `guidelines/ci-windows/`（2 份：`powershell-native-command-pitfalls.md` / `gitlab-runner-service-and-powershell-pitfalls.md`）—— Windows PowerShell / GitLab runner 跑 native command 的 pitfall。
+> - `guidelines/ci-windows/`（3 份：`powershell-native-command-pitfalls.md` / `gitlab-runner-service-and-powershell-pitfalls.md` / `posix-tools-on-windows.md`）—— 前两份是 Windows PowerShell / GitLab runner 跑 native command 的 pitfall；第三份是 Git Bash / MSYS2 的 POSIX 工具在 Windows 上的实现漏洞（`sed -i` 是重写+顶替 ⇒ 改行尾 / 跨设备失败 / **穿透只读且不留痕**），**改引擎 / SDK / 系统目录里的文件前值得读一眼**。
 > - `guidelines/claude-code/`（3 份：`hook-conventions.md` / `subagent-contracts.md` / `autonomous-loop-scheduling.md`）—— Claude Code harness / hooks / subagent / 自主 loop 的 hidden contract（连 Codex 都不相关）。配套 technique `techniques/claude-code-autonomous-permissions.md`（permission list 配置）。
 >
 > （2026-07-19 context-budget audit S2 Tier D）
