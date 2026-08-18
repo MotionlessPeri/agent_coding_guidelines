@@ -120,6 +120,8 @@ lane-router-lane open <project>/<lane> [--cwd <dir>] [--terminal <wt|powershell|
 
 `--terminal` 三档通用，默认 `wt`：`wt` 强制 Windows Terminal 窗口（机器缺 wt 时默认档静默回退 `powershell`，显式传 `wt` 则报错）；`powershell` / `cmd` 只定 shell，窗口宿主由系统默认决定——Win11 或配置过 console delegation 的 Win10 机器上同样出 Windows Terminal 窗口。
 
+`wt` 档下**同一 project 的 lane 聚进同一个 Windows Terminal 窗口**（窗口名 = project 名，每条 lane 一个选项卡；四条开窗路径 new / open / rotate / restore 一致生效）。想把某条 lane 拎成独立窗口，直接把它的选项卡从 wt 窗口里拖出即可。
+
 ## 收发主流程
 
 ```mermaid
