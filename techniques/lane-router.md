@@ -48,7 +48,7 @@ claude mcp get lane
 claude mcp list
 ```
 
-普通 `claude` 可以调用四项 Lane Router tools。需要 Channel 在没有用户输入时自动唤醒 lane，Claude Code 2.1.220 使用：
+普通 `claude` 可以调用五项 Lane Router tools。需要 Channel 在没有用户输入时自动唤醒 lane，Claude Code 2.1.220 使用：
 
 ```powershell
 claude --dangerously-load-development-channels server:lane
@@ -58,7 +58,7 @@ claude --dangerously-load-development-channels server:lane
 
 Claude 的 user-scope MCP 保存的是 `dist` 的绝对路径。仓库移动、`dist` 尚未构建或构建产物被清理后，配置会失效；重新 build，并用 `claude mcp get lane` 检查连接。Codex 命令缺失时先运行 `Get-Command lane-router-codex`，再检查 `npm link` 是否仍指向当前构建。
 
-## 四项对话工具
+## 五项对话工具
 
 | 工具 | 用途与约束 |
 |---|---|
@@ -66,6 +66,7 @@ Claude 的 user-scope MCP 保存的是 `dist` 的绝对路径。仓库移动、`
 | `lane_attach_current(address, role_description?)` | 创建、接替、轮换 lane 或修改角色说明。调用前必须在普通对话中解释拓扑变化并取得用户明确确认；不要添加机械式 `confirmed` 参数。接替现有 lane 且不改角色时省略 `role_description`。 |
 | `lane_send(target, kind, body, reply_to?)` | 向目标 `pending` mailbox 写入不可修改的消息。普通消息用 `normal`；修正旧消息用 `correction` 并以 `reply_to` 指向原 message ID。 |
 | `lane_ack(message_ids)` | 当前 lane 完成处理后，批量把每个已处理 ID 从 `pending` resolve。未完成、未理解或仍需重试的消息不要提前 ack。 |
+| `lane_restore_project(lanes?)` | 已绑定的 caller 一键恢复本 project 其他离线 lane 的原 conversation（机器重启场景；不传 `lanes` 恢复全部 peer）。只在用户明确要求重开 lane 时调用；它不是拓扑变更，不走 attach 的确认流程。旧 Codex thread 无法刷新工具清单时，用兼容 CLI `lane-router-restore-project [lane-address ...]`（需要 shell 里有 `CODEX_THREAD_ID`）。 |
 
 lane 是长期 role/context 边界，不要为每个临时 task 创建一条 lane。创建、接替、轮换和修改 `role_description` 都是持久拓扑变化；先查目录、提出具体建议、取得确认，再 attach。当前 conversation 已绑定另一条 active lane 时，Router 会拒绝隐式换绑。
 
