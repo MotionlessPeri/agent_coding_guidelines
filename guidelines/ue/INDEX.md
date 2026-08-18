@@ -61,6 +61,7 @@ UE 是 meta-corpus 最重的框架子目录——Unreal Engine framework 的 hid
 |---|---|
 | [`ue58-upgrade-gotchas.md`](ue58-upgrade-gotchas.md) | 升 UE 5.8 三硬契约：Target `BuildSettingsVersion.V7` + `IncludeOrderVersion.Unreal5_8` / `.uproject` RapidJSON 读裸控制字符报误导性 `Invalid encoding` / 运行 editor 需 VC++ redist `14.50.35719+` |
 | [`build-plugin-limitations.md`](build-plugin-limitations.md) | `RunUAT BuildPlugin` 四个 limitation：`Config/`+`Scripts/` 默认不进包（`FilterPlugin.ini`）/ UBT 剥 `PythonRequirements` / 交付包含非交付物（`Intermediate`/`.pdb`/RuntimeDependencies dll）/ installed distribution 只开放 Editor target（`-NoTargetPlatforms`） |
+| [`installed-engine-build-constraints.md`](installed-engine-build-constraints.md) | 发行版引擎（`InstalledBuild.txt` 存在）拒 Game/Program target 是 **UBT 拒绝、不等于编不出来**：先试绕开（走开放的 Editor target），绕不开时三道墙可穿——rules assembly 因 `IsFileInstalled` 短路不重编（`-SkipRulesCompile -ForceRulesCompile` 必须同传）/ target 白名单只在引擎自认 installed 时生效 / launcher 版裁掉 Core 依赖的三方源码（只留许可文件骨架）。⚠️ 带一个影响整个引擎的临时副作用，只在单人本机做 |
 | [`automation-test-from-ci.md`](automation-test-from-ci.md) | UE 在 CI 跑 Automation：必须 `UnrealEditor-Cmd.exe`（不是 GUI 版）/ 跑完不 graceful quit → 脚本监控 report + grace + force kill |
 
 ### 外部自动化 / MCP 写入 / LogicDriver / 本地化
@@ -84,6 +85,7 @@ UE 是 meta-corpus 最重的框架子目录——Unreal Engine framework 的 hid
 - **外部脚本 / MCP 写 UE 资产** → [`external-automation-write-path.md`](external-automation-write-path.md)（必走 PostEditChangeProperty）+ 平台选型 [`mcp-platform-choice.md`](mcp-platform-choice.md) + usage skill `unrealmcp-usage` / `official-mcp-usage`
 - **本地化 / 翻译 pipeline** → [`localization-pitfalls.md`](localization-pitfalls.md) + skill `ue-settings-persistence`
 - **升级到 UE 5.8 / BuildPlugin 打包 / CI 跑 automation** → [`ue58-upgrade-gotchas.md`](ue58-upgrade-gotchas.md) / [`build-plugin-limitations.md`](build-plugin-limitations.md) / [`automation-test-from-ci.md`](automation-test-from-ci.md)
+- **撞到 "`X` targets are not currently supported from this engine distribution"** → [`installed-engine-build-constraints.md`](installed-engine-build-constraints.md)（先分清 UBT 拒绝 vs 真编不出来；BuildPlugin 场景的绕法在 [`build-plugin-limitations.md`](build-plugin-limitations.md) Limitation 4）
 - **接到一个 UE bug / weird behavior** → skill `ue-reference-engine-source` 的按子系统 reference 清单，找最相近 engine source 看怎么实现的
 
 ## 增长状态
