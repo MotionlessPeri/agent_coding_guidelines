@@ -127,3 +127,17 @@
 - 首轮 Verify 中途撞 session limit(用户切账号窗口),resume 补齐;两轮合计 ~10.3M subagent token(5.04M + 5.27M,烧了两个账号的额度)
 - **radar-textmode resume 缓存教训**:缓存只命中 Scope/Search 层,Fetch 及之后几乎全部重跑——推测(未证实)是 URL 去重依赖 search agent 完成顺序的竞态,两轮 fetch 集合不同(40 vs 37 claim)导致 prompt key 变化。若指望 resume 省钱,需把 fetch 输入排序钉死(如按 URL 字典序)再跑首轮
 - **sfkey 网关不可达事故**(下午):worker 三任务 + text_only 探针全部 ~9s 失败;真实错误码 `provider_unavailable` 藏在 `task_runs` 表 attempt 记录里,result envelope 统一包装成 `runtime_unavailable`(已向用户提议给 ModelWorkerMCP lane 反馈:envelope 应带出最后一次 attempt 的原始 code)。诊断链:text_only 探针排除 workspace 因素 → SQLite 取真实错误码 → 读 provider 源码定分类语义 → 双环境 curl + 对照组(github/api.deepseek.com)定位网关本身。后经用户决定改本地 subagent 路线完成核验
+
+### 2026-08-21(用户点名读一个仓库 + 常规搜索,非 deep-research;详见 `2026-08-21.md`)
+- ✅ 已促成 标识符保留原文**并加代码环境** —— `prose-and-register.md` 规则 1。唯一带本仓库实测证据的一条:拿 `Fenng/Tech-Doc-Style-Chinese` 的检查器扫本仓库,27 条术语大小写命中**全部**是裸标识符(`settings.json` / `session id` / 域名),零真问题 ⇒ 假阳性清单 = 裸标识符清单,可当机械探测器用。源:github.com/gzhanlei/tech-doc-style-chinese(MIT,衍生自 Fenng/1054★)
+- ✅ 已促成 黑话表补**中文商业黑话**轴 + 判据「有没有一个能替换它的具体动作或机制」+ 本仓库保留清单(`兜底`/`落盘`/`收口`/`透传`/`链路`)—— `prose-and-register.md` 黑话替换表。实测存量 102 处,其中 `对齐/闭环/联动/协同` 38 处判为偏虚该改(未做,见观察)
+- ✅ 已促成 英文状态词不做一对一固定映射(`Unauthorized` ≠ 「未授权」)—— `prose-and-register.md` 规则 5(归到翻译腔)
+- ✅ 已促成 数量表述(百分比 ≠ 百分点 / 倍数方向 / 区间包含关系)—— `prose-and-register.md` **新增规则 6**;与 `reporting-limits` 规则 4 分层(那条管机制,本条管表述)
+- ✅ 已促成 生成类任务:事实清单作 prefilter + **prefilter 封顶召回时把差额做成显式出口(待确认清单)** —— `enumerate-then-adjudicate.md` 新增节。最后那条是本 technique 主体没写到的增量
+- ⛔ 明确不吸收 整个 skill 装 `skills/`(受众错位:它默认不称呼读者 + 避免夹生英文,跟本仓库反向)/ 其 linter 当 CI gate(precision 不够)/ ASD-STE100 受控写作(本仓库无操作手册类文档)/ 复制 `repo_digest.py`(不生成 README;已记外部指针 + 不复制理由)
+- 👁 观察 842 处 ASCII 引号包中文 + 88 个中文弯引号(真不一致)/ 38 处偏虚黑话存量 —— 都**故意不做一次性 sweep**(污染 blame + 撞进行中工作);先只在新写内容里守规矩,真要清先配一条会红的判据
+- 📥 雷达中 [`yikeke/zh-style-guide`](https://github.com/yikeke/zh-style-guide)(MIT,1030★,2025-01 停更)第 3、4 章 —— **比 Fenng 那份更全且补的正是本仓库空白**(文档结构 / 内容元素)。已从 `.rst` 取原文:标题层级禁跳级·列表下禁嵌标题·避免孤立编号 / 列表 ≥3 项才用·顺序不重要别用有序 / 表格必有表头·不留空单元格·不用「同上」 / 注意块 ≤4 行且不含表格图 / 单位空格(角度·摄氏度·百分号例外) / 段落 50–200 字·句子 ≤100 字。促成门槛:先判「句子 ≤100 字」这类风格取向是否真要(本仓库高密度长句是刻意的)
+- 📥 雷达中 [Vale](https://github.com/errata-ai/vale) —— 可配置 style 规则的散文 linter,本轮最值得跟进的工具线索(比 autocorrect 灵活,能把本仓库自己的规则写成可执行 style)。促成门槛:验证它对中文 / 对 Markdown 表格重的文档可用
+- 👁 观察 工具层 [huacnlee/autocorrect](https://github.com/huacnlee/autocorrect)(Rust,AST 感知只改字符串与注释,28+ 文件类型,有 GitHub Action,可 --fix)/ [zhlint](https://github.com/zhlint-project/zhlint) / [pangu.vim](https://github.com/hotoo/pangu.vim) —— 「中英文留白」那条规则的可执行形态
+- 👁 观察 [Diátaxis](https://diataxis.fr/)(tutorial / how-to / reference / explanation 四类分离)—— 跟 `documentation.md` 的文档拆分规则正交且更成熟;另有一条 2026 的论点值得记:agent 检索片段塞 context 而非通读,所以文档结构直接决定回答质量(与 context-budget-audit 同向)
+- ❌ 丢弃 [ruanyf/document-style-guide](https://github.com/ruanyf/document-style-guide) / [Maecenas](https://github.com/Maecenas/chinese-document-style-guideline) / [chen3feng](https://github.com/chen3feng/cn-doc-style-guide) / [sparanoid 排版指北](https://github.com/sparanoid/chinese-copywriting-guidelines) —— 内容基本被 yikeke + Fenng 两家覆盖,不必单独跟
