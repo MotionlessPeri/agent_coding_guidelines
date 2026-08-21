@@ -10,7 +10,37 @@
 
 跟 `clarify-before-implementing.md` 对称：那条讲"开工前先澄清需求"，本条讲"开工前先 survey 现有实现"。两条都属于 prep work，**优先级高于直接动手写**。
 
-**抽象层级对应**：本条管 **helper / function 级**复用（grep 现有函数 / helper）。**架构 pattern 级**复用（"流程跟 X 像不像 / 要不要走 X 的 base class"）由项目侧的 `pattern-recognition-prep` skill 维护（如 `<project>/.claude/skills/pattern-recognition-prep/SKILL.md`），跟项目的两个 workflow (autonomous / supervised) 的 Phase 1 设计阶段自动 compose。两者**互补**：design 阶段先扫 architectural pattern catalog（skill），实施前再 grep 具体 helper（本条 guideline）。
+**抽象层级对应**：复用的 survey 有三个层级，从近到远：
+
+| 层级 | survey 什么 | 由谁管 |
+|---|---|---|
+| **helper / function 级** | grep 本仓库现有函数 / helper | **本条 guideline** |
+| **架构 pattern 级** | "流程跟 X 像不像 / 要不要走 X 的 base class" | 项目侧 `pattern-recognition-prep` skill（如 `<project>/.claude/skills/pattern-recognition-prep/SKILL.md`），跟项目的两个 workflow (autonomous / supervised) 的 Phase 1 设计阶段自动 compose |
+| **框架侧 reference impl 级** | 本机随装的 SDK samples 与头文件里，官方是怎么做这件事的 | **本条下面那一节** |
+
+三者**互补**：design 阶段先扫 architectural pattern catalog（skill），动手前查框架侧 reference impl（下一节），实施时再 grep 具体 helper（本文件其余部分）。
+
+## 框架侧 reference impl：先查本机随装的 SDK samples 与头文件
+
+回答或实现任何涉及某个 DCC / 引擎 / SDK **具体版本**的问题之前，先查本机是否装了那个版本的 samples 与头文件。**它们是本地、离线、版本精确匹配的 oracle，优先于网络搜索和跨版本推测。**
+
+**为什么**：这类框架的 API 文档普遍稀薄或滞后，**正确的 pattern 住在随装的可编译 samples 里**，硬约束住在头文件注释里。关键是**版本精确性**——网上搜到的答案常对不上你的版本，而本机 samples 的版本是精确的。这一查把"跨版本推测"这个高风险动作直接换成"读目标版本的实际代码"。
+
+**动作**：`ls` 一下宿主的安装目录，看有没有 samples / devkit / include 树；有就先读那个场景对应的样例，再动手。一次 `ls` 的成本，换掉的是一整轮推测。
+
+**实测的随装情况**（同一台机器核销，供估计概率用）：
+
+| 宿主 | 随装 |
+|---|---|
+| MotionBuilder 2018 / 2019 / 2022 / 2023 | 四个版本**全部**随装 `OpenRealitySDK/Samples/`（含十余个设备样例） |
+| Maya 2022 / 2024 / 2025 | 随装 `devkit/` |
+| 3ds Max 2024 | 顶层**无** maxsdk —— SDK 是可选安装组件 |
+
+⇒ "随装"不是普适前提（Max 就不成立，Houdini / Blender 未核），所以这条是**先查一下**，不是**假定有**。
+
+**跨域证据（两击）**：UE 域这条机制早已单独成篇（skill `ue-reference-engine-source`，自述即"UE framework is largely undocumented and correct patterns live in engine source, not API docs"）；MoBu 域今天第二次命中——一个"设备插件怎么写、跨版本有无差异"的问题，本来要靠旧版本经验加网络搜索推测，`ls` 一下发现 **2023 SDK samples 里就有正好对应那个场景的完整官方实现**，答案质量从"我推测"跃升为"官方样例就是配方"，并顺带在头文件注释里核销了四项 API 事实。
+
+⚠️ **这曾是本语料库的结构性覆盖漏洞**：机制框架无关，却只在 UE 域被写下（`guidelines/maya/` 对 samples / reference impl 零命中，尽管 Maya 也随装 devkit）⇒ 做 Maya / MoBu / 其他宿主的 agent 不会想到去查。所以它落在这份框架无关的文件里，UE skill 作为该层级的域内实例。
 
 ## 跟"premature abstraction"的边界
 
@@ -70,6 +100,26 @@
   └── 一处现有 + 一处即将新建 = 2 处
         → 至少抽函数，避免 copy-paste 进入 codebase
 ```
+
+## 复用之前先验它是否**正确**，不只读懂它的副作用
+
+反模式 3（下面那条）说"复用前读懂被复用函数的全部副作用"。还要往前一步：**先验它对不对。** 因为一段错误实现可以长期不崩、不报错、测试也不红，条件有两种：
+
+| 形态 | 为什么原地无害 |
+|---|---|
+| **输出被覆盖** | 错的值算出来了，但真正生效前被另一条路径整个盖掉，于是错误从不表现 |
+| **全链一致地错** | 某个约定（旋转序 / 单位 / 分量序）声明了却没实现，全链都用同一个默认值，彼此自洽所以功能正常 |
+
+这两种代码在原地是无害的，**危害在被继承的那一刻产生**：新实现照抄它（以为它对），或者只抄一半（打破了那个"全链一致"）。此时错误第一次显形，而显形位置离根因很远——你会在新代码里查一个其实是从旧代码继承来的假设。
+
+之所以需要一条明写的规矩：**常规判断手段全部失效**——这段代码有注释、命名合理、被真实调用、功能也确实在跑。想发现它只能反过来问：
+
+- **谁读它的输出、读之前发生了什么？**（追到真正生效的那一点，看有没有被覆盖）
+- **这个配置字段的读取点在哪？**（grep 字段名；解析进结构体之后再无读取点 = 声明了但没实现）
+
+实测两个实例（同一仓库、机制不同，不是同一个坑踩两遍）：一个"局部转全局"的矩阵函数把入参在函数内覆盖后自乘，算出的是父变换的平方、骨骼自身的成员从未参与——而结果在首帧被整块缓冲覆盖，所以对最终画面零影响，**静静活了整个项目周期**；另一个配置文件声明了旋转序，解析进字段后再无任何读取点，全链走框架默认序，两侧一致所以姿势正确。代价是：**若不追到覆盖链条，就会把一个错误实现当作参考实现递给下游**，而下游没有源码上下文，无法自行发现。
+
+> 同族的另一种形态（不单列成条）：**锁的范围和函数的调用位置，隐含着对函数体大小的假设；函数体随演化增长时这个假设静默失效，而代码形态上看不出异常**——锁还是那一行，调用点还是那一处。实测形态是一个只做数据搬运时合理的"整函数加锁 + 在实时回调里调用"，后来被塞进了重计算。
 
 ## 复用决策记录
 

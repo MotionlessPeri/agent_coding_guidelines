@@ -332,6 +332,13 @@ Result: Failed (OtherCompilationError)      ← UBT ExitCode=6 → BuildPlugin f
 
 ("`Program` targets are not currently supported ..." 是同源的另一种,程序化重生工程文件时也会遇到。)
 
+> ⚠️ **更正(2026-08)**:本节原来把这条写成了 distribution 的能力断言("接受 editor-only,或换引擎"),
+> 而**当时没人试过能不能穿过去**。实测:**installed 引擎能编 Program target**,代价是三处临时改动
+> + 一个全局副作用。⇒ 下面 `-NoTargetPlatforms` 的绕法**在 BuildPlugin 场景仍然是首选**(它干净得多),
+> 但"installed distribution 给不了,得换引擎"这个结论**只在 BuildPlugin 场景下成立**,不是整个
+> distribution 的能力边界。绕不开时的穿越路径见
+> [`installed-engine-build-constraints.md`](installed-engine-build-constraints.md)。
+
 ### Root cause（带源码引用，UE 5.8）
 
 - `Engine/Source/Programs/UnrealBuildTool/Configuration/UEBuildTarget.cs:1403`:installed 引擎按
@@ -362,8 +369,10 @@ editor target 在 installed distribution 上本就支持(这个引擎就是这�
 
 `-NoTargetPlatforms` 后交付包**只含 editor 二进制**(`UnrealEditor-*.dll` + RuntimeDependency 的 dll),
 **无 game/runtime 二进制**(`UnrealGame-*.dll`)。对 **editor 工具型插件**(消费方在编辑器里用、automation 装进
-editor 跑)完全够用。**若插件要打进独立游戏 runtime 分发**,才需要一个开放 Game target 的引擎 —— installed
-distribution 给不了,得换引擎(或让引擎团队在打包时开放 Game target)。
+editor 跑)完全够用。**若插件要打进独立游戏 runtime 分发**,才需要 game 二进制 —— 这时 `-NoTargetPlatforms`
+这条绕法用不了,两个方向:换一个开放 Game target 的引擎(或让引擎团队打包时开放),或者按
+[`installed-engine-build-constraints.md`](installed-engine-build-constraints.md) 评估穿过去(⚠️ 那条路径
+只在 Program target 上实测过,**Game target 未验**,且带一个影响整个引擎的临时副作用)。
 
 ### Anti-Patterns
 
@@ -371,7 +380,7 @@ distribution 给不了,得换引擎(或让引擎团队在打包时开放 Game ta
 |---|---|---|
 | 以为 `BuildPlugin -Rocket` 在任何引擎都能出全平台包 | installed distribution 上编 Game target 被拒,package fail | editor 工具插件用 `-NoTargetPlatforms` 只编 editor |
 | 撞 "Game targets not supported" 去查插件代码 / 模块 type | 查错方向(是**引擎 distribution 的限制**,不是插件问题) | 认准 UBT distribution 检查,加 `-NoTargetPlatforms` |
-| 为出 game 包去改引擎 `InstalledPlatformInfo` | 改引擎分发、跨升级重打、风险大 | 接受 editor-only,或换开放 Game target 的引擎 |
+| 为出 game 包去**永久**改引擎 `InstalledPlatformInfo` | 改引擎分发、跨升级重打、风险大 | BuildPlugin 场景用 `-NoTargetPlatforms` 接受 editor-only;真绕不开时看 [`installed-engine-build-constraints.md`](installed-engine-build-constraints.md)(**临时**改 + 立即还原,且只在单人本机做) |
 
 ---
 

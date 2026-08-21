@@ -65,6 +65,22 @@ flowchart LR
 4. **LLM 逐条裁决**——real? 含义对? → accept / reject，每条留痕。
 5. **（可选）量化 prefilter 的召回**——拿 labeled corpus 或 input-mutation 给出一个覆盖率数字，让"漏"变得有界可报。
 
+## 反方向的同一骨架：生成类任务（读一个仓库写文档）
+
+前面讲「找全某类东西」。反方向是**要产出一份新东西**（README / 项目说明 / 迁移报告）而模型手上没有事实——于是它**望文生义**：按目录名猜职责、没有 LICENSE 就默认写 MIT、看到最近提交时间就写「活跃维护中」。跟「找不全」是同一种静默失败：**读起来完全合理，没人会去质疑。**
+
+| 本 pattern | 生成类任务里的形态 |
+|---|---|
+| prefilter 过度召回 | 机械采集**事实清单**：清单文件 / 依赖 / 目录树 / CI / 许可证 / 入口线索 / git 事实。宁可多采 |
+| LLM 逐条裁决 | 每条事实判「进不进这份文档、放哪一节」；采集摘要里没有的版本号 / 端口 / 命令 / 路径**不写** |
+| 召回被 prefilter 封顶 | 采集器采不到的模型看不到 ⇒ 差额做成**显式产出**：文末一份「待确认」清单，每项注明「需要谁确认什么」 |
+
+最后一行是本 pattern 主体没写到的一条：**prefilter 封顶召回时，把差额做成显式出口，而不是让它静默消失。** 主体只说「召回上限 = prefilter，功夫花在 prefilter 上」；这里给出第二条路——**承认上限，并把上限之外的东西变成一份可交给人的清单**。比提高 prefilter 召回便宜，而且它把「模型不知道」从不可见变成可见。
+
+⚠️ 一条容易漏的红线：**git 只给了最近提交时间 ⇒ 不得据此写「项目活跃维护中」**。这是 [`../guidelines/code/reporting-limits-and-null-results.md`](../guidelines/code/reporting-limits-and-null-results.md) 规则 4 的实例——提交时间的机制预测不了「维护状态」。
+
+**外部实现指针（未复制进本仓库）**：`scripts/repo_digest.py` + `references/repo-readme-generation.md`，见 [gzhanlei/tech-doc-style-chinese](https://github.com/gzhanlei/tech-doc-style-chinese)（MIT，衍生自 [Fenng/Tech-Doc-Style-Chinese](https://github.com/Fenng/Tech-Doc-Style-Chinese)）。零依赖 Python，采不到的一律输出「未检测到」；**2026-08-21 在本仓库实测跑通，没有编造**。不复制进来的理由：本仓库不生成 README，引入 552 行第三方代码要跟上游同步，真要用时一条 `curl` 就够。
+
 ## 跟 iterative-retrieval 的区别
 
 [`coordination-patterns.md`](coordination-patterns.md) 的 iterative-retrieval 是"worker 自己迭代 fetch 上下文"——探索**未知的文件集**，扩大搜索面。本 pattern 相反：先用机械方法把候选集**定死、收窄、枚举**，再逐条判。两者互补——探索阶段可以 iterative-retrieval 把范围摸出来，一旦要"列全某个 X 的清单"就切到 enumerate-then-adjudicate。

@@ -48,7 +48,7 @@ claude mcp get lane
 claude mcp list
 ```
 
-普通 `claude` 可以调用四项 Lane Router tools。需要 Channel 在没有用户输入时自动唤醒 lane，Claude Code 2.1.220 使用：
+普通 `claude` 可以调用五项 Lane Router tools。需要 Channel 在没有用户输入时自动唤醒 lane，Claude Code 2.1.220 使用：
 
 ```powershell
 claude --dangerously-load-development-channels server:lane
@@ -58,7 +58,7 @@ claude --dangerously-load-development-channels server:lane
 
 Claude 的 user-scope MCP 保存的是 `dist` 的绝对路径。仓库移动、`dist` 尚未构建或构建产物被清理后，配置会失效；重新 build，并用 `claude mcp get lane` 检查连接。Codex 命令缺失时先运行 `Get-Command lane-router-codex`，再检查 `npm link` 是否仍指向当前构建。
 
-## 四项对话工具
+## 五项对话工具
 
 | 工具 | 用途与约束 |
 |---|---|
@@ -66,6 +66,7 @@ Claude 的 user-scope MCP 保存的是 `dist` 的绝对路径。仓库移动、`
 | `lane_attach_current(address, role_description?)` | 创建、接替、轮换 lane 或修改角色说明。调用前必须在普通对话中解释拓扑变化并取得用户明确确认；不要添加机械式 `confirmed` 参数。接替现有 lane 且不改角色时省略 `role_description`。 |
 | `lane_send(target, kind, body, reply_to?)` | 向目标 `pending` mailbox 写入不可修改的消息。普通消息用 `normal`；修正旧消息用 `correction` 并以 `reply_to` 指向原 message ID。 |
 | `lane_ack(message_ids)` | 当前 lane 完成处理后，批量把每个已处理 ID 从 `pending` resolve。未完成、未理解或仍需重试的消息不要提前 ack。 |
+| `lane_restore_project(lanes?)` | 已绑定的 caller 一键恢复本 project 其他离线 lane 的原 conversation（机器重启场景；不传 `lanes` 恢复全部 peer）。只在用户明确要求重开 lane 时调用；它不是拓扑变更，不走 attach 的确认流程。旧 Codex thread 无法刷新工具清单时，用兼容 CLI `lane-router-restore-project [lane-address ...]`（需要 shell 里有 `CODEX_THREAD_ID`）。 |
 
 lane 是长期 role/context 边界，不要为每个临时 task 创建一条 lane。创建、接替、轮换和修改 `role_description` 都是持久拓扑变化；先查目录、提出具体建议、取得确认，再 attach。当前 conversation 已绑定另一条 active lane 时，Router 会拒绝隐式换绑。
 
@@ -95,12 +96,79 @@ smoke 回复至少回显原 dispatch ID、当前工作目录、handoff/SoT hash 
 上下文过长、但 lane 的长期角色仍然有效时，先在旧 conversation 说明同地址接替的影响并取得用户明确确认，再让旧 agent 写精简 handoff 并调用：
 
 ```powershell
-lane-router-rotate <codex|claude> <lane-address> --handoff-file <absolute-path>
+lane-router-rotate <codex|claude> <lane-address> --handoff-file <absolute-path> [--terminal <wt|powershell|cmd>]
 ```
 
 handoff 文件必须位于 `~/.lane-router/rotation-handoffs/`，使用 UUID `.md` 文件名。新 conversation 只接替完全相同的地址并省略 `role_description`；恢复 cwd、Git 状态、批准范围、验证证据和 pending mailbox 后先报告就绪，不自行推进新功能。launcher 返回成功只证明新 terminal 已创建，必须等新 conversation 报告 attach 成功后，才能关闭旧 terminal 或把轮换记为完成。
 
-Windows 上创建交互式独立 terminal 时，不要把 Node `spawn` 的 `spawn` 事件当作窗口可见且持续存在的证据。真实验证表明，直接 `spawn` PowerShell 并设置 `detached: true` 可以先报告成功、随后立刻退出，既没有窗口也没有启动目标 CLI。Lane Router 因此通过 PowerShell `Start-Process -WindowStyle Normal` 创建可见 terminal；若轮换没有窗口，检查实际进程链应为 `PowerShell → rotation-terminal-child → lane-router-codex/claude`，不要只看 launcher 退出码。
+Windows 上创建交互式独立 terminal 时，不要把 Node `spawn` 的 `spawn` 事件当作窗口可见且持续存在的证据。真实验证表明，直接 `spawn` PowerShell 并设置 `detached: true` 可以先报告成功、随后立刻退出，既没有窗口也没有启动目标 CLI。Lane Router 因此通过 PowerShell `Start-Process -WindowStyle Normal` 创建可见 terminal；若轮换没有窗口，检查实际进程链应为 `PowerShell → terminal-child → lane-router-codex/claude`（terminal child 旧名 `rotation-terminal-child`，2026-08-18 泛化为三条开窗命令共享），不要只看 launcher 退出码。
+
+### 一组 lane 的轮换（实测形态与反例）
+
+判据本身在 skill `role-lane-coordination` 方法 11（常驻）；这里只记**为什么**与**踩过什么**（按需读）。以下全部来自一次六 lane 项目的实际轮换。
+
+**① 时机判据的两个歧义，都是「两个数都对」型**
+
+- **量纲**：判据写成「context 近上限」时，两条 lane 各自去量了**会话 token 预算**（`total_tokens left`，1450万/1500万），而要判的是 **context window**（1M）。两个数都可测、都叫 context，**所以没有任何信号提示双方在答不同的问题**。其中一条靠"注意到那不是同一个量"改口说「这个量我测不了」——**避免了错答，但没能给出对答**；真正的修复来自换判据。
+- **时态**：换成「已经发生过压缩」之后仍有漏洞（一条 lane 指出）：它证明「窗口在**某个时刻**被超过」，不证明「窗口**现在**紧」——一个第 5 分钟被压缩过、之后只干三件小事的会话同样满足。⇒ 补 ②「压缩之后又积累了实质工作量」。
+- **没有余量代理量**：`lane_directory` 只给 `binding{generation, attachedAt}` / `reach{state, connectedAt, lastLifecycleAt, lastNotifiedAt, believedBusy}`，**无 token 数 / 窗口占用**。且 `attachedAt` **零分辨力**——实测六条 lane 全落在 24–25 小时区间，而它们的窗口状态明显不同。**turn 间隔同样不能当代理**（一个 turn 里可以烧掉很多）。⇒ 只剩「已压缩」这个**滞后一步**的信号，且只有每条 lane 自己看得见。
+
+**② 两步 durable：`rotate` 会消费掉 handoff 文件**
+
+实测 `~/.lane-router/rotation-handoffs/` **除最近一份外全空** —— 而唯一活下来的那一代，是**手工另存过的那一代**。⇒ 此前这个机制**靠记性，不靠任何规矩**。忘了另存**不报错、不留痕**，表现是「新会话读完 handoff 就再也拿不到上一代的东西」。
+
+⚠️ 而多 lane 共写的项目待办池必须**按 lane 分节**：实测三条 lane 混写到 1462 行，轮换时谁也找不到自己那部分。分节那一刀的正确形态：**只加分节骨架 + 归位，不顺手改条目内容**，并用**逐行多重集会计**证明「没有第 N+1 种变化」（`Counter` 相减、两个方向都列）——那不是额外工作，是这类改动该有的默认证法。
+
+**③ 许可：踩过两层，逐字转述也不行**
+
+协调者先把用户原话「需要的话就 rotate」摘要成「用户批准轮换」⇒ 被 lane 正确拒绝（它读成"批准机制"而非"批准我现在按"）；协调者随后**逐字**贴原话并说"可以按"——**仍然不对**，因为问题**在通道不在保真度**：系统把 lane 通道标为不可信外部数据，Router 也要求 confirmation **in the conversation**。
+
+⇒ 病名：**「用户说了」和「有人告诉我用户说了」在回执里同一个样子。**
+⇒ ℹ️ 而那次实际按下是**合规的**，因为该 lane 自己那条对话的首个 user 回合里就带着轮换指令。它把边界说得很准：**「我能证我这条对话里有这句话」，我证不了「那句话是用户本人当场敲的」** —— 后者才是这条纪律要防的，所以它没被这次削弱。
+
+**④ 收件人列表：机械形态不可用，退回纪律形态但要"失败可见"**
+
+`lane_send` 的 **`cc` 字段在 schema 里，而运行中的 Router 拒收它**（`unrecognized_keys`）——**两条 lane 独立观测**。⇒ 📌 由此得一条工具事实：**别把 schema 当能力证明**，它跟"文档说支持"同一档，要实测。（提出 `cc` 那条建议的 lane 自陈：「我读到的是『schema 里有』，说出口的是『这个机制可用』——差一层」，并指出这种错的代价形态最坏：**真问题配假解法**，会让人以为问题已有着落而停止找真修法。⇒ **推荐一个机制给别人之前，自己先用一次。**）
+
+⇒ 退回纪律形态时选**失败会被别人看见**的那个：**把完整收件人列表写进每封正文**。它仍靠人写那一行，但**漏发对收件人可见**（别人看到列表里少了一个该在的名字就能反问）；而"念在心里"的形态，漏发时没有任何人能看出来。⇒ 实测两次漏发都发生在逐条 send 的形态下，第二次就在被命名之后半小时 ——**收下一条纪律 ≠ 执行它**，中间那步（把它变成一个动作）不会自己发生。
+
+**⑤ handoff 里「要照着执行」的部分不许用占位符**
+
+实测：一份 handoff §1 写明"在 integration 树"，而 §6 的命令写成泛化的 `<worktree>` ⇒ 新会话落在自己 lane 的旧 worktree 上（落后 49 个 commit，今天那批文件在那棵树上根本不存在）。**叙述可以泛化，命令不行**，而两者在同一份文档里读起来一样可信。⇒ 接手方的对策是有效的：**逐条现场核，不抄 handoff**；并主动声明哪些数是继承来的（「那两个数不是我量的，别当我复核过」）。
+
+**⑥ 改完正文回头读一遍标题** —— 编辑动作只覆盖注意力所在的那一半
+
+实测两次，一次在别人的记录里、一次在自己刚写的文件里（**同一晚，同一个人**）：
+
+- 一份 handoff 的某节，正文按实测从"推荐用 `cc` 群发"改成了"`cc` 被 Router 拒收"，**而标题仍写着"群发用 `cc`，别逐条 send"** ⇒ 那份文件里躺了二十分钟一个**标题推荐、正文撤回**的东西，**跳标题读的人会拿到一条已被证伪的建议**。
+- 一份 skill 的正文把时机判据从两项改成三项（第三项还是别人补的），**而 frontmatter 的 description 仍写着"时机双判据"** ⇒ 而 description 恰好是最可能被跳着读的那一层。
+
+⇒ 📌 机制（比"要小心"有用）：**改正文时注意力在正文上，标题在视野之外。** 标题跟正文是同一次编辑的两个部分，而编辑动作只覆盖其中一个。
+⇒ ✅ 可执行：**改完一段内容，回头读一遍它的标题。** 一行的事。
+⇒ ⚠️ 而它跟「✅ 完成标记 + 标题里过期的指令/数字」是同一族的**上游**：那一族说危险的组合是什么，这一条说它**怎么产生的**。⇒ 两次都是当事人整晚在别人记录里清同一个东西，然后在自己刚写的文件里犯了它 —— **对自己产物的命中比在别人那儿命中更有说服力**。
+
+**⑦ 报读数时把取得时刻一起写**
+
+实测：协调者写「我从 router 看你 generation 仍是 6」，而那个读数取得比句子早 408 秒，其间对方已经转成 7。⇒ **「我刚查的」和「我之前查的」在句子里同一个样子** ⇒ 带上取得时刻，接收方才能自己判它过期。
+
+### 打开与新建 lane
+
+lane 收到用户"打开某已有 lane / 新建某 lane"的指令时，不要自己拼 terminal 与 CLI 启动方式，调用统一命令：
+
+```powershell
+lane-router-lane new  <project>/<lane> --role "<角色说明>" [--backend claude] [--cwd <dir>] [--terminal <wt|powershell|cmd>]
+lane-router-lane open <project>/<lane> [--cwd <dir>] [--terminal <wt|powershell|cmd>]
+```
+
+- 调用方不需要知道目标 lane 是什么 agent：`open` 从 Router 的 binding 记录读出 backend 与 conversation id。当前只支持 claude；codex 报"暂不支持"，可手动 `lane-router-codex resume <thread-id>`。
+- **`new` 是拓扑变更**：调用方 conversation 必须先在对话中说明并取得用户明确确认，再调命令——与 `lane_attach_current` 的政策一致，命令不设机械式 confirm 参数。命令开出新 terminal，bootstrap prompt 指示新对话读 AGENTS.md、查目录、带 `role_description` attach、报告就绪后等待指令。地址已存在时报错并提示改用 `open`。`--cwd` 默认取调用命令时的目录。
+- **`open` 只恢复离线 lane**：目标在线（channel 仍开着）时拒绝；lane 不存在提示走 `new`；lane 存在但无 active binding 提示走轮换流程——`open` 不会顺手升级成接替。恢复在 Router 记录的工作目录进行（该记录由 lifecycle hook 随每次 turn 上报），Router 没有记录时要求显式 `--cwd`。恢复后 channel 重连，pending 通知会自动重发。
+- 三条开窗命令（`lane-router-lane new` / `lane-router-lane open` / `lane-router-rotate`）都遵循同一验证纪律：窗口开了不算成功，等新窗口里的 CLI 真启动、launcher 退出 0 才算。
+- 开窗时 claude 会话自动以 lane 地址命名（`--name "<project>/<lane> genN"`）：窗口标题、prompt 框、`/resume` picker 三处都显示 lane 地址，重开旧 lane 也会把它的会话名纠正过来。codex 无对应 flag，只有窗口标题。
+
+`--terminal` 三档通用，默认 `wt`：`wt` 强制 Windows Terminal 窗口（机器缺 wt 时默认档静默回退 `powershell`，显式传 `wt` 则报错）；`powershell` / `cmd` 只定 shell，窗口宿主由系统默认决定——Win11 或配置过 console delegation 的 Win10 机器上同样出 Windows Terminal 窗口。
+
+`wt` 档下**同一 project 的 lane 聚进同一个 Windows Terminal 窗口**（窗口名 = project 名，每条 lane 一个选项卡；四条开窗路径 new / open / rotate / restore 一致生效）。想把某条 lane 拎成独立窗口，直接把它的选项卡从 wt 窗口里拖出即可。
 
 ## 收发主流程
 
@@ -200,6 +268,9 @@ Lane Router 是 coordination transport，不是业务程序的逐步控制器。
 | Claude tools 可用但没有自动通知 | 确认本次启动使用 `claude --dangerously-load-development-channels server:lane`，并已接受首次 development warning。 |
 | Codex launcher 启动失败 | 直接读取 launcher 暴露的 Router stderr；不要把启动失败简化成“等待超时”，也不要凭历史 PID 手动处理进程。 |
 | `lane-router-rotate` 返回成功但没有新窗口 | 检查是否使用包含 Windows `Start-Process` 修复的构建，并核对是否存在 `PowerShell → rotation-terminal-child → CLI` 进程链；Node 的 `spawn` 事件本身不是可见窗口证据。 |
+| `lane-router-lane open` 报 `not found` | 正在运行的 Router 是没有 resume 查询端点的旧构建。等用户决定受控重启 Router，不要自行结束共享进程。 |
+| `lane-router-lane open` 报 `already online` | 目标 lane 的 channel 还开着（terminal 没关或刚关不久），这是正常拒绝语义，不是故障。 |
+| `lane-router-lane open` 要求 `--cwd` | 该 lane 在 cwd 记录功能上线后还没跑过任何 turn。让它跑一个 turn 再开，或显式传原项目目录。 |
 | 消息反复提醒 | 检查对应 ID 是否仍在 `pending`。未 ack 会再次提醒；处理完成后批量调用 `lane_ack`。 |
 | repo 移动或更新后失效 | 重新 build；Claude 重新检查/注册绝对 `dist` 路径，Codex 重新检查 `npm link`。 |
 | 代理环境变化但已运行的 Router 未采用 | 代理补全只在创建新 Router process 时发生。不要自行结束共享 Router；先确认没有其他使用者，再由用户或维护者决定受控重启。 |
@@ -211,3 +282,5 @@ Lane Router 是 coordination transport，不是业务程序的逐步控制器。
 截至 2026-08-09，本机真实最小闭环已经验证：Codex coordinator 向已接替 lane 的 Claude conversation 发送 `normal`；Claude 在没有用户输入时收到 Channel notification，按 ID 读取正文、ack，并向 coordinator 回复；双方消息均从 `pending` 移到 `resolved`。Codex launcher 的新 thread 工作目录、Windows system proxy 继承和启动 stderr 也分别经过真实环境验证。
 
 以下行为有设计和自动测试覆盖，但本轮没有完成真实 Claude lifecycle harness 验证：busy turn 中的 correction、退出后恢复、安全接替等待 `Stop`。使用这些边界时应按 Lane Router 仓库的 `docs/manual-tests.md` 执行真实手工验证，不能把 fake backend 或自动测试结果写成真实 CLI/TUI/Channel 已通过。
+
+`lane-router-lane`（2026-08-18）：参数、拒绝分支、terminal 脚本生成与 resume 命令构建有自动测试；hook payload 携带 `cwd` 已真机抓取核销，`--resume` 默认保留 session id 已由官方 CLI 文档核销。端到端（新建全流程、恢复全流程、pending 重发、`--terminal` 三档真开窗）尚未真机执行——需要共享 Router 先受控重启到含 resume 端点的构建，用例见 Lane Router 仓库 `docs/manual-tests.md` 的 `TC-LANE-*`。
