@@ -6,6 +6,8 @@ GitLab Windows shell executor / 任何 PowerShell 写的 CI 脚本，调 `git` /
 
 ⚠️ **第 4、5 条跟前三条差一层，值得先看一眼**：前三条失败时**会报错**（NCE / 参数被切错 / native 拒绝），
 而这两条**让验证链自己给出假绿**——你写了、读回了、两边一致，而落盘的字节是错的。
+（第 4 条另有一半是**响亮**的：`git apply` 会当场红，但两条错误信息都指向补丁内容 / 基线，
+不指向写它的那支笔 ⇒ 标准处置会再走同一条通道。见该节「响亮不等于会被归对因」。）
 ⇒ 而第 5 条的暴露面最广：它跟 CI 无关，**任何用 PowerShell 写多行文字的场景**（commit message /
 文档 / 注释）都命中，而技术散文里每个标识符都用反引号包。
 
@@ -209,9 +211,9 @@ try {
 
 ---
 
-## Pitfall 4: `-Encoding utf8` **写出来的文件带 BOM**，而验证链会替它背书
+## Pitfall 4: 用 PowerShell 写「会被程序解析的文件」——毁法有**三条独立轴**，而同一行命令换个 session 就换一种毁法
 
-### 现象
+### 现象一：`-Encoding utf8` 写出来的文件带 BOM，而验证链会替它背书
 
 ```powershell
 "docs: 记一条" | Out-File -FilePath msg.txt -Encoding utf8   # ❌ 文件开头是 EF BB BF
@@ -246,6 +248,35 @@ PowerShell 5.1 的 `Set-Content` / `Add-Content` **默认走系统 ANSI 代码�
 
 ⇒ 于是形成一个恶性组合：**为了修一个真问题而采纳的建议，引入了另一个不报错的问题。**
 
+### 现象二：**编码不是一个值，是一个未知量** —— 同一行命令在两个 session 里毁法不同
+
+BOM 只是三条轴里的一条。实测同一行 `git diff > patch`（同一台机器、同一分钟、同一份 diff），
+落盘结果**不同**：
+
+| 写法 / 语境 | 落盘编码 | 行尾 | `git apply --check` |
+|---|---|---|---|
+| `git diff > f` 在裸 `powershell.exe -NoProfile` 子进程 | **UTF-16LE**（`FF FE`，137 个 16-bit 单元里 136 个高位是 `00`）| — | `error: No valid patches in input` （exit 128）|
+| `git diff > f` 在一个 agent harness 的 PowerShell 里 | UTF-8 **with BOM**（`EF BB BF`）| **CRLF ×9** | `error: patch failed: a.txt:1` / `patch does not apply` （exit 1）|
+| `[IO.File]::WriteAllText` + `UTF8Encoding($false)` | UTF-8 no BOM | LF | ✅ exit 0 |
+
+⇒ 🛑 **「`>` 会写成什么」不是一条可以学一次就依赖的知识** —— 它取决于那个 session 的
+`$PSDefaultParameterValues` / `$OutputEncoding` / profile，而这些**不是你设的**。
+⇒ 所以规矩只能写成**别用这条通道**，不能写成"记得配对编码"。
+
+### ⚠️ 这两次都是**响亮**的失败 —— 而报错指向的方向是错的
+
+跟 BOM 那半（静默、验证链背书）相反，这两次 `git apply` 都当场红了。但两条错误信息
+**都在说补丁内容 / 目标文件**，没有一条提到写它的那支笔：
+
+| 你看到的 | 你会去查 | 真因 |
+|---|---|---|
+| `No valid patches in input` | 「diff 是不是空的 / 我导出错了」 | 整份文件是 UTF-16LE，解析器一个 hunk 都认不出来 |
+| `patch does not apply` | 「基线漂了 / 分支不对 / 该 `-3` 合」 | 目标与基线都对，是补丁的行尾被换成了 CRLF |
+
+⇒ ⭐ **响亮不等于会被归对因**。第二条尤其贵：`patch does not apply` 是一个人**每周都会正当地
+遇到**的错误，它的标准处置（换基线、加 `-3`、重导一次）**全部都会再走同一条通道**。
+⇒ 判据：**收到"补丁不适用"时，先看补丁的头三字节和行尾，再去怀疑基线。** 一条命令的事。
+
 ### 修法：绕开 PowerShell 的 encoder，直接写字节
 
 ```powershell
@@ -255,7 +286,31 @@ PowerShell 5.1 的 `Set-Content` / `Add-Content` **默认走系统 ANSI 代码�
 跟 Pitfall 3 同一个 API、同一个 `$false`（关 BOM）。⇒ **PS 5.1 上凡是"文件内容会被别的工具按字节读"，
 一律用 `WriteAllText` + `UTF8Encoding($false)`，不要用 `Out-File` / `Set-Content` 的 `-Encoding utf8`。**
 
+它同时治掉三条轴：BOM 由 `$false` 关掉，编码由你指定（不再由 session 决定），**行尾由字符串
+自己决定**（`WriteAllText` 不做任何行尾转换 —— 你给 `\n` 它就写 `\n`）。
+
 （只给人看、不被工具解析的文件无所谓；判据是**下游有没有按字节解析它**。）
+
+⚠️ **这条修法自己带一个坑：.NET API 不认 PowerShell 的当前目录。**
+`WriteAllText` 收到**相对路径**时用的是**进程** cwd，`Push-Location` / `Set-Location` 对它无效
+⇒ 文件静默落在别处，而后续 `git diff` 只会诚实地报「没有改动」。
+实测形态：`Push-Location $repo; [IO.File]::WriteAllText("a.txt", …)` 把文件写进了**进程启动时**
+那个目录（那次恰好是一棵用户明令不许动的树），而探针自己报的是「diff 为空」——
+**指向的是被测对象，不是路径**。⇒ **给 .NET API 一律传绝对路径。**
+
+### ⭐ 更省事的一档：**产物来自某个工具时，让那个工具自己写文件**
+
+`WriteAllText` 要你手动拼内容。而很多产物本来就是某个 native 工具生成的 —— 那就别让它经过 shell：
+
+| 别写 | 改写成 | 为什么 |
+|---|---|---|
+| `git diff > f` | `git diff --output=f` | **git 自己写字节**，整条 shell 重定向层被绕开 |
+| `git format-patch … > f` | `git format-patch -o <dir>` | 同上 |
+| `<exe> … > f` | 该 exe 自己的 `-o` / `--output` / `--out-file` | 同上 |
+
+⇒ 判据：**先找那个工具有没有「自己写文件」的参数**；有就用它，不需要记任何编码参数。
+⚠️ 只在产物由工具生成时适用。**内容是你自己拼的**（commit message / 文档 / `.py`）仍然要
+`WriteAllText` + `UTF8Encoding($false)` + 绝对路径。
 
 ---
 
@@ -380,7 +435,7 @@ hits = [(p, [c for c in BAD if c in p.read_text(encoding="utf-8")]) for p in fil
 | 1. stderr → NCE | 用 `cmd /c "exe 2>&1"` 让 cmd 在子进程合并 stderr→stdout |
 | 2. ArgumentList 引号 bug | 用 `[Diagnostics.Process]` + 单 string Arguments 自己控引号 |
 | 3. stdin BOM | 用临时文件 + `cmd /c "exe < file"` 绕过 PS pipe encoder |
-| 4. 写文件 BOM | 用 `[IO.File]::WriteAllText` + `UTF8Encoding($false)` 绕过 PS 文件 encoder |
+| 4. 写文件的 BOM / 编码 / 行尾（三条独立轴，且随 session 变）| 用 `[IO.File]::WriteAllText` + `UTF8Encoding($false)` + **绝对路径** 绕过 PS 文件 encoder |
 | 5. 反引号被当转义符 | **别用 PowerShell 写内容**（用专门的写文件工具）；退而求其次用 `@'…'@` |
 
 **没有"PowerShell 配置一行就根治"的方案**。每个具体场景都要选对应绕过方式。
@@ -397,8 +452,10 @@ PowerShell CI 脚本里调 native command 时遵守：
 2. **子进程需要监控 / 超时 / kill 时，用 `[Diagnostics.Process]` 不要用 `Start-Process`**
 3. **通过 stdin 给 native exe 喂 multi-line text 时，用临时文件 + `cmd /c "exe < file"` 不要用 PowerShell `|` pipe**
 4. **简单调用阻塞执行可以用 `& exe arg1 arg2`**，PS native parser 正确处理空格
-5. **写"会被别的工具按字节解析"的文件时，用 `[IO.File]::WriteAllText` + `UTF8Encoding($false)`**，
-   不要用 `Out-File` / `Set-Content -Encoding utf8`（5.1 上那就是带 BOM）。**验证看字节，不看读回**
+5. **写"会被别的工具按字节解析"的文件时，用 `[IO.File]::WriteAllText` + `UTF8Encoding($false)` + 绝对路径**，
+   不要用 `>` / `>>` / `Out-File` / `Set-Content -Encoding utf8`（5.1 上 `utf8` 就是带 BOM；
+   `>` 写成什么**由 session 决定**，实测同一行命令一处给 UTF-16LE、一处给 UTF-8+BOM+CRLF）。
+   **验证看字节，不看读回**；收到"补丁不适用 / 解析不出"先看头三字节和行尾，再怀疑基线
 6. **写"人要读的多行文字"（commit message / 文档 / 注释）时，不要用 PowerShell 写** ——
    用专门的写文件工具落盘，PowerShell 只负责跑命令。必须在 PS 里写就用 `@'…'@`，
    写完**扫一遍控制字符**。理由:反引号是转义符,而技术散文里每个标识符都用反引号包
@@ -414,6 +471,42 @@ UE 5.5 plugin 的 GitLab CI 调试期间踩穿三个坑：
 - **Pitfall 3**: `deploy` stage 里 `$clientSpec | p4 client -i` 撞 BOM，p4 报 `Unknown field name '﻿Client'`。修法走临时文件 + cmd `<` redirect
 
 三个坑实测验证脚本：`Scripts/CI/test-p4-stdin-bom.ps1` / `test-p4-client-i-bom.ps1` / `test-p4-stderr-nce.ps1`（本地复现 + 验证修法）。
+
+**第二个项目（Windows 上的 Python + 原生扩展桌面应用，多条 agent 对话并发同一仓）——
+Pitfall 4 在这里跟 CI 完全无关地复发了**，而且暴露面比 CI 大：它命中的是**日常开发动作**。
+
+| 命中 | 落点 |
+|---|---|
+| BOM ×4 | 一个 `.py` 源文件、两条 commit message、另一条 lane 在 `tools/` 下的产物（**溯到更早的会话，此前无人发现**）|
+| 行尾 ×1 | 递给另一条 lane 的补丁带 62 个 CRLF ⇒ 对方 `git apply` 失败 |
+| UTF-16LE ×1 | 复现实验里 `git diff > f` 在裸 `powershell.exe` 子进程整份写成 UTF-16LE |
+| **编码+行尾 ×1（另一条 lane，独立命中）** | 另一条 lane 用 `>` 写一份 patch ⇒ `git apply --check --reverse` **当场失败**（`patch does not apply`）；换成 `git diff --output=<file>`（git 自己写、不经 shell）后通过 |
+
+⚠️ **这里有一个促升本身的边界，值得写下来**：这条规矩的"错误建议源头"是
+**agent harness 自己的 PowerShell 工具说明**（它正当地建议 `-Encoding utf8` 来治 ANSI 代码页），
+**而那份说明不在本语料仓里** ⇒ 改语料改不到源头。
+⇒ 所以这条只能以**反制规则**的形态存在（"别走这条通道"），不能指望上游那句建议被改掉；
+也因此它必须写得足够显眼，让读到语料的人在读到那句建议时能想起来。
+
+**诚实边界**：BOM 那一轴已**跨 2 项目**命中（UE/P4 的 CI + 上面这个），满足两击；
+行尾与 UTF-16LE 两轴仍是**单项目**（表里第 2、3、4 行同属上面那个项目，只是分属不同 lane
+⇒ **不满足跨项目两击**），但都有当场实测的字节与 `git apply` 退出码，
+且"编码随 session 变"这一条是**对照实验**（同分钟、同 diff、只换 session）得出的，不是推断。
+apply-and-refine。
+
+⭐ **而第 4 行那次复发带来一条比"又中一次"更有用的东西：坏的形态跟前一次不一样。**
+第 2 行是纯行尾（62 个 CRLF），第 4 行是编码与行尾一起坏。⇒ 这正好否掉一个看起来更省事的
+写法：**反制不能写成"记得同时管 BOM 和行尾"** —— 那种写法只覆盖你**见过的**那几样，
+而这条通道每换一个 session 就可能给一种没见过的坏法。⇒ **只能写成"别走这条通道"。**
+（⚠️ 那次复发的经过也值得记：写规则的那条 lane 把"两条轴要分别记得"这个**理由**转述给了第三方，
+第三方照抄；后来是对照实验推翻了理由、而**动作**一直是对的。⇒ 与
+[`../../techniques/adversarial-verification.md`](../../techniques/adversarial-verification.md)
+"断言正确、解释错误的 check 比没有解释更糟"同形：**理由错的规则只有跨到第二个场景才暴露，
+在第一个场景里永远看起来是对的。**）
+
+ℓ **第 4 行是被机械自检抓住的，不是人看出来的** —— `git apply --check --reverse` 当场红。
+⇒ 这条通道的产物若要递给别人，**递之前先让接收侧的工具 dry-run 一次**（`git apply --check`
+之类），比任何字节自查都便宜。
 
 ## 相关 Guidelines / Techniques
 

@@ -99,6 +99,7 @@ Guidelines are grouped by topic under `guidelines/`:
 > 条件域 guidelines（P4 / Windows CI / Claude Code harness）**不 eager `@`-import**——只对特定项目类型相关，接对应任务时按上方组织表 / 本说明按需读（省 ~945 行常驻）：
 > - `guidelines/p4/charset-pitfalls.md` —— Perforce unicode server 的 charset transcode 坑（含 typemap / binary 强制）。配套 technique `techniques/ci-deploy-to-p4.md`（CI 自动 submit 到 P4 的完整流程）。
 > - `guidelines/ci-windows/`（3 份：`powershell-native-command-pitfalls.md` / `gitlab-runner-service-and-powershell-pitfalls.md` / `posix-tools-on-windows.md`）—— 前两份是 Windows PowerShell / GitLab runner 跑 native command 的 pitfall；第三份是 Git Bash / MSYS2 的 POSIX 工具在 Windows 上的实现漏洞（`sed -i` 是重写+顶替 ⇒ 改行尾 / 跨设备失败 / **穿透只读且不留痕**），**改引擎 / SDK / 系统目录里的文件前值得读一眼**。
+> 　⚠️ 例外(不受"CI 项目才读"这个触发管)：`powershell-native-command-pitfalls.md` 的 **Pitfall 4 / 5 跟 CI 无关**——只要**在 Windows 上用 PowerShell 写一个会被别的程序解析的文件**（`.py` / patch / commit message / JSON / 文档）就命中：BOM、行尾、整份变 UTF-16LE 三条独立轴，且**同一行 `>` 在不同 session 里毁法不同**；反引号在双引号语境里是转义符。⇒ **任何 Windows 项目在让 agent 用 PowerShell 落盘之前都该读这两节**（修法：用编辑器 / 写文件工具，或 `[IO.File]::WriteAllText($abs, $text, (New-Object Text.UTF8Encoding $false))`）。
 > - `guidelines/claude-code/`（3 份：`hook-conventions.md` / `subagent-contracts.md` / `autonomous-loop-scheduling.md`）—— Claude Code harness / hooks / subagent / 自主 loop 的 hidden contract（连 Codex 都不相关）。配套 technique `techniques/claude-code-autonomous-permissions.md`（permission list 配置）。
 >
 > （2026-07-19 context-budget audit S2 Tier D）
