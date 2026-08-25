@@ -177,3 +177,7 @@ void MyDrawOverride::addUIDrawables(const MDagPath&, MHWRender::MUIDrawManager& 
 - [`selection-context-and-undo.md`](selection-context-and-undo.md) / [`manip-container-constraints.md`](manip-container-constraints.md) — 兄弟篇：manip / context 交互契约；本篇的 draw override 常跟它们配合（context 写 transient 状态、draw override 读它画）。
 - [`plugin-build-and-scripting-contracts.md`](plugin-build-and-scripting-contracts.md) — `cmds.setAttr` 复杂类型格式不可靠 → OpenMaya API；跟本篇规则 1 同属"从代码调 Maya 命令/接口"的 marshalling 契约。
 - [`../code/validation.md`](../code/validation.md) — "headless/单测绿 ≠ GUI 对"；本篇三条都是单测覆盖不到、必须 GUI 实测的契约，是该原则的 Maya 实例。
+
+## 相关
+
+- [`draw-override-performance.md`](draw-override-performance.md) —— 同一路径的**性能**契约：`isAlwaysDirty` 默认 true ⇒ 每帧重建绘制数据；热路径里的 plug 访问代价；量视口性能前先证明对象真的在被画。

@@ -90,7 +90,7 @@ Guidelines are grouped by topic under `guidelines/`:
 
 > UE broad guidelines（14 份）**不 eager `@`-import**——lazy-load via [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md)（已在上方组织表链接、且 INDEX 完整覆盖全 14 份 broad + 8 个 UE skill 双层导航）。省 ~2500 行常驻——非 UE 项目 / 非 UE session 不再吃这块。接 UE 任务时读 INDEX 导航到具体文件 / 触发 ue-* skill；**重度 UE 项目可在项目自己的 `AGENTS.md` 里 `@`-import 需要的子集把它们拉回常驻**（见 `collaboration/multi-agent.md` Option 2）。Codex 本就按目录表 on-demand 打开 ue/，不受影响。（2026-07-28 context-budget audit：broad-UE 从常驻转懒加载，收尾 Tier D 最后一块 eager 域集群）
 
-> Maya guidelines（9 份）**不 eager `@`-import**——lazy-load via [`guidelines/maya/INDEX.md`](guidelines/maya/INDEX.md)（已在上方组织表链接、且 INDEX 完整覆盖全 9 份）。非 Maya 项目省去这部分常驻内容；接 Maya 插件任务时读 INDEX 导航到具体文件 / 触发 maya skill。Codex 本就按目录表 on-demand 打开 maya/，不受影响。（2026-07-18 context-budget audit S2；2026-07-24 新增并行性能取证）
+> Maya guidelines（10 份）**不 eager `@`-import**——lazy-load via [`guidelines/maya/INDEX.md`](guidelines/maya/INDEX.md)（已在上方组织表链接、且 INDEX 完整覆盖全 10 份）。非 Maya 项目省去这部分常驻内容；接 Maya 插件任务时读 INDEX 导航到具体文件 / 触发 maya skill。Codex 本就按目录表 on-demand 打开 maya/，不受影响。（2026-07-18 context-budget audit S2；2026-07-24 新增并行性能取证；2026-08-25 新增视口绘制性能）
 
 > C++ 工程底座 guidelines（8 份）**不 eager `@`-import**——lazy-load via [`guidelines/cpp/INDEX.md`](guidelines/cpp/INDEX.md)。C++ 项目（含 UE / Maya 插件）接触多 DLL / 符号导出 / cmake / toolchain / 热路径 / crash 取证坑时读 INDEX 导航到具体文件。省 ~655 行常驻；Codex 按目录表 on-demand 打开 cpp/。（2026-07-19 context-budget audit S2 Tier D）
 
