@@ -72,6 +72,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/code/reporting-limits-and-null-results.md
 
+@guidelines/code/generating-code-through-shell.md
+
 @guidelines/code/validation.md
 
 @guidelines/code/test-purpose.md
