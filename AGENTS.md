@@ -82,6 +82,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/code/dual-layer-data-ownership.md
 
+@guidelines/code/premises-not-in-the-text.md
+
 @guidelines/writing/prose-and-register.md
 
 @guidelines/collaboration/multi-agent.md
@@ -117,6 +119,8 @@ Guidelines are grouped by topic under `guidelines/`:
 @techniques/worker-instructions.md
 
 @techniques/fact-forcing-gate.md
+
+@techniques/measurement-four-questions.md
 
 > [`techniques/model-worker-mcp.md`](techniques/model-worker-mcp.md) 是 Model Worker MCP 的安装、Codex/Claude 注册、strict 请求摘要与日常运维手册。只在安装或使用该工具时按需读取，不 `@`-import，避免把工具专属操作常驻到所有项目。
 
@@ -177,6 +181,6 @@ Guidelines are grouped by topic under `guidelines/`:
 **collaboration/** —— 多 agent / 多对话协作机制：
 
 - [`skills/collaboration/multi-session-coordination/SKILL.md`](skills/collaboration/multi-session-coordination/SKILL.md) — 多个 Claude Code 对话并发在同一 repo 工作时的协调协议。bundle 了 hook 脚本 (`multi_session.py`) + agent-side 政策（lease 让/抢/协商 heuristics + commit-then-release 强约束）+ 安装文档 (`install.md` / `install.ps1`)。Hook 机制由 `settings.json` 注册自动跑（SessionStart 注册 / PreToolUse 撞 lease deny / PostToolUse 记 touched_files / UserPromptSubmit 注入 inbox + git log since last turn / Stop 释放 lease）；skill 仅在 hook surface 协调信息时按需 load。需走 `install.ps1` 一次注册 hook
-- [`skills/collaboration/role-lane-coordination/SKILL.md`](skills/collaboration/role-lane-coordination/SKILL.md) — 把一个较重项目拆到**多个常驻对话**（每对话 = 一条 role-lane / context 边界）并协调它们的**项目级方法**:role⊥task 矩阵拆对话 / seam-contract 协同设计 / 分档 oracle（hard gate→auto-act·advisory·park）门控自主 / notify·act 自主度旋钮 + checkpoint 落人判断点 / **唤醒机制（mailbox 无通知原语 → 按预估 ETA 轮询·人推;长跑 Monitor 会资源耗尽死→定时轮询兜底）** / **分档路由（结构化走 hub、领域重·紧耦合人眼直连用户）** / 跨 lane 汇合用单一 coordinator 宿主 / **brief 正确性≠完整性** / durable 文件抗失忆 / 收件箱按发件人消歧 + ack 约定。跟上一条 `multi-session-coordination` 分层:那条是同 repo lease/inbox **hook 底层机制**,本条是**项目级协调方法**（同 repo 复用它）。**operating model = 同机 + 共享 `~/.claude` 绝对路径 mailbox + 人作异步决策/唤醒层**;**已跨 2 项目 / 2 拓扑验证**（renderer_test 平级 peer + 跨 repo 库接入 hub+fan-out）。**真分布式（跨机 / 无共享盘 / 跨人）未覆盖、全无人值守 / 紧耦合 peer thrash 未在本模式发生**——是 scope 边界,不是待办 gap
+- [`skills/collaboration/role-lane-coordination/SKILL.md`](skills/collaboration/role-lane-coordination/SKILL.md) — 把一个较重项目拆到**多个常驻对话**（每对话 = 一条 role-lane / context 边界）并协调它们的**项目级方法**:role⊥task 矩阵拆对话 / seam-contract 协同设计 / 分档 oracle（hard gate→auto-act·advisory·park）门控自主 / notify·act 自主度旋钮 + checkpoint 落人判断点 / **唤醒机制（mailbox 无通知原语 → 按预估 ETA 轮询·人推;长跑 Monitor 会资源耗尽死→定时轮询兜底）** / **分档路由（结构化走 hub、领域重·紧耦合人眼直连用户）** / 跨 lane 汇合用单一 coordinator 宿主 / **brief 正确性≠完整性** / durable 文件抗失忆 / 收件箱按发件人消歧 + ack 约定 / **共享树读数与归属判定**(稳定≠干净·「树是坏的」有效期以分钟计·独立观察者≠独立通道·归属三件套 = 时间窗 + 写入宾语 + 扫描面白名单)。跟上一条 `multi-session-coordination` 分层:那条是同 repo lease/inbox **hook 底层机制**,本条是**项目级协调方法**（同 repo 复用它）。**operating model = 同机 + 共享 `~/.claude` 绝对路径 mailbox + 人作异步决策/唤醒层**;**已跨 2 项目 / 2 拓扑验证**（renderer_test 平级 peer + 跨 repo 库接入 hub+fan-out）。**真分布式（跨机 / 无共享盘 / 跨人）未覆盖、全无人值守 / 紧耦合 peer thrash 未在本模式发生**——是 scope 边界,不是待办 gap
 
 > Sync 注：repo 是分类目录（`<category>/<name>/SKILL.md`），安装到 Claude Code 的 `~/.claude/skills/` 或 Codex 的 `~/.agents/skills/` 时都按 `<name>/` 扁平化。`ue-*` prefix 在安装后仍然可见 UE 归属。详 `scripts/sync-skills.ps1`。
