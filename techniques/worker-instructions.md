@@ -50,6 +50,12 @@ Learned from a multi-conversation cross-repo run (see skill `role-lane-coordinat
 4. **随规格给一份 oracle 数值表，并预先点出哪些数不该拿来验。** 本轮给出的期望值表里手部精确吻合、
    脚部按设计必然不吻合——不预先说明，接收方拿脚部验会以为自己做错了。给表之前先确认量具自身
    可信，见 [`adversarial-verification.md`](adversarial-verification.md) 的「量具先自证」。
+5. **双方都有的词，逐个问「这个词在他那边指什么」。** 词汇表错位比记号歧义更难自查：同一个词
+   （「面板」/「视口」/「会话」/「角色」）在写方与读方的词汇表里各指一物，而写方重读自己的句子
+   发现不了——在他自己的表里它是对的。实测：「面板自己 push」在写方语境为真（app 胶水层习称
+   面板），在读方语境为假（读者拿到的 kit 面板根本不持撤销栈）⇒ 照抄会让读者以为这件事有人替他
+   做了。这些**双方共有的词最不像术语，所以最不会被检查**。（单项目一击；修法与第 3 条同向——
+   所指有歧义时，写读者语境里为真的那个名字。）
 
 **诚实边界**：同一项目内 3 次独立命中、跨项目未验（不满足
 [`knowledge-promotion.md`](../guidelines/workflow/knowledge-promotion.md) 的两击规则）——apply-and-refine。
