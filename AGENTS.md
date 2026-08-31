@@ -23,7 +23,7 @@ Guidelines are grouped by topic under `guidelines/`:
 | `guidelines/writing/` | 面向人读的散文（文档 / 代码注释 / 交付文字）通用文体规则——工作语言写散文 + 标识符保留原文并加代码环境 / 不说黑话（英文半通用词 + 中文商业黑话两轴）/ 简洁⇔不丢信息 / 不翻译腔（含英文状态词不做一对一映射）/ 数量表述（百分点·倍数·区间包含关系）。跨「文档 + 注释」共享的 SoT，由 `skills/workflow/doc-writing-style`（+图示 discipline）与 `skills/workflow/conversation-walkthrough` Phase 3（+注释 stability / Doxygen 契约头）两个 skill 承接执行面 |
 | `guidelines/cpp/` | C++ / Windows DLL / cmake / MSVC 工程底座的 hidden contract——跨 DLL 单例内联陷阱 / 符号导出 / native 绑定可达面 / 增量编译 ABI 不一致 / stale `.vcxproj` / 热路径 move 与 dynamic_cast / `std::make_format_args` 左值契约 / perf 测量误测未优化二进制 / 现代 C++ 标准钳制 / Windows native crash-hang dump 取证。框架无关，多 DLL 插件（含 UE `.dll` / Maya `.mll`）高频命中。**非 C++ 项目可整段 skip**。索引 + 按场景导航见 [`guidelines/cpp/INDEX.md`](guidelines/cpp/INDEX.md) |
 | `guidelines/collaboration/` | Multi-agent setup, private docs policy |
-| `guidelines/ci-windows/` | Windows CI (PowerShell / GitLab runner) 跑 native command 时的 pitfall 集——PowerShell ↔ native exe 之间的抽象漏洞；另含 POSIX 工具 ↔ Windows 文件系统语义的漏洞（`sed -i` 不是原地编辑） |
+| `guidelines/ci-windows/` | Windows CI (PowerShell / GitLab runner) 跑 native command 时的 pitfall 集(另含 **Python 轴**:`write_text` 在 Windows 静默改行尾,四种写法三种错)——PowerShell ↔ native exe 之间的抽象漏洞；另含 POSIX 工具 ↔ Windows 文件系统语义的漏洞（`sed -i` 不是原地编辑） |
 | `guidelines/claude-code/` | Claude Code 自身（harness / hooks / settings.json）的 hidden contract——文档没明说但实测如此的行为 |
 | `guidelines/p4/` | Perforce 特有 hidden contracts——charset transcoding / typemap / 跟 git 不同的字节保留语义 |
 | `guidelines/ue/` | Unreal Engine framework hidden contracts + idiom，meta-corpus 最重的框架子目录。两层：**14 份 broad guidelines**（常碰核心契约，**懒加载 via INDEX**、非 UE session 不常驻）+ **8 个懒加载 UE skills**（ultra-niche / 按场景触发的簇，bundle 进 `skills/ue/`：module-architecture / reference-engine-source / settings-persistence / custom-graph-editor / procedural-numerical / ml-animation / unrealmcp-usage / official-mcp-usage）。**非 UE 项目可整段 skip**。完整索引（broad + skill 双层）+ 按场景导航见 [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md) |
@@ -100,7 +100,12 @@ Guidelines are grouped by topic under `guidelines/`:
 
 > 条件域 guidelines（P4 / Windows CI / Claude Code harness）**不 eager `@`-import**——只对特定项目类型相关，接对应任务时按上方组织表 / 本说明按需读（省 ~945 行常驻）：
 > - `guidelines/p4/charset-pitfalls.md` —— Perforce unicode server 的 charset transcode 坑（含 typemap / binary 强制）。配套 technique `techniques/ci-deploy-to-p4.md`（CI 自动 submit 到 P4 的完整流程）。
-> - `guidelines/ci-windows/`（3 份：`powershell-native-command-pitfalls.md` / `gitlab-runner-service-and-powershell-pitfalls.md` / `posix-tools-on-windows.md`）—— 前两份是 Windows PowerShell / GitLab runner 跑 native command 的 pitfall；第三份是 Git Bash / MSYS2 的 POSIX 工具在 Windows 上的实现漏洞（`sed -i` 是重写+顶替 ⇒ 改行尾 / 跨设备失败 / **穿透只读且不留痕**），**改引擎 / SDK / 系统目录里的文件前值得读一眼**。
+> - `guidelines/ci-windows/`（4 份：`powershell-native-command-pitfalls.md` / `gitlab-runner-service-and-powershell-pitfalls.md` / `posix-tools-on-windows.md`）—— 前两份是 Windows PowerShell / GitLab runner 跑 native command 的 pitfall；第三份是 Git Bash / MSYS2 的 POSIX 工具在 Windows 上的实现漏洞（`sed -i` 是重写+顶替 ⇒ 改行尾 / 跨设备失败 / **穿透只读且不留痕**），**改引擎 / SDK / 系统目录里的文件前值得读一眼**。
+> 　⚠️ **第四份 `python-write-text-line-endings.md` 同样不受「CI 项目才读」这个触发管**——
+> 　只要**在 Windows 上用 Python 脚本改一份既有文件**就命中：`write_text()` 默认换掉整份行尾，
+> 　**不报错、内容逐字未变、任何按内容做的检查全绿**；而「只给写侧加 `newline=""`」这个看似修法的写法
+> 　**方向是反的**。⇒ 在 git 仓里更隐蔽：`status` 报脏而 `diff` 零行、`commit` 是空操作
+> 　（两个信号矛盾，而人会信后者）。查法 `git ls-files --eol`（`status`/`diff` 两个口径都在 filter 之后，照不见）。
 > 　⚠️ 例外(不受"CI 项目才读"这个触发管)：`powershell-native-command-pitfalls.md` 的 **Pitfall 4 / 5 跟 CI 无关**——只要**在 Windows 上用 PowerShell 写一个会被别的程序解析的文件**（`.py` / patch / commit message / JSON / 文档）就命中：BOM、行尾、整份变 UTF-16LE 三条独立轴，且**同一行 `>` 在不同 session 里毁法不同**；反引号在双引号语境里是转义符。⇒ **任何 Windows 项目在让 agent 用 PowerShell 落盘之前都该读这两节**（修法：用编辑器 / 写文件工具，或 `[IO.File]::WriteAllText($abs, $text, (New-Object Text.UTF8Encoding $false))`）。
 > - `guidelines/claude-code/`（3 份：`hook-conventions.md` / `subagent-contracts.md` / `autonomous-loop-scheduling.md`）—— Claude Code harness / hooks / subagent / 自主 loop 的 hidden contract（连 Codex 都不相关）。配套 technique `techniques/claude-code-autonomous-permissions.md`（permission list 配置）。
 >
