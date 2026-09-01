@@ -22,7 +22,7 @@ Guidelines are grouped by topic under `guidelines/`:
 | `guidelines/code/` | Code constraints, validation requirements |
 | `guidelines/writing/` | 面向人读的散文（文档 / 代码注释 / 交付文字）通用文体规则——工作语言写散文 + 标识符保留原文并加代码环境 / 不说黑话（英文半通用词 + 中文商业黑话两轴）/ 简洁⇔不丢信息 / 不翻译腔（含英文状态词不做一对一映射）/ 数量表述（百分点·倍数·区间包含关系）。跨「文档 + 注释」共享的 SoT，由 `skills/workflow/doc-writing-style`（+图示 discipline）与 `skills/workflow/conversation-walkthrough` Phase 3（+注释 stability / Doxygen 契约头）两个 skill 承接执行面 |
 | `guidelines/cpp/` | C++ / Windows DLL / cmake / MSVC 工程底座的 hidden contract——跨 DLL 单例内联陷阱 / 符号导出 / native 绑定可达面 / 增量编译 ABI 不一致 / stale `.vcxproj` / 热路径 move 与 dynamic_cast / `std::make_format_args` 左值契约 / perf 测量误测未优化二进制 / 现代 C++ 标准钳制 / Windows native crash-hang dump 取证。框架无关，多 DLL 插件（含 UE `.dll` / Maya `.mll`）高频命中。**非 C++ 项目可整段 skip**。索引 + 按场景导航见 [`guidelines/cpp/INDEX.md`](guidelines/cpp/INDEX.md) |
-| `guidelines/collaboration/` | Multi-agent setup, private docs policy |
+| `guidelines/collaboration/` | Multi-agent setup, private docs policy;另有 **lane 拓扑设计**([`lane-topology-design.md`](guidelines/collaboration/lane-topology-design.md),**懒加载不 `@`-import**——开新的多 lane 项目 / 重切 lane 边界时读:按仓切不按技术子域切 / 职能三权分立 + 「不做」清单 / 审查 campaign 制不常驻 / 接缝有名有主 + 触发挂 git 事件 / role 只写边界不写读数 / lane 数量即成本先报价;含 2026-08-31 一次真实重划的问题账与痛点映射) |
 | `guidelines/ci-windows/` | Windows CI (PowerShell / GitLab runner) 跑 native command 时的 pitfall 集(另含 **Python 轴**:`write_text` 在 Windows 静默改行尾,四种写法三种错)——PowerShell ↔ native exe 之间的抽象漏洞；另含 POSIX 工具 ↔ Windows 文件系统语义的漏洞（`sed -i` 不是原地编辑） |
 | `guidelines/claude-code/` | Claude Code 自身（harness / hooks / settings.json）的 hidden contract——文档没明说但实测如此的行为 |
 | `guidelines/p4/` | Perforce 特有 hidden contracts——charset transcoding / typemap / 跟 git 不同的字节保留语义 |
@@ -91,6 +91,8 @@ Guidelines are grouped by topic under `guidelines/`:
 @guidelines/collaboration/multi-agent.md
 
 @guidelines/collaboration/private-docs-policy.md
+
+> [`guidelines/collaboration/lane-topology-design.md`](guidelines/collaboration/lane-topology-design.md)(lane 拓扑怎么切、什么时候重切)**不 eager `@`-import** —— 只在开多 lane 项目 / 重切拓扑时读;`role-lane-coordination` skill 正文带指针,组织表有导航。(2026-09-01 促升,单项目一次重划 + 一周运行实测,用户主导。)
 
 > UE broad guidelines（14 份）**不 eager `@`-import**——lazy-load via [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md)（已在上方组织表链接、且 INDEX 完整覆盖全 14 份 broad + 8 个 UE skill 双层导航）。省 ~2500 行常驻——非 UE 项目 / 非 UE session 不再吃这块。接 UE 任务时读 INDEX 导航到具体文件 / 触发 ue-* skill；**重度 UE 项目可在项目自己的 `AGENTS.md` 里 `@`-import 需要的子集把它们拉回常驻**（见 `collaboration/multi-agent.md` Option 2）。Codex 本就按目录表 on-demand 打开 ue/，不受影响。（2026-07-28 context-budget audit：broad-UE 从常驻转懒加载，收尾 Tier D 最后一块 eager 域集群）
 

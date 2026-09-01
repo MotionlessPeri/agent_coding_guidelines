@@ -96,6 +96,7 @@ description: 把一个较重的项目拆到**多个常驻对话**(每个对话 =
 ## 组合
 
 - `skills/collaboration/multi-session-coordination` —— 同 repo 的 lease/inbox/commit hook 底层;本 skill 通信层在同 repo 时跑在它上面。
+- `guidelines/collaboration/lane-topology-design.md` —— **拓扑怎么切 / 什么时候重切**(按仓不按技术子域 / 三权分立 + 不做清单 / 审查 campaign 制 / 接缝有主 + 事件触发 / lane 数量即成本),本 skill 的上游一步;开新多 lane 项目先读它。
 - `guidelines/workflow/handoffs.md` / `techniques/coordination-patterns.md`(coordinator↔worker、成本)/ `techniques/worker-instructions.md`(**brief 正确性≠完整性 / self-contained**)。
 - `techniques/adversarial-verification.md`(oracle 阶梯、独立判官、容差)/ `guidelines/code/gui-visual-machine-gating.md`(无 oracle→机器 gate 纯函数 + 画面人眼)/ `guidelines/code/dual-layer-data-ownership.md`(seam 数据归属)。
 - `guidelines/claude-code/autonomous-loop-scheduling.md` + `ScheduleWakeup` / `CronCreate`(唤醒 / 轮询 cadence;长跑 Monitor 会死,用定时轮询)。
