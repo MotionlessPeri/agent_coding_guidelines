@@ -1,8 +1,10 @@
-# PowerShell 5.1 调 native command 的五大 pitfall
+# PowerShell 5.1 调 native command 的七个 pitfall
 
 GitLab Windows shell executor / 任何 PowerShell 写的 CI 脚本，调 `git` /
-`p4` / `robocopy` / 别的 .exe 时都可能撞这五个坑。**单纯改 PowerShell encoding
+`p4` / `robocopy` / 别的 .exe 时都可能撞前五个坑。**单纯改 PowerShell encoding
 变量都救不了**——必须用 `cmd /c` 包或换 .NET API。
+第 6、7 条不关 native command，是 **PowerShell 自己的语言语义**在「拿它当量具 / 当批处理脚本」时
+静默给错：`[int]` 是银行家舍入不是截断、单元素嵌套数组会被拍平。它们跟第 4、5 条同族——**失败形态是一个合理的读数**。
 
 ⚠️ **第 4、5 条跟前三条差一层，值得先看一眼**：前三条失败时**会报错**（NCE / 参数被切错 / native 拒绝），
 而这两条**让验证链自己给出假绿**——你写了、读回了、两边一致，而落盘的字节是错的。
@@ -421,7 +423,73 @@ hits = [(p, [c for c in BAD if c in p.read_text(encoding="utf-8")]) for p in fil
 
 ---
 
-## 五个 pitfall 的统一形态
+## Pitfall 6: `[int]` 转换是**银行家舍入**，不是截断——用它取中位索引会拿到错的那个元素
+
+### 现象（实测）
+
+```powershell
+[int](3/2)    # 2   （不是 1）
+[int](5/2)    # 2   （不是 2.5 截成 2 —— 这里恰好相同，所以看不出来）
+[int](7/2)    # 4   （不是 3）
+$s = 1,2,3 | Sort-Object
+$s[[int]($s.Count/2)]     # 取到 3（最大值），不是中位 2
+```
+
+PowerShell 把浮点转 `[int]` 走 .NET `Math.Round` 的默认档 = **四舍六入五取偶**（到最近的偶数）。
+它跟 C / Python 的截断语义**不同**，而写惯了别的语言的人会把 `[int](n/2)` 当整除用。
+
+### 为什么它静默：读数看起来完全合理
+
+实测形态：一段测量脚本用 `$s[[int]($s.Count/2)]` 取「中位」，样本数 n=3 时索引落到 2 = 排序后的**最大值**。
+四档「中位」全被抬高（0.11 / 10.14 / 13.88 / 28.42，真中位 0.07 / 8.91 / 13.80 / 27.22），
+而结论数（18.28 → 18.31）几乎没动——**是运气**：n=3 的最大值与中位往往接近，只有 n 变或分布偏斜时才露。
+⇒ 这是量具坏在「看起来完全合理」那一档（见 [`../../techniques/adversarial-verification.md`](../../techniques/adversarial-verification.md)
+「量具先自证」）：没有任何读数可疑。
+
+### 修法
+
+- 取整一律**显式**：`[math]::Floor($x)` / `[math]::Truncate($x)` / 整数右移 `$n -shr 1`；不写裸 `[int](a/b)`。
+- 写中位数先在 **n=3 的已知三元组**上对一次（`1,2,3` 应得 2）——一行的事，换掉「我觉得取整就是截断」这个不在文字里的前提。
+- 一般化：**凡是量具里有取整 / 舍入，先喂一个已知答案**。
+
+---
+
+## Pitfall 7: 只含**一个**子数组的数组会被拍平——批量替换退化到一对时，行为整个变样且汇总照样报成功
+
+### 现象（实测）
+
+```powershell
+$pairs = @(@('old', 'new'))          # 你以为是 1 个元素（一对）
+$pairs.Count                          # 2  —— 被拍平成 'old','new' 两个字符串
+foreach ($p in $pairs) {
+    $text = $text.Replace($p[0], $p[1])   # $p 是字符串，$p[0] / $p[1] 是它的第 0、1 个**字符**
+}
+```
+
+多对时数组正常；**退化到一对时**外层 `@( )` 把唯一的子数组展开。而 `[0]` 对字符串合法（取字符），
+所以没有任何异常——实际执行的是 `Replace('o','l')` 这类东西。
+
+### 为什么它比编码那一族更贵
+
+实测形态：一次文档批量替换里只剩一对，实际执行的成了 `Replace('1','.')` 与 `Replace('|',' ')`：
+一份文档里每个 `1` 变成 `.`（`§3.1`→`§3..`、`#e65100`→`e65.00`），另一份文档 **77 行表格的分隔符全被抹掉**。
+**汇总行打的是「命中 1」，看起来像成功。** 抓住它的不是任何报错，是随后按纪律做的「拿已改清单逐条重验」。
+
+⇒ 三层各自都有正当理由不报：PowerShell（拍平是设计）/ `Replace`（参数合法）/ 落盘（格式良好）。
+跟第 5 条同一个形状：**产物是格式良好的字符串，只是不是你写的那个。**
+
+### 修法
+
+1. **首选：会被解释器 / 渲染器读的文本（`.md` / `.py` / JSON）批量替换用编辑工具，不用 PowerShell**
+   （与 [`../code/generating-code-through-shell.md`](../code/generating-code-through-shell.md) 同一条：要落盘会被解析的东西别走 shell 通道）。
+2. 必须用 PowerShell：单元素数组用**一元逗号** `$pairs = ,@('old','new')`，或改用哈希表列表 `@{old='…'; new='…'}`；
+   **跑之前先打 `$pairs.Count` 与 `$pairs[0].GetType().Name`**（应为 `Object[]` 不是 `String`）。
+3. 批量改完**拿「已改清单」逐条重验**（见 [`../workflow/documentation.md`](../workflow/documentation.md) 第四种），
+   不是重读文档——这次它抓到的不只是漏改，还有自己造的破坏。
+
+---
+
+## 七个 pitfall 的统一形态
 
 五个坑底层是同一个 PowerShell 5.1 quirk：**native command 的 stdin/stderr/文件字节 跟 PowerShell 自己的 encoder 与 parser 之间有抽象漏洞**。
 
@@ -437,8 +505,12 @@ hits = [(p, [c for c in BAD if c in p.read_text(encoding="utf-8")]) for p in fil
 | 3. stdin BOM | 用临时文件 + `cmd /c "exe < file"` 绕过 PS pipe encoder |
 | 4. 写文件的 BOM / 编码 / 行尾（三条独立轴，且随 session 变）| 用 `[IO.File]::WriteAllText` + `UTF8Encoding($false)` + **绝对路径** 绕过 PS 文件 encoder |
 | 5. 反引号被当转义符 | **别用 PowerShell 写内容**（用专门的写文件工具）；退而求其次用 `@'…'@` |
+| 6. `[int]` 银行家舍入 | 取整显式 `[math]::Floor` / `-shr 1`；量具先喂已知答案 |
+| 7. 单元素嵌套数组拍平 | 文本批量替换用编辑工具；必须用 PS 就 `,@(...)` + 跑前打 `Count` / 类型 |
 
 **没有"PowerShell 配置一行就根治"的方案**。每个具体场景都要选对应绕过方式。
+第 6、7 条与前五条不同层——不是 native 边界，是**语言自己的语义**；把它们放在同一份里是因为
+它们的失败形态相同：**一个看起来合理的结果**，而且暴露面是「拿 PowerShell 当量具 / 当批处理」这两个日常动作。
 
 ⚠️ **但第 4 条多一层教训**：前三条你会被报错逼着去修，第 4 条**要靠你事先知道**——因为它的失败
 形态是"验证通过而结果是错的"。⇒ 凡是 PowerShell 写出来、由别的工具按字节解析的文件，
@@ -459,6 +531,9 @@ PowerShell CI 脚本里调 native command 时遵守：
 6. **写"人要读的多行文字"（commit message / 文档 / 注释）时，不要用 PowerShell 写** ——
    用专门的写文件工具落盘，PowerShell 只负责跑命令。必须在 PS 里写就用 `@'…'@`，
    写完**扫一遍控制字符**。理由:反引号是转义符,而技术散文里每个标识符都用反引号包
+7. **PowerShell 里的取整一律显式**（`[math]::Floor` / `[math]::Truncate` / `-shr 1`），不写裸 `[int](a/b)`；
+   量具脚本先喂一个已知答案（中位数用 `1,2,3`）
+8. **批量文本替换不用 PowerShell**；必须用时单元素数组写 `,@(...)`、跑前打 `Count` 与元素类型，改完拿已改清单逐条重验
 
 加新 native command 调用时先想清楚走哪条路径，不要等 CI 跑挂了再来改。
 
