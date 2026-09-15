@@ -222,7 +222,7 @@ subprocess.run(["git", "stash", "push", "-m", f"sess-{my_session_id[:8]} mid-flo
 | GATE 1 passes | Transition status=active + claim plan scope + set intent_summary |
 | Phase 3 milestone start | Verify claim still matches scope; widen/narrow as needed |
 | Phase 3 milestone end (commit) | Use precise-add commit flow; touched_files for that milestone |
-| Phase 4 (review) | Release all leases + mark status=ended + sync daily.md / open-items |
+| Phase 4 (review) | Release all leases + mark status=ended |
 
 ### autonomous-workflow
 
@@ -289,7 +289,6 @@ ms.update_heartbeat(cwd, my_id)                  # PostToolUse does this automat
 - `superpowers:test-driven-development` + `tdd-with-fixtures` — per-milestone test discipline (orthogonal — TDD owns red-green-refactor, this skill owns lease + commit scope)
 - `autonomous-workflow` / `supervised-workflow` — natural triggers for status transitions (see Workflow Integration above)
 - `guidelines/workflow/commits.md` — "one commit one theme" is the rationale behind precise-add via touched_files
-- `guidelines/workflow/daily-and-open-items.md` — Phase 4 daily log + open-items sync references session activity from this system's archive
 
 ## Design Doc
 

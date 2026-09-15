@@ -293,17 +293,7 @@ Phase 4: Self-Review and Result
      If skill absent or no updates, say so explicitly.
   → write <result-record> with conclusion, all changes, commits, test results,
     known limitations, recommended next steps, AND skill candidates
-  → DAILY LOG + OPEN-ITEMS SYNC: per `guidelines/workflow/daily-and-open-items.md`:
-       - Append entry to today's `<agent-state-root>/daily/YYYY-MM-DD.md` under the
-         relevant project section, with reference to the selected result record (file and section)
-       - Sync task status to `<agent-state-root>/projects/<project>/open-items.md`:
-         - task fully done → remove or close the in-flight item; record under
-           daily's "Open Items Δ → Closed"
-         - task escalated / incomplete → ensure an in-flight item exists with
-           "paused at X" reference; record under daily's "Open Items Δ → Added"
-           if newly added
-       - daily.md is append-only; open-items.md can be freely edited
-  → notify user: "task complete, result at <path>; daily logged"
+  → notify user: task outcome, verification results, and result record location
   → DO NOT auto-archive the handoff dir. Let it stay at `handoffs/<task-slug>/`
     until the user explicitly decides to archive (see "Completion and Archival" below).
 ```

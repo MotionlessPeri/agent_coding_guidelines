@@ -168,12 +168,6 @@ Phase 4: Overall Review
          to Established with a full entry draft
      Surface findings in overall review output. DO NOT auto-write to catalog —
      drafts only, user decides. If skill absent or no updates, say so.
-  → DAILY LOG + OPEN-ITEMS SYNC: per `guidelines/workflow/daily-and-open-items.md`:
-    - Append entry to today's `<agent-state-root>/daily/YYYY-MM-DD.md` under the
-      relevant project section, with reference to commits made and key decisions
-    - Sync task status to `<agent-state-root>/projects/<project>/open-items.md`:
-      task done → close item; task incomplete → ensure in-flight entry exists
-    - Record changes under daily's "Open Items Δ"
 ```
 
 ## Gate Behavior
