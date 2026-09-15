@@ -13,12 +13,13 @@ clarification prevents them from being made.
 
 ## When This Applies
 
-- The user request has multiple plausible interpretations.
-- The request is concrete but you would be filling in unstated parameters
-  (scope, format, side effects, error semantics).
-- You are about to make a non-trivial design choice the user did not specify.
-- You notice the request contradicts existing code, docs, or earlier
-  conversation context.
+- The request has multiple plausible interpretations that materially change
+  the result, scope, side effects, or acceptance criteria.
+- A necessary decision cannot be resolved from the conversation, applicable
+  project conventions, or judgment within the user's delegated scope.
+- The request conflicts with a constraint and it is unclear whether the user
+  intends to replace that constraint. A clear instruction to change an existing
+  behavior is not itself a reason to ask the user to repeat the decision.
 
 This rule does **not** apply to small, mechanical tasks where the
 interpretation is unambiguous (rename a variable, add a missing import,
@@ -29,11 +30,12 @@ fix an obvious typo). Do not ask permission for the obvious.
 1. **State your assumptions explicitly.** One or two sentences: what you
    understand the task to be, what inputs/outputs you assume, what is in
    and out of scope.
-2. **List alternative interpretations** when more than one is plausible.
-   Let the user pick — do not silently choose for them.
-3. **Stop and ask** when something is unclear, contradictory, or missing.
-   The cost of one clarifying question is low; the cost of building the
-   wrong thing is high.
+2. **List unresolved alternatives** when they materially change the result or
+   exceed delegated judgment. Let the user decide those choices.
+3. **Use existing decisions first.** Do not re-ask questions already answered
+   or seek approval for routine implementation choices within delegated scope.
+   If a material ambiguity remains, ask one focused question and pause only the
+   dependent work; continue other authorized work.
 4. **Push back when warranted.** If a simpler approach exists, or the
    request seems to fight existing structure, say so before implementing.
 
@@ -43,7 +45,7 @@ fix an obvious typo). Do not ask permission for the obvious.
 |-----------|-----|------|
 | "Add user data export" | Implement JSON export of all fields | "I will export to JSON. Scope: all profile fields except password hash. Per-user file or single bundle? Include audit log entries?" |
 | "Make search faster" | Add an index on the most obvious column | "Which queries are slow? I see three search paths: name autocomplete, full-text body, geo-radius. Which one are we tuning?" |
-| Request conflicts with existing code | Pick one silently and proceed | "The request says X but `Foo.cs:42` already does the opposite for reason Y — which should win?" |
+| Request conflicts with an unresolved constraint | Ignore the conflict | "The request says X, but the documented compatibility requirement needs Y. Should that requirement change?" |
 
 ## How to Ask (User Preference)
 
@@ -72,6 +74,6 @@ the intent is a direct back-and-forth, not a form to fill in.
   ("implement X" where X has multiple valid readings).
 - `guidelines/code/constraints.md` "Architecture First" requires reading
   docs first; this requires surfacing your interpretation first.
-- `guidelines/workflow/agent-lifecycle.md` lists "Let me read the code
-  first" as a procrastination pattern. Clarification is not procrastination
-  — it is a single targeted question, not exploratory reading.
+- `guidelines/workflow/agent-lifecycle.md` requires purposeful preparation
+  followed by action. Resolve concrete uncertainties, then continue; do not
+  turn reading or clarification into repeated pauses.

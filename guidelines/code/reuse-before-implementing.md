@@ -185,4 +185,4 @@ DialogueSystemSample 插件 3 个月开发期间，下列复用 / 抽公共代�
 
 - [`guidelines/code/clarify-before-implementing.md`](clarify-before-implementing.md) —— 对称的另一条 prep work（澄清需求 vs survey 现有代码）
 - [`guidelines/code/constraints.md`](constraints.md) —— "Simplicity" 节防 premature abstraction，跟本条互补
-- [`guidelines/workflow/agent-lifecycle.md`](../workflow/agent-lifecycle.md) —— "Let me read the code first" 列在 procrastination pattern；本条**不是** procrastination，是 prep work（survey 关键字 → 找到/没找到 → 决策，不是 open-ended exploration）
+- [`guidelines/workflow/agent-lifecycle.md`](../workflow/agent-lifecycle.md) —— 围绕具体疑问读取代码，再行动或验证；本条用 survey 找到或排除复用对象，支持下一步决策，避免无目的重复探索

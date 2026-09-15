@@ -1,6 +1,6 @@
 ---
 name: bugfix-tdd
-description: Bug-fix TDD discipline — 红→绿 流程。修 bug 必须先写一条能复现 bug 的 failing test（红测），跑出来真的看到 FAIL，再改 production code 到 test PASS（绿测），跑全 regression，最后 test + fix 单 commit 落地。跟 superpowers:test-driven-development 的区别：那条是 feature TDD（写 spec test → 实现满足 spec），本 skill 是 bug-fix TDD（写 reproduction test → demonstrate bug → fix → demonstrate fix）。跟 superpowers:systematic-debugging 衔接：那条管"怎么定位 root cause"（debug 阶段），本 skill 管"root cause 定位完后怎么修"（fix 阶段）。防的是"看了一眼代码、自信改了一行"这种无证据修复——经常修了一个症状漏掉同类 N 个、或改错位置。
+description: 修复已发现的代码缺陷、需要建立复现与修复证据时使用。跳过新功能实现、纯重构，以及不改变行为的文字或机械修改。
 ---
 
 # Bug-Fix TDD (红→绿 Discipline)
@@ -14,7 +14,7 @@ bug 存在**（红测），再 **demonstrate fix 生效**（绿测）。两个 d
 **Triggers (任一)**:
 - user 报告 bug 后，agent 确认 root cause 进入修复阶段
 - 跑 regression 时发现某个 test fail 暴露的 bug
-- code review 发现 latent bug（已存在但未触发）
+- code review 发现 latent bug（已存在但未触发）：按 `guidelines/workflow/agent-lifecycle.md` 的 finding triage 判——**已属于授权修复范围**（planned defect）直接进入；**仅 review、或发现落在授权范围之外**的，先报告、由用户定并入还是拆单（`guidelines/code/constraints.md` 边界），不由 review 自己扩成修复
 - `superpowers:systematic-debugging` 定位完 root cause 后衔接进入
 
 **Does NOT fire**:
@@ -55,21 +55,24 @@ Decision matrix:
 | fix 改动 < 5 行 + 有 Validator / Schema enforce 兜底 | **manual** 可接受 |
 | fix 改动 ≥ 1 函数 / 跨多文件 / 触及核心 logic | **auto** 几乎必须 |
 
-评估完跟 user propose 选择 + 理由。**user 可推翻你的建议**。
+评估完把选择 + 理由写下来（worklog 或即将进 commit message 的说明）。**用户明确要求这个方案先审、或所选 workflow 明确把这项选择列为审批点时**，向 user propose，**user 可推翻你的建议**；其余情况（已有授权覆盖修复范围：autonomous Phase 3、用户已批准的修复任务、supervised 的 Milestone 之内——它的 Gate 3 在 commit 之后，不在这里）按所选路径直接执行，不为这一步暂停。
 
 evaluation 本身要写进 commit message —— 别人后续 grep 这条 bug 历史能看到当时为什么选 manual / auto，不只看结果。
 
 **警告**：不要为了凑 auto test **硬抽"可测 helper"**。helper 是为测试人造的中间层，**测它 ≠ 测 root cause 表现**。这违反核心规则 "fixture / 断言尽量精准命中 root cause"。如果 production 函数难直接测，先评估 manual 是否更合适，再考虑 helper 抽取。
 
-### Step 1: 跟 user 校准红测案（auto path）
+### Step 1: 红测案先成文，用户要求先审时才校准（auto path）
 
-agent 确认 root cause 后，**先 propose 红测案给 user 看**：
+agent 确认 root cause 后，**先把红测案写下来**（worklog / 即将进 commit message 的说明）：
 - fixture 输入是什么
 - 期望断言（assertion）针对什么
 - 期望从哪里失败（哪个 file:line / 哪种 error 类型）
 
-让 user 校准方向。如果 fixture / 断言不精准，红测可能"通过"在错误的地方——等于
-没抓到 bug。**user 校准比直接动手写更省时间。**
+**用户明确要求红测先审、或所选 workflow 明确把红测案列为审批点时**，把它 propose 给 user
+校准方向——**user 校准比直接动手写更省时间**。其余情况记录后直接进 Step 2，不暂停；某个
+workflow 在别处有 gate（如 supervised 的 Gate 3 在 commit 之后）不构成这里的审批点。校准的价值
+不变：fixture / 断言不精准，红测可能"通过"在错误的地方——等于没抓到 bug；不经 user 校准时，
+这份成文的红测案就是 Step 2「fail 位置要跟预期一致」的对照物。
 
 ### Step 2: 写红测 + 跑确认 FAIL
 
@@ -111,7 +114,9 @@ grep commit log 能找到这条 bug 的历史。
 
 ### Manual path（Step 0 评估走 manual 时替代 Step 1-6）
 
-走 manual reproduction case 路径时，Step 1-6 的红测部分不适用，改走：
+走 manual reproduction case 路径时，Step 1-6 的红测部分不适用，改走下面 6 步。这条路径里
+user 的两次操作是**验证**（人眼就是 oracle），不是审批——无用户 gate 的流程也**不能省**；省不掉
+就说明这个 bug 不适合在无人值守里修，按 escalation 纪律停下报告，而不是跳过 demonstrate。
 
 1. **写复现步骤**：fixture（如果有）+ 一字一句的操作（在哪个面板点哪里 / 输入什么 / 看哪里）
 2. **修复前 demonstrate bug**：user 按步骤跑一次，看到错误表现 —— 跟 agent 预期一致才算 root cause 定位对

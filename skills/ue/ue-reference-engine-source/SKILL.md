@@ -1,6 +1,6 @@
 ---
 name: ue-reference-engine-source
-description: Use BEFORE writing any new UE feature (especially UI / Editor / Asset Editor / Slate / Localization / SourceControl / Validator / Subsystem / Factory / Details Customization) — first locate and read the closest reference implementation in UE engine source / official samples, because the UE framework is largely undocumented and correct patterns live in engine source, not API docs. Provides a 5-tier reference-priority list + a table indexed by ~22 UE subsystems pointing at the right engine-source files. Symmetric counterpart to `reuse-before-implementing` (project-internal survey). Skip for non-UE work.
+description: Use before implementing UE framework features or reviewing unfamiliar UE API usage, and when diagnosing framework behavior against the current engine source or official samples. Skip non-UE work and edits without framework behavior changes.
 ---
 
 # UE Reference Engine Source
@@ -41,7 +41,7 @@ The full content lives in the bundled doc:
 
 Full list in bundled doc. The four most common:
 
-1. "I assumed UE works this way" — most frequent bug source; cure is forcing a 30-minute reference read before coding.
+1. "I assumed UE works this way" — most frequent bug source; locate the relevant implementation and verify its contracts against the current engine version before coding; elapsed reading time is not the criterion.
 2. Trusting AI-generated UE code without grep-verifying against current engine version.
 3. Copy-pasting forum workarounds without reading engine source to understand root cause.
 4. Pushing past "no reference found" — if no engine source / sample / forum post exists for what you want, you are likely using the wrong path; redesign rather than force it.

@@ -94,7 +94,7 @@ Stop hook 会一直拦着不让停,所以开放式条件(「持续探索 X」「
 
 - [`skills/workflow/autonomous-workflow/SKILL.md`](../../skills/workflow/autonomous-workflow/SKILL.md) —— low-touch 工作流(plan gate + handoff 文档 + TDD 安全网)。那条是**工作怎么组织**;本条是**用 ScheduleWakeup 把它跨回合/无人值守跑起来**的 harness 机制 + stop 纪律。两者组合。
 - [`techniques/coordination-patterns.md`](../../techniques/coordination-patterns.md) —— 单回合内的 multi-agent 编排 + 「值不值得上」。本条是**时间轴上**的自主续跑,不是并行 fan-out。
-- [`guidelines/workflow/daily-and-open-items.md`](../workflow/daily-and-open-items.md) / [`guidelines/workflow/handoffs.md`](../workflow/handoffs.md) —— loop 的 checkpoint 落点(worklog / open-items / daily)。
+- [`guidelines/workflow/handoffs.md`](../workflow/handoffs.md) —— loop 的任务进度与交接记录落点。
 - [`guidelines/claude-code/hook-conventions.md`](hook-conventions.md) —— 兄弟篇:同属 Claude-Code harness hidden contract。
 
 ## 项目实例参考

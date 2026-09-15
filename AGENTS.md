@@ -22,8 +22,8 @@ Guidelines are grouped by topic under `guidelines/`:
 | `guidelines/code/` | Code constraints, validation requirements |
 | `guidelines/writing/` | 面向人读的散文（文档 / 代码注释 / 交付文字）通用文体规则——工作语言写散文 + 标识符保留原文并加代码环境 / 不说黑话（英文半通用词 + 中文商业黑话两轴）/ 简洁⇔不丢信息 / 不翻译腔（含英文状态词不做一对一映射）/ 数量表述（百分点·倍数·区间包含关系）。跨「文档 + 注释」共享的 SoT，由 `skills/workflow/doc-writing-style`（+图示 discipline）与 `skills/workflow/conversation-walkthrough` Phase 3（+注释 stability / Doxygen 契约头）两个 skill 承接执行面 |
 | `guidelines/cpp/` | C++ / Windows DLL / cmake / MSVC 工程底座的 hidden contract——跨 DLL 单例内联陷阱 / 符号导出 / native 绑定可达面 / 增量编译 ABI 不一致 / stale `.vcxproj` / 热路径 move 与 dynamic_cast / `std::make_format_args` 左值契约 / perf 测量误测未优化二进制 / 现代 C++ 标准钳制 / Windows native crash-hang dump 取证。框架无关，多 DLL 插件（含 UE `.dll` / Maya `.mll`）高频命中。**非 C++ 项目可整段 skip**。索引 + 按场景导航见 [`guidelines/cpp/INDEX.md`](guidelines/cpp/INDEX.md) |
-| `guidelines/collaboration/` | Multi-agent setup, private docs policy |
-| `guidelines/ci-windows/` | Windows CI (PowerShell / GitLab runner) 跑 native command 时的 pitfall 集——PowerShell ↔ native exe 之间的抽象漏洞；另含 POSIX 工具 ↔ Windows 文件系统语义的漏洞（`sed -i` 不是原地编辑） |
+| `guidelines/collaboration/` | Multi-agent setup, private docs policy;另有 **lane 拓扑设计**([`lane-topology-design.md`](guidelines/collaboration/lane-topology-design.md),**懒加载不 `@`-import**——开新的多 lane 项目 / 重切 lane 边界时读:按仓切不按技术子域切 / 职能三权分立 + 「不做」清单 / 审查 campaign 制不常驻 / 接缝有名有主 + 触发挂 git 事件 / role 只写边界不写读数 / lane 数量即成本先报价;含 2026-08-31 一次真实重划的问题账与痛点映射) |
+| `guidelines/ci-windows/` | Windows CI (PowerShell / GitLab runner) 跑 native command 时的 pitfall 集(另含 **Python 轴**:`write_text` 在 Windows 静默改行尾,四种写法三种错)——PowerShell ↔ native exe 之间的抽象漏洞；另含 POSIX 工具 ↔ Windows 文件系统语义的漏洞（`sed -i` 不是原地编辑） |
 | `guidelines/claude-code/` | Claude Code 自身（harness / hooks / settings.json）的 hidden contract——文档没明说但实测如此的行为 |
 | `guidelines/p4/` | Perforce 特有 hidden contracts——charset transcoding / typemap / 跟 git 不同的字节保留语义 |
 | `guidelines/ue/` | Unreal Engine framework hidden contracts + idiom，meta-corpus 最重的框架子目录。两层：**14 份 broad guidelines**（常碰核心契约，**懒加载 via INDEX**、非 UE session 不常驻）+ **8 个懒加载 UE skills**（ultra-niche / 按场景触发的簇，bundle 进 `skills/ue/`：module-architecture / reference-engine-source / settings-persistence / custom-graph-editor / procedural-numerical / ml-animation / unrealmcp-usage / official-mcp-usage）。**非 UE 项目可整段 skip**。完整索引（broad + skill 双层）+ 按场景导航见 [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md) |
@@ -58,8 +58,6 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/workflow/knowledge-promotion.md
 
-@guidelines/workflow/daily-and-open-items.md
-
 @guidelines/code/clarify-before-implementing.md
 
 @guidelines/code/reuse-before-implementing.md
@@ -72,6 +70,8 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/code/reporting-limits-and-null-results.md
 
+@guidelines/code/generating-code-through-shell.md
+
 @guidelines/code/validation.md
 
 @guidelines/code/test-purpose.md
@@ -82,15 +82,19 @@ Guidelines are grouped by topic under `guidelines/`:
 
 @guidelines/code/dual-layer-data-ownership.md
 
+@guidelines/code/premises-not-in-the-text.md
+
 @guidelines/writing/prose-and-register.md
 
 @guidelines/collaboration/multi-agent.md
 
 @guidelines/collaboration/private-docs-policy.md
 
+> [`guidelines/collaboration/lane-topology-design.md`](guidelines/collaboration/lane-topology-design.md)(lane 拓扑怎么切、什么时候重切)**不 eager `@`-import** —— 只在开多 lane 项目 / 重切拓扑时读;`role-lane-coordination` skill 正文带指针,组织表有导航。(2026-09-01 促升,单项目一次重划 + 一周运行实测,用户主导。)
+
 > UE broad guidelines（14 份）**不 eager `@`-import**——lazy-load via [`guidelines/ue/INDEX.md`](guidelines/ue/INDEX.md)（已在上方组织表链接、且 INDEX 完整覆盖全 14 份 broad + 8 个 UE skill 双层导航）。省 ~2500 行常驻——非 UE 项目 / 非 UE session 不再吃这块。接 UE 任务时读 INDEX 导航到具体文件 / 触发 ue-* skill；**重度 UE 项目可在项目自己的 `AGENTS.md` 里 `@`-import 需要的子集把它们拉回常驻**（见 `collaboration/multi-agent.md` Option 2）。Codex 本就按目录表 on-demand 打开 ue/，不受影响。（2026-07-28 context-budget audit：broad-UE 从常驻转懒加载，收尾 Tier D 最后一块 eager 域集群）
 
-> Maya guidelines（9 份）**不 eager `@`-import**——lazy-load via [`guidelines/maya/INDEX.md`](guidelines/maya/INDEX.md)（已在上方组织表链接、且 INDEX 完整覆盖全 9 份）。非 Maya 项目省去这部分常驻内容；接 Maya 插件任务时读 INDEX 导航到具体文件 / 触发 maya skill。Codex 本就按目录表 on-demand 打开 maya/，不受影响。（2026-07-18 context-budget audit S2；2026-07-24 新增并行性能取证）
+> Maya guidelines（10 份）**不 eager `@`-import**——lazy-load via [`guidelines/maya/INDEX.md`](guidelines/maya/INDEX.md)（已在上方组织表链接、且 INDEX 完整覆盖全 10 份）。非 Maya 项目省去这部分常驻内容；接 Maya 插件任务时读 INDEX 导航到具体文件 / 触发 maya skill。Codex 本就按目录表 on-demand 打开 maya/，不受影响。（2026-07-18 context-budget audit S2；2026-07-24 新增并行性能取证；2026-08-25 新增视口绘制性能）
 
 > C++ 工程底座 guidelines（8 份）**不 eager `@`-import**——lazy-load via [`guidelines/cpp/INDEX.md`](guidelines/cpp/INDEX.md)。C++ 项目（含 UE / Maya 插件）接触多 DLL / 符号导出 / cmake / toolchain / 热路径 / crash 取证坑时读 INDEX 导航到具体文件。省 ~655 行常驻；Codex 按目录表 on-demand 打开 cpp/。（2026-07-19 context-budget audit S2 Tier D）
 
@@ -98,7 +102,12 @@ Guidelines are grouped by topic under `guidelines/`:
 
 > 条件域 guidelines（P4 / Windows CI / Claude Code harness）**不 eager `@`-import**——只对特定项目类型相关，接对应任务时按上方组织表 / 本说明按需读（省 ~945 行常驻）：
 > - `guidelines/p4/charset-pitfalls.md` —— Perforce unicode server 的 charset transcode 坑（含 typemap / binary 强制）。配套 technique `techniques/ci-deploy-to-p4.md`（CI 自动 submit 到 P4 的完整流程）。
-> - `guidelines/ci-windows/`（3 份：`powershell-native-command-pitfalls.md` / `gitlab-runner-service-and-powershell-pitfalls.md` / `posix-tools-on-windows.md`）—— 前两份是 Windows PowerShell / GitLab runner 跑 native command 的 pitfall；第三份是 Git Bash / MSYS2 的 POSIX 工具在 Windows 上的实现漏洞（`sed -i` 是重写+顶替 ⇒ 改行尾 / 跨设备失败 / **穿透只读且不留痕**），**改引擎 / SDK / 系统目录里的文件前值得读一眼**。
+> - `guidelines/ci-windows/`（4 份：`powershell-native-command-pitfalls.md` / `gitlab-runner-service-and-powershell-pitfalls.md` / `posix-tools-on-windows.md`）—— 前两份是 Windows PowerShell / GitLab runner 跑 native command 的 pitfall；第三份是 Git Bash / MSYS2 的 POSIX 工具在 Windows 上的实现漏洞（`sed -i` 是重写+顶替 ⇒ 改行尾 / 跨设备失败 / **穿透只读且不留痕**），**改引擎 / SDK / 系统目录里的文件前值得读一眼**。
+> 　⚠️ **第四份 `python-write-text-line-endings.md` 同样不受「CI 项目才读」这个触发管**——
+> 　只要**在 Windows 上用 Python 脚本改一份既有文件**就命中：`write_text()` 默认换掉整份行尾，
+> 　**不报错、内容逐字未变、任何按内容做的检查全绿**；而「只给写侧加 `newline=""`」这个看似修法的写法
+> 　**方向是反的**。⇒ 在 git 仓里更隐蔽：`status` 报脏而 `diff` 零行、`commit` 是空操作
+> 　（两个信号矛盾，而人会信后者）。查法 `git ls-files --eol`（`status`/`diff` 两个口径都在 filter 之后，照不见）。
 > 　⚠️ 例外(不受"CI 项目才读"这个触发管)：`powershell-native-command-pitfalls.md` 的 **Pitfall 4 / 5 跟 CI 无关**——只要**在 Windows 上用 PowerShell 写一个会被别的程序解析的文件**（`.py` / patch / commit message / JSON / 文档）就命中：BOM、行尾、整份变 UTF-16LE 三条独立轴，且**同一行 `>` 在不同 session 里毁法不同**；反引号在双引号语境里是转义符。⇒ **任何 Windows 项目在让 agent 用 PowerShell 落盘之前都该读这两节**（修法：用编辑器 / 写文件工具，或 `[IO.File]::WriteAllText($abs, $text, (New-Object Text.UTF8Encoding $false))`）。
 > - `guidelines/claude-code/`（3 份：`hook-conventions.md` / `subagent-contracts.md` / `autonomous-loop-scheduling.md`）—— Claude Code harness / hooks / subagent / 自主 loop 的 hidden contract（连 Codex 都不相关）。配套 technique `techniques/claude-code-autonomous-permissions.md`（permission list 配置）。
 >
@@ -117,6 +126,8 @@ Guidelines are grouped by topic under `guidelines/`:
 @techniques/worker-instructions.md
 
 @techniques/fact-forcing-gate.md
+
+@techniques/measurement-four-questions.md
 
 > [`techniques/model-worker-mcp.md`](techniques/model-worker-mcp.md) 是 Model Worker MCP 的安装、Codex/Claude 注册、strict 请求摘要与日常运维手册。只在安装或使用该工具时按需读取，不 `@`-import，避免把工具专属操作常驻到所有项目。
 
@@ -140,16 +151,17 @@ Guidelines are grouped by topic under `guidelines/`:
 - `skills/` 是 source of truth；`scripts/sync-skills.ps1` 默认同时同步到 `~/.claude/skills/` 与 `~/.agents/skills/`，也可用 `-ProjectPath` 安装到项目内对应目录
 - 双端共用的 portable frontmatter 只保留 `name` 与 `description`；`description` 必须自带触发和跳过条件，详细流程与平台分支放正文
 - 通用正文使用平台中性措辞；确实依赖 hooks、配置文件或客户端命令的内容必须明确平台分支或平台限制
+- 安装后的路径：skill 同目录附件相对该 skill 目录；`guidelines/`、`techniques/` 等规范库路径相对本仓根目录，从消费项目 `AGENTS.md` / `CLAUDE.md` 的接入指针定位。其他 skill 按当前会话实际发现的位置读取。找不到规范库接入指针时说明缺失并询问路径，不把业务项目根或 skill 安装目录当作规范库根。
 
 当前 skills：
 
 **workflow/** —— 跨域 workflow 编排 + TDD discipline：
 
 - [`skills/workflow/supervised-workflow/SKILL.md`](skills/workflow/supervised-workflow/SKILL.md) — high-touch 工作流，三个 hard user-review gate（plan / impl-plan / per-milestone）
-- [`skills/workflow/autonomous-workflow/SKILL.md`](skills/workflow/autonomous-workflow/SKILL.md) — low-touch 工作流，仅 plan gate（实施阶段无 gate）；handoff 文档（brief / context / worklog / result）+ 强 TDD 作执行期安全网
+- [`skills/workflow/autonomous-workflow/SKILL.md`](skills/workflow/autonomous-workflow/SKILL.md) — low-touch 工作流，仅 plan gate（实施阶段无 gate）；默认 brief + 追加式 worklog 两份任务记录（已有四文件交接约定保留）；按改动类型验证，新行为与 bug 保留 TDD
 - [`skills/workflow/tdd-with-fixtures/SKILL.md`](skills/workflow/tdd-with-fixtures/SKILL.md) — augment superpowers TDD，加 milestone-level discipline + fixture/manual case escape hatch
 - [`skills/workflow/bugfix-tdd/SKILL.md`](skills/workflow/bugfix-tdd/SKILL.md) — bug-fix 场景的 TDD 红→绿 discipline。先写 demonstrate bug 的 failing test → 跑确认 FAIL → 改 production → 跑 PASS → 跑全 regression → test + fix 单 commit。跟 `superpowers:test-driven-development`（feature TDD）/ `superpowers:systematic-debugging`（debug 阶段方法论）/ `tdd-with-fixtures`（escape hatch）互补不重叠。防"看代码自信改一行"无证据修复
-- [`skills/workflow/conversation-walkthrough/SKILL.md`](skills/workflow/conversation-walkthrough/SKILL.md) — 编码对话收尾的标准 review 环节（默认开，除非用户说后面是迭代不用 review）。三 phase：结构 map / self-review 三档（🔴 重构套 function-clarity 行数阈值 + ≥2 次重复抽 helper / 🟡 优化 / 🟢 对抗式正确性）/ 注释体检三轴（prose 质量走 `guidelines/writing/prose-and-register.md`——工作语言/不说黑话/不翻译腔/简洁不丢信息，跟 `doc-writing-style` 共用同一份 SoT；stability 按注释自包含原则剥 milestone·Task·Phase 标签 + ephemeral 文档引用、why 浓缩 inline 只引 durable 目标；结构用 Doxygen 契约头）。配套：ephemeral tracking 文档锚讨论主线、重构与注释清理分主题各自 commit、cold rebuild + 冒烟验证语义不变。扩展 `guidelines/code/function-clarity.md`（行数阈值 Rule 1 + 注释 stability/自包含 Rule 2）的「系统化执行」面
+- [`skills/workflow/conversation-walkthrough/SKILL.md`](skills/workflow/conversation-walkthrough/SKILL.md) — 编码对话收尾的标准 review 环节（默认开，除非用户说后面是迭代不用 review）。三 phase：结构 map / self-review 三档（🔴 重构套 function-clarity 行数阈值 + ≥2 次重复抽 helper / 🟡 优化 / 🟢 对抗式正确性）/ 注释体检三轴（prose 质量走 `guidelines/writing/prose-and-register.md`——工作语言/不说黑话/不翻译腔/简洁不丢信息，跟 `doc-writing-style` 共用同一份 SoT；stability 按注释自包含原则剥 milestone·Task·Phase 标签 + ephemeral 文档引用、why 浓缩 inline 只引 durable 目标；结构用 Doxygen 契约头）。配套：复用既有审查记录，需要持续跟踪且无记录时才新建；重构与注释清理分主题各自 commit；cold rebuild + 冒烟验证语义不变，同一输入的有效证据可复用。扩展 `guidelines/code/function-clarity.md`（行数阈值 Rule 1 + 注释 stability/自包含 Rule 2）的「系统化执行」面
 - [`skills/workflow/context-budget-audit/SKILL.md`](skills/workflow/context-budget-audit/SKILL.md) — 审计 / 管理 agent-instruction 语料（AGENTS.md / CLAUDE.md @-import + skill description + hook 注入）的 **always-loaded context 常驻成本**：@-import 数偏高 / 加新 @-import 前 / 启动慢或 cache 命中率降 / 一批新 guideline 之后 / 判断某内容该常驻还是懒加载时触发。给四步 audit（Inventory / Classify / Detect / Report+Actions）+ 加载时机三档模型（常驻 / 碰文件触发 / 被调才进）+ anti-patterns。**本 skill 自己就是 Tier D 把 conditional 内容转 lazy 的产物**（原 `techniques/context-budget-audit.md`，2026-07-19 转成本 skill——审计工具只在审计时才需要）。非「维护 guidelines 语料库」项目 skip
 - [`skills/workflow/auditing-plan-scope/SKILL.md`](skills/workflow/auditing-plan-scope/SKILL.md) — 非平凡设计 / 实施计划在批准前的对抗性范围审计。先独立建立用户流程与验收基线，再逐项审计新增或扩大的 process / transport / protocol / persistent state / public interface / command / config / trust boundary / lifecycle mechanism；每项必须向上追溯到当前用户流程并通过删除测试。完整审计放设计稿，gate 只给一屏摘要；实施计划只审 delta。临时探针入口须带收口契约，删除项不自动生成 roadmap / TODO / issue
 - [`skills/workflow/doc-writing-style/SKILL.md`](skills/workflow/doc-writing-style/SKILL.md) — 起草「交付级」文档（设计稿 / 任务书 / handoff / 用户文档 / brainstorm 结论稿 / CHANGELOG）时的文体 + 图示 discipline。两块：(1) 文体——遵循 `guidelines/writing/prose-and-register.md`（工作语言写散文 + 标识符保留原文并加代码环境 / 不说黑话两轴 / 简洁⇔不丢信息 / 不翻译腔 / 数量表述）在文档场景的应用（+ 项目自造词开篇 grounding）；(2) 图示——多阶段流程 / 多分支决策 / 易漏关键步任一就**必须画图**（给了 sequenceDiagram / flowchart / 编号列表选型决策表），且图要**可移植**：按目标渲染器版本写、不 hardcode 语法白名单（会过时）、本地能渲染 ≠ 目标能渲染、必要时推探针实测能力边界。目标渲染器版本是项目可调项（语言 / 黑话替换表的 tuning 在 prose-and-register）。文体规则本身是 `guidelines/writing/prose-and-register.md`（跨文档 / 注释共享 SoT），本 skill 加文档场景应用 + 图示；也是 `guidelines/workflow/documentation.md`（何时同步 / 怎么拆 / 怎么建索引）的执行面补充
@@ -163,7 +175,7 @@ Guidelines are grouped by topic under `guidelines/`:
 - [`skills/ue/official-mcp-usage/SKILL.md`](skills/ue/official-mcp-usage/SKILL.md) — 消费侧 agent 用 UE 5.8+ **官方** `ModelContextProtocol` MCP server（HTTP，默认 `127.0.0.1:8000/mcp`）做编辑器自动化。跟 `unrealmcp-usage`（fork）对称：那条 fork 怎么用，这条官方怎么用。覆盖 (1) setup 真相——`ModelContextProtocol` 只是 server 外壳，真正提供工具的是 `AllToolsets` 聚合器（只开 server 不开 AllToolsets → 连上也没工具），4 plugin 验证配置 + auto-start / 控制台命令 / `.mcp.json` HTTP 配置；(2) 9 条 usage hidden contract——`load_toolset` 跨 turn 才生效 / Reconnect 是 client tool list 刷新唯一入口 / 工具名点转单下划线 / session id 绑 server 生命周期 / schema 误标 / refPath 约定；(3) 失败纪律——官方报错停下问 user Reconnect，不要静默 fallback 换后端。平台选型见 `guidelines/ue/mcp-platform-choice.md`
 - [`skills/ue/ue-ml-animation/SKILL.md`](skills/ue/ue-ml-animation/SKILL.md) — UE 里「代码 / 神经网络直出 pose、不走 AnimBP 状态机」两组 hidden contract（来自 PathAnimGen 预研，原 `animinstance-proxy-and-offline-eval.md` + `nne-onnx-inference-contracts.md` 两份 guideline lazy 化 bundle 进本 skill）。**动画注入侧**：纯 C++ `UAnimInstance` + 自定义 `FAnimInstanceProxy` 零 AnimBP 直出 pose / `Update()` 被 `GFrameCounter` 门控（累计放 `PreUpdate`）/ 离线评估配方 `TickAnimation → RefreshBoneTransforms → FinalizeBoneTransform`（漏末步读旧双缓冲）。**模型推理侧**：NNE 只吃 ONNX / `NNERuntimeORT` 默认关闭需显式引用 / 坏模型报错点在 `CreateModelInstanceCPU` / 动态输出 shape 第一次 `RunSync` 后才可查且 buffer 不足静默不拷
 - [`skills/ue/ue-procedural-numerical/SKILL.md`](skills/ue/ue-procedural-numerical/SKILL.md) — UE 里「程序化建 RigVM/ControlRig/Deformer 图 + 模块内数值 / GPU / 并行」六组 ultra-niche hidden contract（多数踩自 curvenet 形变插件，原 6 份 UE guideline lazy 化 bundle 进本 skill）：RigVM 逐元素大批量数据走 `URigHierarchy` metadata 别烤 pin 默认值（否则图卡死）/ Sequencer 批量烤 key 写 section 浮点通道别逐 key `SetLocalControlRig*` / Optimus `ComputeNormalsTangents` 丢 authored 法线→换 `Keep{Imported,Input}Normals` / `FRBFSolver`·`TMemStack` 出 anim-eval 作用域需自建 `FMemMark` / UE 无官方 GPU 稀疏求解器→bring-your-own 运行时加载 + 安全回退 / UE 模块 OpenMP 装不了→`IntelTBB`·`ParallelFor` + 跨框架后端无关抽象
-- [`skills/ue/ue-custom-graph-editor/SKILL.md`](skills/ue/ue-custom-graph-editor/SKILL.md) — 从零建一个 UE 自定义 node-graph 编辑器（Blueprint / Material / Behavior Tree 式 `UEdGraph` 编辑器）。bundle 了原 `techniques/ue-custom-graph-editor.md`（7 步 build 流程，每步带坑 + 验证）+ 原 `guidelines/ue/graph-data-ownership.md` 的 UE 执行面（数据归属表 / `SGraphEditor` pin-first 约束 / compile full-flush > incremental sync）。**Ultra-niche**——只在做**新的**自定义图编辑器时触发。硬 per-API 约束（NodeGuid / pin SetOwner / `RF_Transactional` / undo refresh / copy-paste DuplicateObject）仍常驻在 `guidelines/ue/graph-editor-constraints.md`。数据归属的框架无关上位原则见新建的常驻 `guidelines/code/dual-layer-data-ownership.md`
+- [`skills/ue/ue-custom-graph-editor/SKILL.md`](skills/ue/ue-custom-graph-editor/SKILL.md) — 从零建一个 UE 自定义 node-graph 编辑器（Blueprint / Material / Behavior Tree 式 `UEdGraph` 编辑器）。bundle 了原 `techniques/ue-custom-graph-editor.md`（7 步 build 流程，每步带坑 + 验证）+ 原 `guidelines/ue/graph-data-ownership.md` 的 UE 执行面（数据归属表 / `SGraphEditor` pin-first 约束 / compile full-flush > incremental sync）。**Ultra-niche**——只在做**新的**自定义图编辑器时触发。硬 per-API 约束（NodeGuid / pin SetOwner / `RF_Transactional` / undo refresh / copy-paste DuplicateObject）位于 `guidelines/ue/graph-editor-constraints.md`，按 UE INDEX 与当前任务读取，不假定常驻。数据归属的框架无关上位原则见新建的常驻 `guidelines/code/dual-layer-data-ownership.md`
 
 **maya/** —— Maya 插件专用：
 
@@ -177,6 +189,6 @@ Guidelines are grouped by topic under `guidelines/`:
 **collaboration/** —— 多 agent / 多对话协作机制：
 
 - [`skills/collaboration/multi-session-coordination/SKILL.md`](skills/collaboration/multi-session-coordination/SKILL.md) — 多个 Claude Code 对话并发在同一 repo 工作时的协调协议。bundle 了 hook 脚本 (`multi_session.py`) + agent-side 政策（lease 让/抢/协商 heuristics + commit-then-release 强约束）+ 安装文档 (`install.md` / `install.ps1`)。Hook 机制由 `settings.json` 注册自动跑（SessionStart 注册 / PreToolUse 撞 lease deny / PostToolUse 记 touched_files / UserPromptSubmit 注入 inbox + git log since last turn / Stop 释放 lease）；skill 仅在 hook surface 协调信息时按需 load。需走 `install.ps1` 一次注册 hook
-- [`skills/collaboration/role-lane-coordination/SKILL.md`](skills/collaboration/role-lane-coordination/SKILL.md) — 把一个较重项目拆到**多个常驻对话**（每对话 = 一条 role-lane / context 边界）并协调它们的**项目级方法**:role⊥task 矩阵拆对话 / seam-contract 协同设计 / 分档 oracle（hard gate→auto-act·advisory·park）门控自主 / notify·act 自主度旋钮 + checkpoint 落人判断点 / **唤醒机制（mailbox 无通知原语 → 按预估 ETA 轮询·人推;长跑 Monitor 会资源耗尽死→定时轮询兜底）** / **分档路由（结构化走 hub、领域重·紧耦合人眼直连用户）** / 跨 lane 汇合用单一 coordinator 宿主 / **brief 正确性≠完整性** / durable 文件抗失忆 / 收件箱按发件人消歧 + ack 约定。跟上一条 `multi-session-coordination` 分层:那条是同 repo lease/inbox **hook 底层机制**,本条是**项目级协调方法**（同 repo 复用它）。**operating model = 同机 + 共享 `~/.claude` 绝对路径 mailbox + 人作异步决策/唤醒层**;**已跨 2 项目 / 2 拓扑验证**（renderer_test 平级 peer + 跨 repo 库接入 hub+fan-out）。**真分布式（跨机 / 无共享盘 / 跨人）未覆盖、全无人值守 / 紧耦合 peer thrash 未在本模式发生**——是 scope 边界,不是待办 gap
+- [`skills/collaboration/role-lane-coordination/SKILL.md`](skills/collaboration/role-lane-coordination/SKILL.md) — 把一个较重项目拆到**多个常驻对话**（每对话 = 一条 role-lane / context 边界）并协调它们的**项目级方法**:role⊥task 矩阵拆对话 / seam-contract 协同设计 / 分档 oracle（hard gate→auto-act·advisory·park）门控自主 / notify·act 自主度旋钮 + checkpoint 落人判断点 / **唤醒机制（mailbox 无通知原语 → 按预估 ETA 轮询·人推;长跑 Monitor 会资源耗尽死→定时轮询兜底）** / **分档路由（结构化走 hub、领域重·紧耦合人眼直连用户）** / 跨 lane 汇合用单一 coordinator 宿主 / **brief 正确性≠完整性** / durable 文件抗失忆 / 收件箱按发件人消歧 + ack 约定 / **共享树读数与归属判定**(稳定≠干净·「树是坏的」有效期以分钟计·独立观察者≠独立通道·归属三件套 = 时间窗 + 写入宾语 + 扫描面白名单)。跟上一条 `multi-session-coordination` 分层:那条是同 repo lease/inbox **hook 底层机制**,本条是**项目级协调方法**（同 repo 复用它）。**operating model = 同机 + 共享 `~/.claude` 绝对路径 mailbox + 人作异步决策/唤醒层**;**已跨 2 项目 / 2 拓扑验证**（renderer_test 平级 peer + 跨 repo 库接入 hub+fan-out）。**真分布式（跨机 / 无共享盘 / 跨人）未覆盖、全无人值守 / 紧耦合 peer thrash 未在本模式发生**——是 scope 边界,不是待办 gap
 
 > Sync 注：repo 是分类目录（`<category>/<name>/SKILL.md`），安装到 Claude Code 的 `~/.claude/skills/` 或 Codex 的 `~/.agents/skills/` 时都按 `<name>/` 扁平化。`ue-*` prefix 在安装后仍然可见 UE 归属。详 `scripts/sync-skills.ps1`。

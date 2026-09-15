@@ -1,6 +1,6 @@
 ---
 name: ue-module-architecture
-description: Use when designing a new UE module / plugin, extracting a plugin out of a project, authoring or reviewing any `*.Build.cs`, deciding which module a new class / test / setting / delegate belongs to, or diagnosing cook / package failures with "missing module" / unresolved-external-symbol errors. Covers the within-module three-layer model (Runtime Ops / Editor Actions / UI, with undo / dirty-mark) + the cross-module rule that a Runtime `*.Build.cs` can NEVER depend on an Editor module (not even under `if (Target.bBuildEditor)`; `WITH_EDITOR` won't save you). Skip for non-UE projects or single-module plugins with no Runtime/Editor split.
+description: Use when designing or reviewing UE module boundaries, Build.cs dependencies, or runtime operations, editor actions, and UI layering within one module. Also use for module-related build or packaging failures. Skip non-UE work.
 ---
 
 # UE Module Architecture

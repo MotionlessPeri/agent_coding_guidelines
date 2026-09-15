@@ -1,6 +1,6 @@
 ---
 name: unrealmcp-usage
-description: How to use the UnrealMCP plugin from an agent session to programmatically read or mutate UE editor state. Use when a project contains `Plugins/UnrealMCP`, `UnrealMCP_Docs`, `sync_unreal_mcp.sh`, or related MCP client configuration; when a task needs editor automation through `ue_cmd.py`; or when deciding whether to extend the fork. On UE 5.8+, check `official-mcp-usage` first and use this fork only when the official MCP lacks the required operation. Skip when the project has no UnrealMCP integration and the task does not involve UE editor automation.
+description: How to use the UnrealMCP plugin from an agent session to programmatically read or mutate UE editor state. Use when a project contains `Plugins/UnrealMCP`, `UnrealMCP_Docs`, or `sync_unreal_mcp.sh`; when a task needs editor automation through `ue_cmd.py`; or when deciding whether to extend the fork. On UE 5.8+, check `official-mcp-usage` first and use this fork only when the official MCP lacks the required operation. Skip when the project has no UnrealMCP integration and the task does not involve UE editor automation.
 ---
 
 # UnrealMCP Usage
@@ -8,6 +8,8 @@ description: How to use the UnrealMCP plugin from an agent session to programmat
 UnrealMCP 是一个 UE 编辑器侧 C++ 插件 + Python tool layer，让 agent / 外部脚本通过 TCP 命令读 / 改 editor state（actor / property / blueprint graph / subsystem 调用 / 保存退出 etc.）。源 repo 是 fork：`E:\xd_projects\unreal-mcp`（私有），消费侧通过 `sync_unreal_mcp.sh` 同步插件 + Python + Docs 进项目。
 
 本 skill 教**消费侧** agent 怎么用，不教扩展 fork（扩展见文末 §Extending）。
+
+> **路径说明**：本文里 `guidelines/...`、`techniques/...` 这类路径相对于本项目接入的规范仓根（由项目 `AGENTS.md` / `CLAUDE.md` 里的接入指针定位）；其他 skill 按本会话实际可用的 skill 路径找。没有接入指针时如实说明缺失，不要把业务仓或 skill 安装目录当规范根。
 
 ## Platform Paths
 
@@ -28,7 +30,7 @@ TCP 直连不依赖 agent 客户端的 MCP 配置。下文命令中的 `<skill-d
 >
 > **但 fork 不是全局 deprecated** —— UE **5.7 及之前官方 MCP 根本不存在，fork 仍是唯一选择**，
 > 本 skill 在那些项目里照常完整适用。判断顺序：先看项目 UE 版本 → 5.8+ 先查官方、fork 兜底；
-> ≤5.7 直接用 fork。完整分版本决策表见 [`guidelines/ue/mcp-platform-choice.md`](../../../guidelines/ue/mcp-platform-choice.md)。
+> ≤5.7 直接用 fork。完整分版本决策表见 `guidelines/ue/mcp-platform-choice.md`。
 
 ## When This Fires
 
@@ -161,7 +163,10 @@ python <skill-dir>/ue_cmd.py spawn_actor '{"type":"PointLight","name":"MyLight",
 
 ## Onboarding —— 给新 UE 项目装 UnrealMCP
 
-新项目第一次接入 UnrealMCP 要做的事（agent 跟 user 确认每一步）：
+新项目第一次接入 UnrealMCP 要做的事。**先跟 user 确认一次安装方案**——列出会改的 `.uproject` /
+`.gitignore` / 新增的 sync 脚本与同步目录 / fork 路径；确认后下面 6 步内不逐步请示。build 失败或
+fork 路径不明时按 `guidelines/code/diagnose-before-fixing.md` 与 escalation 纪律处理，不把每个失败
+变成新一轮审批：
 
 ### 1. Clone / 定位 fork
 
@@ -266,7 +271,7 @@ UnrealMCP_Docs/
 
 新 MCP 命令改 UE 资产 property 时，**默认不能只调底层 setter**——必须模拟 Editor UI 改 property 时走的"写入即同步"路径。底层 setter 只改最表面的 UPROPERTY 字段，跳过 framework（LogicDriver / BP / AnimBP / Material / Niagara / DataTable 等）维护的 template / property graph / construction script 输出 / cache。结果：schema 编译能过，运行时炸。
 
-**完整规则 + 三个判断问题 + 已知有 PostEditChange 重型 hook 的 framework 清单**：见 [`guidelines/ue/external-automation-write-path.md`](../../../guidelines/ue/external-automation-write-path.md)。
+**完整规则 + 三个判断问题 + 已知有 PostEditChange 重型 hook 的 framework 清单**：见 `guidelines/ue/external-automation-write-path.md`。
 
 **MCP-side 模板**——写 `HandleXxx` 改 reflected property 时：
 
@@ -362,8 +367,8 @@ python <skill-dir>/ue_cmd.py <new_command> '...'
 
 ## 相关 Guidelines / Techniques
 
-- [`guidelines/workflow/agent-lifecycle.md`](../../../guidelines/workflow/agent-lifecycle.md) "Autonomous Actions" / "Validation Before Completion" —— 用 MCP 跑编辑器自动化时仍受这些纪律约束（cold rebuild / 验证后再 claim done / 失败 escalation）
-- [`guidelines/code/clarify-before-implementing.md`](../../../guidelines/code/clarify-before-implementing.md) —— capability gap 时跟 user 澄清"扩 fork vs 手工 vs 跳过"，不要静默选
+- `guidelines/workflow/agent-lifecycle.md` "Autonomous Actions" / "Validation Before Completion" —— 用 MCP 跑编辑器自动化时仍受这些纪律约束（cold rebuild / 验证后再 claim done / 失败 escalation）
+- `guidelines/code/clarify-before-implementing.md` —— capability gap 时跟 user 澄清"扩 fork vs 手工 vs 跳过"，不要静默选
 - [`skills/ue/ue-module-architecture/SKILL.md`](../ue-module-architecture/SKILL.md) —— 扩 fork 加新命令时，C++ 命令 handler 走 Editor Actions 层而非 Runtime Ops（如果触及插件代码结构）
 - [`skills/ue/ue-reference-engine-source/SKILL.md`](../ue-reference-engine-source/SKILL.md) —— 写新 MCP 命令实现 editor 自动化时，先找 UE engine source 现成实现参考
 - Fork 内的 `AGENTS.md` / `Docs/README.md` / `Docs/Progress.md` —— 扩 fork 前必读

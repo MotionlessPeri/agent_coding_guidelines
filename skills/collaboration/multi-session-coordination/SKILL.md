@@ -1,6 +1,6 @@
 ---
 name: multi-session-coordination
-description: Use only in Claude Code when installed coordination hooks report other active sessions, pending inbox messages, lease conflicts, or blocked catch-all `git add`; or when a Claude Code conversation is about to edit and must claim a lease. Do not use from Codex because the current hook handlers, event payloads, session identifiers, and installer have not been ported to Codex hooks.
+description: Use only in Claude Code with installed coordination hooks for file leases, lease conflicts, inbox messages, concurrent-session changes, or blocked catch-all git add. Skip Codex and sessions without these hooks.
 ---
 
 # Multi-Session Coordination
@@ -222,7 +222,7 @@ subprocess.run(["git", "stash", "push", "-m", f"sess-{my_session_id[:8]} mid-flo
 | GATE 1 passes | Transition status=active + claim plan scope + set intent_summary |
 | Phase 3 milestone start | Verify claim still matches scope; widen/narrow as needed |
 | Phase 3 milestone end (commit) | Use precise-add commit flow; touched_files for that milestone |
-| Phase 4 (review) | Release all leases + mark status=ended + sync daily.md / open-items |
+| Phase 4 (review) | Release all leases + mark status=ended |
 
 ### autonomous-workflow
 
@@ -289,7 +289,6 @@ ms.update_heartbeat(cwd, my_id)                  # PostToolUse does this automat
 - `superpowers:test-driven-development` + `tdd-with-fixtures` — per-milestone test discipline (orthogonal — TDD owns red-green-refactor, this skill owns lease + commit scope)
 - `autonomous-workflow` / `supervised-workflow` — natural triggers for status transitions (see Workflow Integration above)
 - `guidelines/workflow/commits.md` — "one commit one theme" is the rationale behind precise-add via touched_files
-- `guidelines/workflow/daily-and-open-items.md` — Phase 4 daily log + open-items sync references session activity from this system's archive
 
 ## Design Doc
 

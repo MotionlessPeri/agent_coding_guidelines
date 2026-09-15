@@ -22,6 +22,7 @@ hidden contracts。靠踩坑得到、Maya 官方文档没明说的客观约束�
 | Guideline | 解决的问题 |
 |---|---|
 | [`draw-override-and-command-invocation.md`](draw-override-and-command-invocation.md) | 从 C++ `executeCommand` 发带 object 的命令：MEL 字符串 flag 必须在 object 前（cmds-Python 自动排序、MEL 不会）/ `MPxDrawOverride::prepareForDraw` 复用 `oldData` → `buildDrawData` 每帧必须重置 transient flag（否则"状态清了但高亮不消失"）/ 屏幕空间恒定 UI 用 `points()`+`setPointSize`（像素），别用 `rect()/circle()` 世界尺寸×相机距离近似 |
+| [`draw-override-performance.md`](draw-override-performance.md) | **视口绘制性能**：`MPxDrawOverride` 第三参 `isAlwaysDirty` **默认 true** ⇒ 每次刷新都重建绘制数据（实测 6 实例 × 15.5 ms = 10 fps，隐藏即回 350+）；传 `false` 必须**成对**验（静止 0 次 / 改动后 ≥1 次 `Vp2UpdateDagObject`），否则换来静默不刷新 / 热路径逐元素重算对象级元信息（networked `findPlug` 与 `getExistingArrayAttributeIndices` 都贵，15.5 → 0.72 ms）/ **量之前先证明对象真的在被画** —— 三次假阴性都表现为「一切都很快」 |
 
 ### GPU deformer / GUI 自动化 / 性能取证
 
