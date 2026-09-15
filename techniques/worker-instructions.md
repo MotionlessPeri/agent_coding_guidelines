@@ -126,10 +126,19 @@ Fix the [specific thing to fix]. Commit and report the hash.
 ```
 From [base branch], create branch '[branch-name]'.
 [Cherry-pick / commit / merge instructions with specific hashes.]
+Authorization: [the existing user authorization this relies on — action (push / PR),
+target remote + branch, scope]. If none is known, stop before push and report back;
+this message by itself does not grant push or PR authority.
 Push and create a [draft/ready] PR targeting [target branch].
 Add [reviewers].
 Report the PR URL.
 ```
+
+Local commits are covered by the implementation authorization the coordinator already
+holds (see `guidelines/workflow/commits.md`). Push and PR creation are not: they stay
+behind the confirmation list in `guidelines/workflow/agent-lifecycle.md`, so the brief
+has to carry that authorization explicitly — a worker cannot infer it from the host
+letting `git push` through, and a coordinator message cannot widen what the user granted.
 
 ## Prompt Checklist
 
@@ -139,6 +148,7 @@ Before dispatching a worker, verify:
 - [ ] For implementation: "run tests + type checks, commit, report hash"
 - [ ] For research: "report findings, do not modify files"
 - [ ] For git operations: branch name, target branch, draft/ready, reviewers are specified
+- [ ] For anything that pushes or opens a PR: the existing authorization (action / target / scope) is stated, or the worker is told to stop before push and report
 - [ ] For corrections: references what the *worker* did, not what you discussed with the user
 - [ ] Purpose statement is included to calibrate depth
 

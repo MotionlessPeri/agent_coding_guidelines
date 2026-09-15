@@ -13,11 +13,16 @@ The agent may perform the following autonomously when required by the task:
 - Save and close the editor before a rebuild.
 - Run a cold rebuild (compile) after plugin or C++ code changes.
 - Restart the editor/server after a rebuild.
-- Stage files and create commits **only when the user has explicitly requested a commit**.
+- Stage task-owned changes and commit verified, coherent results locally as part
+  of authorized implementation, following `commits.md`. No separate commit
+  request is needed; explicit user restrictions and selected review gates remain
+  in force.
 
-## Actions Requiring User Confirmation
+## Actions Requiring Separate Authorization
 
-Always confirm with the user before:
+Check the current request and still-applicable prior authorization before asking.
+When they already cover the action, target, and scope, proceed without requesting
+the same permission again. Otherwise, obtain authorization before:
 
 - Force-pushing or resetting git history.
 - Deleting files, branches, or database tables.
@@ -25,7 +30,14 @@ Always confirm with the user before:
 - Creating or closing issues/PRs.
 - Any action visible to others or affecting shared infrastructure.
 
-If in doubt, ask first. The cost of asking is low; the cost of an unwanted action is high.
+Carry out file removals already included in the agreed change, including
+cleanup of task-generated temporary files. Verify the paths and ownership first.
+Implementation alone does not authorize deleting unrelated
+work, retained handoff records, databases, or shared resources.
+
+If authorization or scope is genuinely unresolved, explain the specific missing
+decision and ask. Continue independent authorized work while waiting. Tool
+permissions, an allow list, or a reviewer suggestion do not create user authority.
 
 ## Validation Before Completion
 
@@ -51,7 +63,7 @@ Agent self-deception patterns to watch for:
 | "Code looks correct" | Reading code is not verification | Run it |
 | "Probably fine" | "Probably" is not evidence | Verify it |
 | "This would take too long" | Not your call — inform the user of estimated time, then do it | Inform and proceed |
-| "Let me read the code first" | May be procrastinating action | Run a command directly |
+| "Let me read the code first" | Reading relevant code is required preparation; repeating it without a concrete uncertainty delays execution | Read to resolve the current question, then act or verify |
 
 ### Quality Failures
 

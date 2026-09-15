@@ -163,7 +163,10 @@ python <skill-dir>/ue_cmd.py spawn_actor '{"type":"PointLight","name":"MyLight",
 
 ## Onboarding —— 给新 UE 项目装 UnrealMCP
 
-新项目第一次接入 UnrealMCP 要做的事（agent 跟 user 确认每一步）：
+新项目第一次接入 UnrealMCP 要做的事。**先跟 user 确认一次安装方案**——列出会改的 `.uproject` /
+`.gitignore` / 新增的 sync 脚本与同步目录 / fork 路径；确认后下面 6 步内不逐步请示。build 失败或
+fork 路径不明时按 `guidelines/code/diagnose-before-fixing.md` 与 escalation 纪律处理，不把每个失败
+变成新一轮审批：
 
 ### 1. Clone / 定位 fork
 

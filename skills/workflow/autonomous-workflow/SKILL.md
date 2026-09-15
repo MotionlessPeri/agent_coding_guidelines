@@ -63,9 +63,9 @@ Phase 0: Setup
     `git status --short` verbatim in context.md. If a planned Milestone overlaps a
     pre-existing dirty path, surface the overlap at the plan gate and do not start
     implementation until the user resolves it or explicitly defines ownership.
-  → PRE-FLIGHT: check commit permission state (see "Commit Permission Pre-Flight"
-    section below). If commit is gated by `ask`, surface finding at plan gate so
-    user picks a handling option before Phase 3 starts.
+  → PRE-FLIGHT: check host constraints on local commits (see "Commit Permission
+    Pre-Flight" below). If the active policy may interrupt unattended work,
+    explain that limitation at the plan gate; do not change permission settings.
 
 Phase 1: Self-Brainstorm
   → invoke superpowers:brainstorming mentally — do NOT pause for user
@@ -162,7 +162,10 @@ Phase 3: Per-Milestone Implementation (TDD-strict, no gates)
     - Reviewer asks for an interface, security boundary, behavior, or
       architecture not traceable to the approved brief → treat as a scope
       change and escalate immediately; do not convert it into a requirement
-    - User explicitly interrupts asking for status → respond with current worklog state
+    - User explicitly pauses or revokes the task → honor that instruction
+
+  A status question alone: respond with current worklog state, then continue
+  authorized work; it is not an escalation or a new approval gate.
 
 Phase 4: Self-Review and Result
   → CONSISTENCY GATE (do this FIRST — autonomous has no per-Milestone gate, so this is
@@ -221,10 +224,6 @@ Phase 4: Self-Review and Result
       because adding it leaves the current tests green.
   → invoke superpowers:requesting-code-review adversarially against your own work
     (focus: cross-Milestone consistency, integration risks not visible per Milestone)
-  → IF Option B was chosen at plan gate (agent lifted commit gate at Phase 0):
-       restore the `ask` rule by reverse-editing the same settings file(s).
-       Verify by reading the setting back. Record restoration in result.md.
-       Restoration is NON-NEGOTIABLE — workflow is not complete without it.
   → SKILL-WORTHY LESSON AUDIT: self-question against the worklog —
        "Did anything emerge during this task that should fire automatically
         for FUTURE work (a pattern, contract, anti-pattern, or convention)?"
@@ -443,51 +442,38 @@ One entry per Milestone. Append-only — **never edit prior entries**.
 
 ## Commit Permission Pre-Flight
 
-Autonomous Phase 3 commits per Milestone. If `git commit` is gated by a `permissions.ask` rule in user or project settings, every commit prompts — user is offline (that's the point of autonomous) → workflow stalls indefinitely.
+Task authorization and host enforcement are separate. Per `commits.md`, approved
+implementation includes local commits of verified task results; it does not
+include push, history rewriting, or permission-setting changes. A host allow rule
+does not grant those actions, and a task instruction does not override host policy.
 
 ### Detection (Phase 0)
 
-Run the platform-specific permission pre-flight:
+- **Claude Code:** inspect the active permission mode and applicable rules, using
+  the available permission view or settings files. A matching `ask` rule is a
+  possible interruption; do not infer the outcome from one setting alone.
+- **Codex:** inspect the approval and sandbox policy exposed to this session.
+  Do not infer it from Claude settings or change `.codex/config.toml` to bypass it.
 
-- **Claude Code:** read `~/.claude/settings.json` and, if present, the project's `.claude/settings.json` / `.claude/settings.local.json`. Look for `Bash(git commit:*)` or `Bash(git commit*)` in `permissions.ask`.
-- **Codex:** inspect the approval and sandbox policy exposed to the current session. Do not infer permission from Claude settings, and do not edit `.codex/config.toml` to weaken policy. If commits require approval that cannot be granted while the user is away, surface that limitation at the plan gate.
+If an actual restriction may prevent unattended commits, explain it at the plan
+gate. The user can handle prompts through the host or choose to adjust their
+configuration separately. Do not require a permission lift to start every task.
 
-If the active platform requires user approval for commit → commit is gated. Surface it at the plan gate.
+### When the Host Intervenes
 
-### If Gated: Surface at Plan Gate
+Follow the host's approval or denial mechanism. Do not edit permission settings,
+switch tools, or disable checks to avoid it. Report what is blocked and continue
+independent authorized work when possible; do not claim a required commit exists
+when it did not run. Do not create empty or otherwise unnecessary commits merely
+to test permission behavior; use the next real, validated task commit.
 
-Plan gate output must include a "Pre-flight notice" section listing the gated location(s) and presenting three options to the user:
-
-**A. User lifts before approving the plan.**
-- User opens the relevant settings file(s)
-- Moves the `Bash(git commit:*)` entry from `permissions.ask` to `permissions.allow`
-- Verifies by running one trivial commit — should NOT prompt
-- Tells agent to proceed
-- User restores `ask` rule at task end (or opens a follow-up reminder)
-
-**B. Claude Code only: user authorizes agent to lift, agent restores at Phase 4 end.**
-- Agent edits the same settings file(s): moves entry `ask` → `allow`
-- Verifies (read setting back; or attempt trivial commit if safe)
-- Records the lift in worklog.md including which file(s) were modified
-- At Phase 4 end: reverse-edits the same files, verifies restoration, records in result.md
-- Restoration is non-negotiable; result.md is NOT complete without it
-
-Codex must not emulate Option B by editing `.codex/config.toml`. Use Option A through the user's normal Codex policy controls, or Option C.
-
-**C. Proceed unlifted (will stall).**
-- Phase 3 runs until first commit, halts on prompt, escalates to user
-- Effectively switches to supervised behavior at commit time
-- Useful only if user is briefly available at commit moments
-
-### Discipline (Option B specifics)
-
-- Authorization is **scoped to this task only**. Do not extend the lift to other operations or future tasks.
-- If agent picks B but later fails to restore at Phase 4 end: escalate immediately, do not close result.md, do not declare the workflow complete.
-- If user revokes authorization mid-task: stop, restore immediately, then continue under Option C or pause for redirection.
+No permission changes or restoration steps are part of this workflow. A separate
+user request to configure the host is a separate task with its own scope.
 
 ### Reference
 
-Full rationale (safety net principles, scope precedence, diagnostic patterns for "why is it still prompting"): see `techniques/claude-code-autonomous-permissions.md` in the agent_coding_guidelines repo. The operational core above is sufficient for runtime; the technique doc is the deeper read.
+See `techniques/claude-code-autonomous-permissions.md` for the distinction between
+task authorization and Claude Code permission configuration.
 
 ## TDD Is Mandatory Here
 
@@ -513,7 +499,9 @@ Never let a failing approach loop more than three times. Autonomous mode does no
 Other escalation triggers (immediate, no retry):
 - Scope ambiguity that brief.md cannot resolve
 - A decision that touches architecture not anticipated in Phase 1
-- A safety boundary (would need destructive action, would push, would touch shared infra)
+- A necessary next step requires an action or target outside existing authorization
+  (for example an unapproved
+  destructive operation, push, or shared-infrastructure change)
 - **The approved approach turns out infeasible** — not an execution failure, but the plan
   itself cannot reach the acceptance criteria (structural convergence problem, unreachable
   oracle). Gather the evidence, then stop and return with root cause + alternatives for a
@@ -527,7 +515,8 @@ When escalating: write current state to worklog.md, then notify user with: which
 If user returns mid-work and asks "how's it going" / "什么进度":
 - Read current state from worklog.md
 - Respond concisely: which Milestone is active, what's done, any concerns
-- Continue or pause based on user response
+- Continue authorized work after the update unless the user pauses, redirects,
+  or revokes it; a status question alone is not a request to stop.
 
 This is not a gate (no waiting for confirm). It's a courtesy interrupt the user invokes by asking.
 
@@ -554,6 +543,11 @@ This skill is an **orchestrator**:
 - `superpowers:requesting-code-review` — owns Phase 4 (applied to own work adversarially)
 
 When composing these, **follow each composed skill's discipline fully**. Autonomous does not authorize skipping; it just removes the user-review pauses.
+
+Composed skills do not add default approval pauses for decisions already covered
+by the approved scope and test strategy. Record their preparation and rationale
+and proceed. Explicit user checkpoints, required manual verification, host
+approvals, and scope-change escalation still apply.
 
 The orchestration limits in this skill and `agent-lifecycle.md` take precedence
 over an imported workflow's unbounded review wording. In particular,
@@ -584,9 +578,8 @@ triage against the approved plan, not amendments to it.
 | Threat-model drift | Trusted same-machine scope grows defenses against malicious local or remote actors | Preserve the approved threat model; propose the expansion to the user |
 | Milestone identity drift | Private handoff says M5 while the user-visible plan says M4 | Stop, use the canonical user-approved Milestone ID, and reconcile records before continuing |
 | Committing handoff docs | brief.md ends up in `git status` | Move to private location per `private-docs-policy.md` |
-| Stalling on commit prompt | Phase 3 halts at first Milestone commit because `Bash(git commit:*)` is in `ask` list | Pre-flight should have caught this. Escalate; workflow cannot continue without commit gate lifted. See Commit Permission Pre-Flight section. |
-| Skipping pre-flight | Started Phase 1 / 2 without checking commit settings | Restart Phase 0 to do the check. Better caught early than at first commit. |
-| Failing to restore after Option B | Phase 4 completed without restoring `ask` rule | Restoration is non-negotiable. Restore immediately, verify, append note to result.md. Workflow is not complete until restoration is confirmed. |
+| Host blocks a required commit | A real task commit prompts or is denied | Use the host's approval path, report the restriction, and continue independent authorized work; do not edit settings to bypass it. |
+| Missing pre-flight | Host limitations were not checked | Check them now and report any unresolved restriction; do not repeat completed planning merely to replay Phase 0. |
 
 ## Related
 
@@ -595,7 +588,7 @@ triage against the approved plan, not amendments to it.
 - `guidelines/collaboration/private-docs-policy.md` — handoff docs must NOT be committed
 - `guidelines/code/validation.md` — verification at each Milestone
 - `guidelines/workflow/commits.md` — commit format
-- `techniques/claude-code-autonomous-permissions.md` — full rationale for commit permission lift; operational core is inlined above in Commit Permission Pre-Flight
+- `techniques/claude-code-autonomous-permissions.md` — task authorization versus host enforcement; diagnosis of commit prompts
 - `guidelines/claude-code/autonomous-loop-scheduling.md` — Claude Code only: driving the gateless Phase 3 across turns / compaction / disconnects with `/loop` dynamic + `ScheduleWakeup`, plus when `/goal` is the better driver instead
 - `skills/tdd-with-fixtures/SKILL.md` — mandatory test discipline, the safety net
 - `skills/workflow/supervised-workflow/SKILL.md` — sibling workflow with gates; switch to this if user wants in-the-loop review

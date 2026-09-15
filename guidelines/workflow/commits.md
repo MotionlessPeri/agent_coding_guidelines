@@ -27,7 +27,22 @@ Allowed types: `feat`, `fix`, `refactor`, `docs`, `governance`, `chore`, `index`
 
 ## Agent Behavior
 
-- Do not commit unless the user explicitly requests it.
+- Authorization to implement a task includes staging and local commits of its
+  verified, coherent results. Commit at stable points without asking separately
+  for each commit; a separate request saying "commit" is not required.
+- Discussion, investigation, or review alone does not authorize implementation
+  or commits. Respect an explicit "do not commit", "show the diff first", or
+  "review before committing" until the user changes that instruction.
+- Stage only changes whose task scope and ownership are clear. Use explicit
+  paths and inspect the staged diff; do not include unrelated contributors' work
+  or an unexplained pre-existing staged change. Resolve overlapping ownership
+  before committing rather than clearing someone else's index entries.
+- In multi-agent work, agree who commits shared results. Delegation does not
+  expand task authority or require each worker to obtain duplicate permission.
+- Local commit authority does not include pushing, publishing, or rewriting
+  history. Follow `agent-lifecycle.md` and any still-applicable user authorization.
+- User-selected review gates still apply. A local commit does not authorize
+  the next phase, and a tool's ability to run does not grant task authority.
 - Whether to commit agent collaboration docs (CLAUDE.md, AGENTS.md, conversation notes) is
   **project-dependent**. Some projects want agent rules tracked in git; others don't.
   Decide per project and document the choice in that project's AGENTS.md.
