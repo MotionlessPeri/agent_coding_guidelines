@@ -1,6 +1,6 @@
 ---
 name: ue-settings-persistence
-description: Use when adding or modifying UE Project Settings, `UDeveloperSettings`, custom Config UObjects, or per-asset metadata; when choosing between `TryUpdateDefaultConfigFile`, `SaveConfig`, and `AssetRegistrySearchable`; or when settings disappear after restart or differ between developers and CI. Also use for nested UObject collections whose config fields need a flat mirror and `PostEditChangeProperty` synchronization.
+description: Use for UE Project Settings, UDeveloperSettings, Config UObjects, per-asset metadata, or nested config collections; especially SaveConfig persistence failures after restart or across developers and CI. Skip non-UE settings.
 ---
 
 # UE Settings Persistence

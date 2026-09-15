@@ -5,6 +5,8 @@ description: Use when an agent must behaviorally clone or diagnose a closed-sour
 
 # 逆向 Maya 闭源节点
 
+> **路径说明**：本文里 `guidelines/...`、`techniques/...` 这类路径相对于本项目接入的规范仓根（由项目 `AGENTS.md` / `CLAUDE.md` 里的接入指针定位）；其他 skill 按本会话实际可用的 skill 路径找。没有接入指针时如实说明缺失，不要把业务仓或 skill 安装目录当规范根。
+
 ## Overview
 
 把闭源节点当成**可观测系统**，不要把反编译伪代码当成源码。任何实现结论都要沿
@@ -12,16 +14,16 @@ description: Use when an agent must behaviorally clone or diagnose a closed-sour
 
 配套隐藏契约：
 
-- [`../../../guidelines/maya/mesh-topology-fidelity.md`](../../../guidelines/maya/mesh-topology-fidelity.md)
-- [`../../../guidelines/maya/gpu-deformer-gui-validation.md`](../../../guidelines/maya/gpu-deformer-gui-validation.md)
-- [`../../../guidelines/cpp/windows-native-crash-hang-evidence.md`](../../../guidelines/cpp/windows-native-crash-hang-evidence.md)
+- `guidelines/maya/mesh-topology-fidelity.md`
+- `guidelines/maya/gpu-deformer-gui-validation.md`
+- `guidelines/cpp/windows-native-crash-hang-evidence.md`
 
 ## Ghidra headless 驱动 + 脚本(agent 可执行的关键)
 
 把 Ghidra 从「交互 GUI」用成「批处理文本生成器」——这是本工作流能被 agent 驱动的前提:反编译 / vtable / xref
 全部导成带元数据头的**文本文件**,agent 用 Read + grep 消费,不点任何 GUI 窗口。
 
-**前置**:RE 是最后手段。先走 [`ue-reference-engine-source`](../../ue/ue-reference-engine-source/SKILL.md) 的对称面,
+**前置**:RE 是最后手段。先走 skill `ue-reference-engine-source` 的对称面,
 确认没有源码 / 官方 reference 可依。
 
 **Step 0 —— dumpbin 定位「有符号的底层 DLL」**。算法通常不在节点插件里,而在底层几何 / 数学库 DLL。扫导出表按词根找,
@@ -51,7 +53,7 @@ $env:JAVA_HOME='C:\Program Files\Eclipse Adoptium\jdk-21...'; $env:Path="$env:JA
 
 | 脚本 | 参数 | 作用 |
 |---|---|---|
-| `ExportByKeywords.java` | `<outDir> <kw1,kw2,...>` | 关键词宽召回(函数/符号/字符串三路)+ **一层调用邻域** → `decompiled/NNN_<addr>_<name>.c` + `target_index.txt`。宽召回→逐个消费 = [`enumerate-then-adjudicate`](../../../techniques/enumerate-then-adjudicate.md) |
+| `ExportByKeywords.java` | `<outDir> <kw1,kw2,...>` | 关键词宽召回(函数/符号/字符串三路)+ **一层调用邻域** → `decompiled/NNN_<addr>_<name>.c` + `target_index.txt`。宽召回→逐个消费 = `techniques/enumerate-then-adjudicate.md` |
 | `ExportFunctionsByAddress.java` | `<outDir> <addr>...` | 按入口地址精确导反编译(带 `// address/name/prototype` 头) |
 | `DumpVtables.java` | `<outFile> <kw1,kw2,...>` | MSVC `vftable` 每槽函数指针(恢复虚表/类结构) |
 | `ExportXrefs.java` | `<outFile> <kw1,kw2,...>` | 关键字符串/符号的引用点 + 所在函数(定位无导出符号的内部实现) |
@@ -156,7 +158,7 @@ Ghidra 显示 `insert(id, index, flag)`，但调用前还有一个 barycentric d
 ## 相关
 
 - [`ghidra_scripts/`](ghidra_scripts/) —— bundled headless post-scripts(换关键词复用;含 README)
-- [`../../../techniques/enumerate-then-adjudicate.md`](../../../techniques/enumerate-then-adjudicate.md) —— 关键词宽召回 + 调用邻域 = 机械枚举候选再逐个裁决
-- [`../../../techniques/adversarial-verification.md`](../../../techniques/adversarial-verification.md) —— 差分 oracle / round-trip 是「选可信 check」的落地
-- [`../../ue/ue-reference-engine-source/SKILL.md`](../../ue/ue-reference-engine-source/SKILL.md) —— 对称 prep:动手逆向前先找有没有 reference 实现
-- [`../../../guidelines/cpp/multi-dll-plugin.md`](../../../guidelines/cpp/multi-dll-plugin.md) —— dumpbin 查导出 / 符号的底座
+- `techniques/enumerate-then-adjudicate.md` —— 关键词宽召回 + 调用邻域 = 机械枚举候选再逐个裁决
+- `techniques/adversarial-verification.md` —— 差分 oracle / round-trip 是「选可信 check」的落地
+- skill `ue-reference-engine-source` —— 对称 prep:动手逆向前先找有没有 reference 实现
+- `guidelines/cpp/multi-dll-plugin.md` —— dumpbin 查导出 / 符号的底座

@@ -1,6 +1,6 @@
 ---
 name: multi-session-coordination
-description: Use only in Claude Code when installed coordination hooks report other active sessions, pending inbox messages, lease conflicts, or blocked catch-all `git add`; or when a Claude Code conversation is about to edit and must claim a lease. Do not use from Codex because the current hook handlers, event payloads, session identifiers, and installer have not been ported to Codex hooks.
+description: Use only in Claude Code with installed coordination hooks for file leases, lease conflicts, inbox messages, concurrent-session changes, or blocked catch-all git add. Skip Codex and sessions without these hooks.
 ---
 
 # Multi-Session Coordination

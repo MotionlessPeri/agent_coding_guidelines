@@ -1,6 +1,6 @@
 ---
 name: supervised-workflow
-description: High-touch workflow orchestrator for substantial tasks with three mandatory user-review gates (plan, impl-plan, per-milestone). Composes superpowers brainstorming, writing-plans, executing-plans, and requesting-code-review into a gated chain. Use when the user explicitly requests supervised / gated / high-touch workflow, or when the user asks the agent to evaluate workflow choice on a task with substantial architecture or design decisions. Do NOT use for trivial tasks (single-file mechanical changes, typo fixes, single-commit bug fixes) or when the user has selected autonomous workflow.
+description: Use when the user requests staged approval of substantial work, or asks to choose a workflow for design decisions. Skip ordinary code reviews, trivial edits, and user-selected autonomous work.
 ---
 
 # Supervised Workflow
@@ -21,7 +21,7 @@ Do not mix roots within one run. Project-local Codex skills and Codex private st
 ## When This Fires
 
 **Triggers (any one):**
-- User explicitly invokes: "use supervised workflow", "走 supervised", "走高介入", "仔细 review 一下", "I want gated review", or equivalent
+- User explicitly invokes: "use supervised workflow", "走 supervised", "走高介入", "I want gated review", or equivalent
 - User asks agent to choose workflow ("你看怎么走") AND the task has at least one of:
   - Architecture or interface design decisions
   - Cross-cutting changes (>2 files, or changes that affect multiple subsystems)
@@ -29,6 +29,7 @@ Do not mix roots within one run. Project-local Codex skills and Codex private st
   - User explicitly wants to be involved at design level
 
 **Does NOT fire when:**
+- User only requests a code review or findings list without choosing a staged approval workflow
 - User selected autonomous workflow
 - Task is trivial: single-file mechanical change, typo fix, single-commit bug fix with clear cause, doc-only edit
 - User explicitly says "just do it" / "你直接来" / "skip review"

@@ -1,6 +1,6 @@
 ---
 name: ue-ml-animation
-description: Use when writing UE C++ that drives skeletal animation from code or a neural network instead of an AnimBP state machine — a custom `UAnimInstance` + `FAnimInstanceProxy` that writes pose directly, or running ONNX inference in-engine via NNE (Neural Network Engine). Covers the AnimInstance/proxy update contract (Update() is frame-gated by GFrameCounter, PreUpdate ordering, the offline-eval recipe TickAnimation to RefreshBoneTransforms to FinalizeBoneTransform), and NNE ONNX consumption contracts (NNERuntimeORT must be enabled by the consumer plugin, errors surface at CreateModelInstanceCPU, dynamic output shape only queryable after the first RunSync with a silent no-copy on undersized buffers). Skip for non-UE projects, or animation that uses standard AnimBP graphs with no code-driven pose or ML inference.
+description: Use for UE C++ pose injection via UAnimInstance / FAnimInstanceProxy, offline skeletal animation evaluation, or NNE / ONNX inference, including stale poses and missing output shapes. Skip non-UE work and ordinary AnimBP graph editing.
 ---
 
 # UE ML / 程序化驱动动画

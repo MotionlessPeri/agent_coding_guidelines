@@ -1,6 +1,6 @@
 ---
 name: context-budget-audit
-description: Use when auditing or managing the always-loaded context budget of an agent-instruction corpus (AGENTS.md / CLAUDE.md @-imports, skill descriptions, hook-injected context) — when the @-import count is high, before adding a new @-import, when session startup is slow or prompt-cache hit-rate drops, after a batch of new guidelines/techniques, or when deciding whether a piece of content should be always-loaded vs lazy (skill trigger / INDEX navigation / path-scoped rule). Provides a 4-step audit (Inventory, Classify, Detect, Report+Actions), a three-tier loading-time model (always-loaded / path-triggered / on-call), a second adjudication axis (constraint-necessity — is a rule a needed guardrail or over-specification a capable model would handle by judgment), and anti-patterns. Skip unless you maintain a guidelines / agent-instruction repository whose always-loaded footprint matters.
+description: Use when auditing the context cost or necessity of agent instructions, skill descriptions, or loading rules. Skip ordinary application work.
 ---
 
 # Context Budget Audit
@@ -34,15 +34,15 @@ description: Use when auditing or managing the always-loaded context budget of a
 
 清点 always-loaded 的所有来源：
 
-| 来源 | 怎么查 | Token 估算 |
+| 来源 | 怎么查 | 报告什么 |
 |---|---|---|
-| `AGENTS.md` 自身 | `wc -l AGENTS.md` | line × 0.75 token/line（中文为主） |
-| `@`-imported guideline | grep `^@` AGENTS.md，对每个 path 累加行数 | 同上 |
-| skill SKILL.md 的 description 字段（matching 时进 context） | `find skills -name SKILL.md` + 取 frontmatter description | 字数 × 1.2 token/字 |
-| SessionStart hook 注入的 additionalContext | 看 `~/.claude/settings.json` hook 配置 + handler 输出 | 注意各 harness 是否有 max-chars cap |
-| Claude Code 自带 system prompt + auto memory | `~/.claude/<proj>/memory/MEMORY.md` + 个别 memory 文件 | 行数 × 0.75 |
+| `AGENTS.md` 自身 | 读取源文件 | 字符数、行数及计数口径 |
+| `@`-imported guideline | 查 `AGENTS.md` 中的 `^@` 路径，并核对宿主是否展开 | 实际加载的文件及字符数；未展开的引用单列 |
+| skill 的 `description` | 用 `rg --files skills -g SKILL.md` 枚举，再取 frontmatter | 各描述及合计字符数 |
+| hook 注入的 additionalContext | 按当前宿主配置检查 handler 输出 | 可观察的实际注入量及截断情况；无法观察时标未测 |
+| 宿主系统提示与 memory | 按当前宿主暴露的记录核对 | 仅报告可见内容的测量值，不据此推算不可见总量 |
 
-中文 token 估算粗规则：~0.5–0.75 token / char（汉字普遍 1 token / 字，markdown 标点 + 英文 keyword 会拉低均值）。
+字符数、行数都不等于 token 数。只有使用明确对应的 tokenizer 或宿主提供的用量数据时才报告 token，并注明来源与覆盖范围；否则写「token 未测」。不要用每行或每字的固定倍数代替实测，也不要把文本缩短量当作延迟或效果提升。
 
 ### Step 2: Classify
 
@@ -98,7 +98,7 @@ AGENTS.md 自己介绍每个 imported guideline + 然后 `@`-import 把 guidelin
 
 ## 第二判据轴：约束必要性(跟加载成本正交)
 
-四步法量的是**加载成本**——"这条该不该常驻"。约束必要性是**正交**的另一问：**即便这条免费常驻、又永远相关，当代模型(尤其 Claude 5 代)还需要它当护栏，还是本可交给判断力?** 一条规则可以加载不要钱、又永远相关，却仍是**过度规约**——把模型本会做对的事写死，反而压制它按上下文判断。
+四步法量的是**加载成本**——"这条该不该常驻"。约束必要性是**正交**的另一问：**即便这条免费常驻、又永远相关，当前任务的目标模型还需要它当护栏，还是本可交给判断力?** 一条规则可以加载不要钱、又永远相关，却仍是**过度规约**——把模型本会做对的事写死，反而压制它按上下文判断。
 
 一句话判据：**这条规则编码的是模型推不出来的事实，还是模型本就会做的品味?**
 
@@ -111,12 +111,13 @@ AGENTS.md 自己介绍每个 imported guideline + 然后 `@`-import 把 guidelin
 
 对应的落地动作是 Step 4 的第 5 种 **Relax**(博文 Rule 1：用 "match surrounding code" 取代 "never write multi-paragraph docstrings")。
 
-⚠️ **本 repo 用这条轴必须保守**，两个原因：
+**目标模型与宿主分别判断。** 目标模型以当前项目或任务的声明为准，本文不固定“当前使用”的型号。放宽约束的力度由用户策略及目标模型上的实际任务结果决定；一篇面向某型号的建议不能直接证明其他型号也适用。
 
-- **模型代际**：博文只谈 Claude 5 代(Opus 5 / Fable 5)；本 repo 现跑 **Opus 4.x**，吃显式指导比 5 代多，"删规则"力度要降。
-- **Codex 端**：双端单源(见 `guidelines/collaboration/multi-agent.md`)，Codex **不展开 `@`-import、按目录手动开文件**，判断力路径跟 Claude 不同、更依赖显式规则。给 Claude 减的约束不等于给 Codex 也能减。
+- **宿主机制**：Claude Code 可展开 `@`-import；Codex 不展开，需要按适用目录读取文件。这决定资料如何定位和加载，不能据此推导模型判断力强弱。
+- **必要约束**：保留用户明确选择的审批方式、领域隐藏契约和其他真实约束。冗余表述可以精简，但不能把文字去重等同于撤销要求。
+- **验证**：用目标模型处理相同的代表性任务，分别记录选用资料、是否完成要求及何时停下。双方审查意见一致不是双模型行为实测。
 
-所以轴 2 的默认姿态是**挑少数品味类规则保守 Relax**，不是大刀删。本 repo 语料绝大多数是 hidden contract / 硬约束(全属 KEEP)，真正的 over-constraint 候选很少——但**每加一条新 guideline 时过一遍这个判据**，防止把常识写成规则，是最高性价比的用法。
+每新增一条 guideline 时，也检查其约束必要性，避免把模型可按上下文判断的常识写成硬规则。
 
 > 一手 framing：Anthropic [The new rules of context engineering for Claude 5-generation models](https://claude.com/blog/the-new-rules-of-context-engineering-for-claude-5-generation-models) —— "unhobbling"：删掉 Claude Code 系统提示 80% 而"无可测量损失"；judgment-over-rules / interface-over-examples / lean-descriptions。**blog-only、且明确不覆盖旧模型 / 混合 fleet；本轴尚未在真实 audit 里跑过一轮**——按 `_radar/README.md` 政策落地前实测，别照搬。
 
@@ -170,14 +171,14 @@ context 膨胀的根因是「该按需加载的内容被 always-load 了」。Cl
 
 **2026-07-28 收尾（broad-UE → lazy）**：07-19 当轮 broad-UE 14 份保留常驻，判据只到「加载成本」轴。用本次新增的「约束必要性」第二轴 + Claude 5-gen 博文的渐进披露原则复审——这 14 份 ~2500 行在**每个** session 常驻（约占当时 eager footprint 一半），连非 UE 项目也吃，而 `guidelines/ue/INDEX.md` 早已双层覆盖 broad + skill → 停 `@`-import 转 INDEX 懒加载，重度 UE 项目在项目侧 `AGENTS.md` `@`-import 需要的子集拉回（multi-agent Option 2）。`@`-import 进一步降到 **25**（现值 live-query `grep -c '^@' AGENTS.md`，别信定值）。教训：07-19 漏动它不是因为它不浪费，是因为当时判据只看「加载成本 + 常相关」，没问「非 UE session 相不相关」——正是第二轴要补的盲区。
 
-⚠️ **本 technique 自身也是一份 always-loaded** —— 它是条件域（只 audit 时需要）的候选，可跟其他 lazy 内容一样转 skill 触发式；暂按惯例保留 `@`-import（navigation stub 留 AGENTS.md 是折中），等下一轮再评估。
+**本 skill 已按需加载**：`AGENTS.md` 保留发现入口，审计任务命中后再读取正文；无需把本文件加入常驻 `@`-import。
 
 ## 外部数值锚（参考，落地前须实测——别照搬）
 
 radar 2026-07-18 从外部 best-practice 文章收的几个具体阈值，可作本 audit 的参考锚，但**数字互相矛盾、blog-only，用前先实测自己的 repo**：
 
-- **always-loaded 索引文件（AGENTS.md / CLAUDE.md）有"甜区"**：一说 ~200 行内每轮全读、过 ~500 行开始 skim 信号密度崩；另一说 ~40 / ~400——**两个数字打架**。本 repo 的 AGENTS.md 本身 ~235 行、走 `@`-import 展开（真正常驻的是被 import 的 ~8900 行，不是 AGENTS.md 自己）。判据不是抄行数，是**实测**你的索引多长时 harness 开始 skim（可推探针验）。
-- **skill 库 sprawl 上限 ~20 + 周期性退休**：外部经验是攒到 40-50 个但 top 5 占 ~90% 调用、长尾为零 → 硬上限 ~20 + 定期删低调用的。本 repo 当前 18 个 skill（Tier D 新增 3 个 UE lazy skill 后），仍在 ~20 内。**只取"设个上限 + 到点复查退休"的纪律**——团队维度的量化指标（人均调用率 / owner 字段 / PR 强制）不纳入（属组织政策，见 `knowledge-promotion.md` 排除项）。
+- **always-loaded 索引文件（AGENTS.md / CLAUDE.md）有"甜区"**：一说 ~200 行内每轮全读、过 ~500 行开始 skim 信号密度崩；另一说 ~40 / ~400——**两个数字打架**。历史记录中的本仓体量不代表当前加载量；当前文件及宿主展开情况按 Inventory 重新清点。判据不是抄行数，是**实测**你的索引多长时 harness 开始 skim（可推探针验）。
+- **skill 库 sprawl 上限 ~20 + 周期性退休**：外部经验是攒到 40-50 个但 top 5 占 ~90% 调用、长尾为零 → 硬上限 ~20 + 定期删低调用的。当前 skill 清单用 `rg --files skills -g SKILL.md` 现场枚举，不沿用历史数量。**只取"设个上限 + 到点复查退休"的纪律**——团队维度的量化指标（人均调用率 / owner 字段 / PR 强制）不纳入（属组织政策，见 `knowledge-promotion.md` 排除项）。
 
 来源：radar `_radar/2026-07-18.md` 候选 #4（digitalapplied / ai.rundatarun，未经对抗核验）。
 

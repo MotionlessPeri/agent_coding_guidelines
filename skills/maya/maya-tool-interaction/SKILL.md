@@ -7,10 +7,12 @@ description: Use when building a Maya manip, selection context, or other DCC dra
 
 拖一个 handle → 触发一次**昂贵的多元素重算**（IK / solver / 模型推理）的交互工具，有六个
 可组合的模式。在 Maya manip/context 场景提炼，泛化到任意 3D viewport 工具。配套的 Maya 框架
-hidden contract 见 [`../../../guidelines/maya/manip-container-constraints.md`](../../../guidelines/maya/manip-container-constraints.md)
-+ [`../../../guidelines/maya/selection-context-and-undo.md`](../../../guidelines/maya/selection-context-and-undo.md)。
+hidden contract 见 `guidelines/maya/manip-container-constraints.md`
++ `guidelines/maya/selection-context-and-undo.md`。
 
 > ⚠️ 单项目验证的 pattern，应用并精炼。
+
+> **路径说明**：本文里 `guidelines/...`、`techniques/...` 这类路径相对于本项目接入的规范仓根（由项目 `AGENTS.md` / `CLAUDE.md` 里的接入指针定位）；其他 skill 按本会话实际可用的 skill 路径找。没有接入指针时如实说明缺失，不要把业务仓或 skill 安装目录当规范根。
 
 | 模式 | 一句话 |
 |------|--------|
@@ -133,6 +135,6 @@ Bezier 模型完整重算（非累加 delta）；摆姿拖一个 effector 时其
 
 ## 相关 Guidelines / Skills
 
-- [`../../../guidelines/maya/manip-container-constraints.md`](../../../guidelines/maya/manip-container-constraints.md) — MPxManipContainer 框架契约
-- [`../../../guidelines/maya/selection-context-and-undo.md`](../../../guidelines/maya/selection-context-and-undo.md) — context 回调时序 + 为什么 plug undo 不够
-- [`../../architecture/multi-plugin-shared-core/SKILL.md`](../../architecture/multi-plugin-shared-core/SKILL.md) — undo 数据存的 instance/Snapshot 来自这套架构
+- `guidelines/maya/manip-container-constraints.md` — MPxManipContainer 框架契约
+- `guidelines/maya/selection-context-and-undo.md` — context 回调时序 + 为什么 plug undo 不够
+- skill `multi-plugin-shared-core` — undo 数据存的 instance/Snapshot 来自这套架构

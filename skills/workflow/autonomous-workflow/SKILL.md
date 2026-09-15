@@ -1,6 +1,6 @@
 ---
 name: autonomous-workflow
-description: Use when the user explicitly requests an autonomous, low-touch, or agent-led workflow for a substantial task; or when the task has a clear predefined pipeline and the user wants only one approval gate at the implementation plan. Skip for trivial work, ambiguous acceptance criteria, supervised workflow, or tasks whose architecture and interfaces require user decisions during implementation.
+description: Use when the user requests autonomous work on a substantial task or wants only one implementation-plan approval. Skip trivial edits, unclear acceptance criteria, user-selected supervised work, and unresolved architecture or interface decisions.
 ---
 
 # Autonomous Workflow

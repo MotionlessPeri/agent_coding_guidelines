@@ -1,6 +1,6 @@
 ---
 name: tdd-with-fixtures
-description: Strengthened TDD discipline. Augments superpowers:test-driven-development with milestone-level test requirements, an escape hatch (fixture + manual test case) for behaviors that automated tests cannot cover, and an archive convention so manual cases stay reproducible. Use during the implementation phase of any non-trivial task. Especially critical inside autonomous-workflow where tests replace user review gates as the safety net. Does NOT replace superpowers:test-driven-development; invoke both — superpowers:TDD owns the red-green-refactor cycle, this skill owns milestone gating + fixture/manual accumulation.
+description: Use during the implementation phase of non-trivial tasks, including supervised and autonomous workflows, for milestone verification and reproducible fixture-backed manual tests. Skip doc-only edits and mechanical changes.
 ---
 
 # TDD with Fixtures

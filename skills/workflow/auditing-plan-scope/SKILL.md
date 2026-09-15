@@ -1,6 +1,6 @@
 ---
 name: auditing-plan-scope
-description: Use when preparing a non-trivial software design or implementation plan for approval and the proposal may add or expand a process, transport, protocol, persistent state, public interface, command, configuration, security or trust boundary, lifecycle mechanism, or temporary validation surface. Skip implementation-stage findings governed by an already approved plan.
+description: Use before approval of a non-trivial design or implementation plan that may add processes, protocols, state, interfaces, configuration, or trust boundaries. Skip implementation-stage findings covered by an approved plan.
 ---
 
 # Auditing Plan Scope

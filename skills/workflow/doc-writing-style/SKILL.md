@@ -1,11 +1,13 @@
 ---
 name: doc-writing-style
-description: 起草「交付级」文档（设计稿 / 任务书 / handoff / 用户使用文档 / brainstorm 结论稿 / CHANGELOG）时用——两块 discipline：(1) 文体，应用 prose-and-register（工作语言写散文 / 标识符保留原文并加代码环境 / 不说黑话 / 简洁不丢信息 / 不翻译腔 / 自造词首次 grounding / 数量表述）；(2) 图示，「多阶段流程 / 多分支决策 / 易漏关键步」任一就必须画图，且图要可移植（按目标渲染器版本写、不 hardcode 语法、必要时探针实测）。对话回复 / commit message / 私人草稿不适用（各走自己规则）。是 guidelines/writing/prose-and-register.md（文体 SoT）+ guidelines/workflow/documentation.md（文档结构）的文档场景执行面。
+description: 起草交付级文档（设计稿 / 任务书 / handoff / 用户使用文档 / brainstorm 结论稿 / CHANGELOG）时用：文体套 guidelines/writing/prose-and-register.md；多阶段流程 / 多分支决策 / 易漏关键步任一就必须画图，图按目标渲染器可移植；简单几步用编号列表即可。对话回复 / commit message / 私人草稿不适用。
 ---
 
 # 交付文档的文体 + 图示 discipline
 
 起草**给人读、要照着做**的文档时套用。防的是两个反方向的失败：一边是英文夹生 + 黑话 + 冗余把读者劝退，另一边是"简洁"过头把操作必需的信息删了。
+
+> **路径说明**：本文里 `guidelines/...`、`techniques/...` 这类路径相对于本项目接入的规范仓根（由项目 `AGENTS.md` / `CLAUDE.md` 里的接入指针定位）；其他 skill 按本会话实际可用的 skill 路径找。没有接入指针时如实说明缺失，不要把业务仓或 skill 安装目录当规范根。
 
 > 单项目（DialogueSystemSample，中文协作团队）提炼，apply-and-refine。语言 / 术语替换表 / 目标渲染器都是**项目可调**项。
 
@@ -13,11 +15,11 @@ description: 起草「交付级」文档（设计稿 / 任务书 / handoff / 用
 
 - **触发**：起草交付级文档——设计稿 / 同事任务书 / handoff brief / 用户使用文档 / brainstorm 结论稿 / CHANGELOG / roadmap。
 - **跳过**：临时草稿 / 私人 memory / session log / commit message / 对话回复（这些走各自的 per-project 语言偏好，不强制本规范）。
-- **跟 declarative guideline 的关系**：文体规则本身在 [`guidelines/writing/prose-and-register.md`](../../../guidelines/writing/prose-and-register.md)（跨「文档 + 代码注释」共享的 SoT）；[`guidelines/workflow/documentation.md`](../../../guidelines/workflow/documentation.md) 管**何时**同步 / **怎么**拆分 / **怎么**建索引 / 「结论先于细节」。本 skill = 前者在文档场景的应用 + 图示 discipline。关系同 `function-clarity.md` ↔ `conversation-walkthrough` skill。
+- **跟 declarative guideline 的关系**：文体规则本身在 `guidelines/writing/prose-and-register.md`（跨「文档 + 代码注释」共享的 SoT）；`guidelines/workflow/documentation.md` 管**何时**同步 / **怎么**拆分 / **怎么**建索引 / 「结论先于细节」。本 skill = 前者在文档场景的应用 + 图示 discipline。关系同 `function-clarity.md` ↔ `conversation-walkthrough` skill。
 
 ## 一、文体：遵循 prose-and-register，文档场景加两点
 
-**文体规则本身在 [`guidelines/writing/prose-and-register.md`](../../../guidelines/writing/prose-and-register.md)**——工作语言写散文 + 标识符保留原文并加代码环境 / 不说黑话（业务术语本地化、工程共识词不强译、半通用 CS 词也算黑话、中文商业黑话另一轴）/ 简洁 ⇔ 不丢信息的张力 / 别要翻译腔·别压箭头公式·英文状态词不做一对一映射 / 项目自造词首次出现先 grounding / 数量表述（百分点·倍数·区间包含关系）。那条是跨「文档 + 代码注释」共享的 SoT，起草文档前先过一遍。本 skill 不复制这些规则，只在其上加两点文档场景的应用：
+**文体规则本身在 `guidelines/writing/prose-and-register.md`**——工作语言写散文 + 标识符保留原文并加代码环境 / 不说黑话（业务术语本地化、工程共识词不强译、半通用 CS 词也算黑话、中文商业黑话另一轴）/ 简洁 ⇔ 不丢信息的张力 / 别要翻译腔·别压箭头公式·英文状态词不做一对一映射 / 项目自造词首次出现先 grounding / 数量表述（百分点·倍数·区间包含关系）。那条是跨「文档 + 代码注释」共享的 SoT，起草文档前先过一遍。本 skill 不复制这些规则，只在其上加两点文档场景的应用：
 
 1. **项目自造词开篇术语表 grounding**：文档比注释更依赖统一上下文——读者需要一次性看懂术语。guideline 要求首次出现的自造词（carrier / 中性 / curvenet 这类）grounding，文档场景把它落成**开篇一个「术语表」小节**（词 → 一句话释义，通常一张两列小表），别散落到正文各处才解释。**标题就用「术语表」（或「术语说明」），不要用「先认几个词」这类口语化标题——交付文档要读着正式。**
 2. **黑话替换表落到项目**：guideline 给了示例表，具体表由项目补自己的业务术语（写进项目 AGENTS.md / memory）。
@@ -52,7 +54,7 @@ description: 起草「交付级」文档（设计稿 / 任务书 / handoff / 用
 
 ## Anti-Patterns
 
-> 文体反 pattern（夹生英文 / 强译共识词 / 翻译腔 / 箭头公式 / 为简洁删信息）见 [`guidelines/writing/prose-and-register.md`](../../../guidelines/writing/prose-and-register.md)。下面是文档 / 图示专属的：
+> 文体反 pattern（夹生英文 / 强译共识词 / 翻译腔 / 箭头公式 / 为简洁删信息）见 `guidelines/writing/prose-and-register.md`。下面是文档 / 图示专属的：
 
 | 反 pattern | 为什么错 | 修法 |
 |---|---|---|
@@ -71,11 +73,11 @@ description: 起草「交付级」文档（设计稿 / 任务书 / handoff / 用
 | 目标渲染器 + 版本约束 | 不 hardcode | 项目 memory / AGENTS.md 维护当前版本 + 能力边界 |
 | 高亮配色 | 橘 `#fff3e0` / 红描边，且 fill 必配深色 `color:`（如 `#000`） | 团队配色约定 |
 
-> 散文语言 / 黑话替换表的 tuning 移到 [`guidelines/writing/prose-and-register.md`](../../../guidelines/writing/prose-and-register.md)。
+> 散文语言 / 黑话替换表的 tuning 移到 `guidelines/writing/prose-and-register.md`。
 
 ## 相关 Guidelines / Skills
 
-- [`guidelines/writing/prose-and-register.md`](../../../guidelines/writing/prose-and-register.md) —— 文体规则本身（工作语言 / 标识符加代码环境 / 不说黑话 / 简洁⇔不丢信息 / 不翻译腔 / 数量表述）；本 skill 是它在文档场景的执行面 + 图示 discipline
-- [`guidelines/workflow/documentation.md`](../../../guidelines/workflow/documentation.md) —— declarative 同步 / 拆分 / 索引规则；本 skill 是其「散文 + 图示执行面」补充
-- [`guidelines/code/function-clarity.md`](../../../guidelines/code/function-clarity.md) —— 同形态的「写好」discipline，但对象是代码注释 / 函数结构而非文档散文
+- `guidelines/writing/prose-and-register.md` —— 文体规则本身（工作语言 / 标识符加代码环境 / 不说黑话 / 简洁⇔不丢信息 / 不翻译腔 / 数量表述）；本 skill 是它在文档场景的执行面 + 图示 discipline
+- `guidelines/workflow/documentation.md` —— declarative 同步 / 拆分 / 索引规则；本 skill 是其「散文 + 图示执行面」补充
+- `guidelines/code/function-clarity.md` —— 同形态的「写好」discipline，但对象是代码注释 / 函数结构而非文档散文
 - [`skills/workflow/conversation-walkthrough/SKILL.md`](../conversation-walkthrough/SKILL.md) —— 收尾的注释体检跟本 skill 共用同一份 prose-and-register（注释场景执行面）

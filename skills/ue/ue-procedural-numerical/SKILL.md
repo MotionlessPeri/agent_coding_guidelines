@@ -1,6 +1,6 @@
 ---
 name: ue-procedural-numerical
-description: Use when programmatically authoring UE RigVM / Control Rig graphs, batch-baking animation into Control Rig via Sequencer, building Optimus deformer graphs, running numerical solvers (RBF, sparse-linear, GPU) in a UE module, or parallelizing a UE C++ hot path. Six hidden contracts from procedural rigging / deformation / solver work — bulk per-element data goes in URigHierarchy metadata not pin defaults (else the graph editor hangs); batch-bake keys via section float channels not per-key SetLocalControlRig; Optimus ComputeNormalsTangents drops authored normals so use the KeepImported/KeepInput variants; FRBFSolver and TMemStackAllocator users need an active FMemMark outside anim evaluation; UE has no GPU sparse solver so bring-your-own runtime lib with CPU fallback; OpenMP will not build in a UE module so use IntelTBB or ParallelFor. Skip for non-UE work or standard UE anim/rendering without programmatic graph authoring, in-engine solving, or hot-path parallelism.
+description: Use for UE RigVM / Control Rig graph generation, Sequencer batch key baking, Optimus normal issues, FRBFSolver / TMemStack use, GPU numerical solving, or CPU hot-path parallelism. Includes graph hangs, slow baking, and solver crashes. Skip non-UE work and ordinary AnimBP editing.
 ---
 
 # UE 程序化 RigVM / 数值 / GPU / 并行

@@ -1,6 +1,6 @@
 ---
 name: official-mcp-usage
-description: How to consume UE 5.8+ official `ModelContextProtocol` MCP server from an agent session. Use when a UE 5.8+ project enables `ModelContextProtocol` and `AllToolsets`; when Claude Code or Codex must read or mutate editor state through the official MCP; when `list_toolsets`, `load_toolset`, or `call_tool` is involved; or when calls fail with `No such tool`, `Unknown tool`, `Invalid session id`, or connection errors. Skip when the project uses only the UnrealMCP fork or has no MCP integration.
+description: Use for UE 5.8+ official ModelContextProtocol / AllToolsets setup, editor automation, or tool-loading and connection failures such as No such tool or Invalid session id. Skip non-UE MCP services and projects using only the UnrealMCP fork.
 ---
 
 # Official UE MCP Usage (UE 5.8+)

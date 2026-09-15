@@ -9,6 +9,8 @@ description: 用于产出非平凡代码改动后的对话收尾，或用户要�
 
 > 单项目（curve_articulation_maya）验证一轮,apply-and-refine。
 
+> **路径说明**：本文里 `guidelines/...`、`techniques/...` 这类路径相对于本项目接入的规范仓根（由项目 `AGENTS.md` / `CLAUDE.md` 里的接入指针定位）；其他 skill 按本会话实际可用的 skill 路径找。没有接入指针时如实说明缺失，不要把业务仓或 skill 安装目录当规范根。
+
 ## 触发与范围
 
 - **触发**:编码对话收尾;或用户说「walkthrough / review 这个对话改的代码 / 看有没有重构点 / 整理注释」。
@@ -54,7 +56,7 @@ description: 用于产出非平凡代码改动后的对话收尾，或用户要�
 
 注释跟文档同源——一条写得烂的注释(夹生英文、翻译腔、箭头公式)跟一份写得烂的文档是同一种病。本 Phase 查**三个轴**,别只查后两个:
 
-1. **prose 质量**——注释措辞走 [`guidelines/writing/prose-and-register.md`](../../../guidelines/writing/prose-and-register.md):工作语言写散文 + 标识符保留原文 / 不说黑话(半通用 CS 词 marshalling·parity·legacy 也算) / 别要翻译腔·别压箭头公式 / 简洁 ⇔ 不丢信息(砍冗余措辞、不砍"为什么这样设计"的事实)。跟 `doc-writing-style` skill 共用同一份 SoT,只是对象从文档散文换成注释。
+1. **prose 质量**——注释措辞走 `guidelines/writing/prose-and-register.md`:工作语言写散文 + 标识符保留原文 / 不说黑话(半通用 CS 词 marshalling·parity·legacy 也算) / 别要翻译腔·别压箭头公式 / 简洁 ⇔ 不丢信息(砍冗余措辞、不砍"为什么这样设计"的事实)。跟 `doc-writing-style` skill 共用同一份 SoT,只是对象从文档散文换成注释。
 2. **stability(自包含原则)**——剥 transient、保留 stable why,见下。
 3. **结构**——关键函数 Doxygen 契约头,见下。
 

@@ -121,7 +121,7 @@ UE Marketplace / Fab 上的官方 + 第三方插件源码（如果开源）也�
 - "我以为 SaveConfig 会写到项目仓库 ini" → 实际写到 user-level Game.ini → 跨机配置丢
 - "我以为 `CanDuplicate` 拦所有复制" → 实际只拦 Content Browser Duplicate 命令
 
-**修法**：动手前**强制**找一份 reference impl 读 30 分钟。
+**修法**：动手前找到相关 reference impl，核对当前引擎版本的调用顺序与约束；以弄清契约为准，不要求固定阅读时长。
 
 ### 2. 用 AI 生成 UE 代码不验证
 

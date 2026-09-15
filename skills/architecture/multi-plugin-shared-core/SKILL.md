@@ -11,6 +11,8 @@ description: Use when designing, extracting, or reviewing a system where multipl
 
 > ⚠️ 状态：单项目验证。属于"应用并精炼"的 pattern，不是硬规则。第二个相关项目应验证 + 修正。
 
+> **路径说明**：本文里 `guidelines/...`、`techniques/...` 这类路径相对于本项目接入的规范仓根（由项目 `AGENTS.md` / `CLAUDE.md` 里的接入指针定位）；其他 skill 按本会话实际可用的 skill 路径找。没有接入指针时如实说明缺失，不要把业务仓或 skill 安装目录当规范根。
+
 | 模式 | 一句话 |
 |------|--------|
 | 1. ExtensionContainer | core 实体带 type-keyed 扩展容器，替代"每 feature 一个子类" |
@@ -49,7 +51,7 @@ private:
 **收益**：无继承复杂度；feature 自包含独立开发；新 feature 只注册不改 core（开闭原则）。
 **代价**：key 是字符串无编译期检查；访问要转型 + null 检查（用 `requireXxx()` 包一层 + assert 兜底）。
 **热路径注意**：别在逐帧循环里反复 `getExtensionAs`（dynamic_cast 开销），循环外缓存——见
-[`../../../guidelines/cpp/hot-path-cpp.md`](../../../guidelines/cpp/hot-path-cpp.md)。
+`guidelines/cpp/hot-path-cpp.md`。
 
 ## 2. Feature-parser 注册制：base 零依赖
 
@@ -116,7 +118,7 @@ public:
 
 **约束**：存非拥有指针；生命周期钩子明确（创建时注册 / 删除时反注册 / 场景重置时全清）。
 **通信范式**：发布方 → Registry 注册，消费方 → Registry 查询，**而非**消费方 → 发布方 context。
-跨 DLL 单例纪律见 [`../../../guidelines/cpp/multi-dll-plugin.md`](../../../guidelines/cpp/multi-dll-plugin.md)。
+跨 DLL 单例纪律见 `guidelines/cpp/multi-dll-plugin.md`。
 
 ---
 
@@ -180,7 +182,7 @@ dead"、"临时隐藏"、"待重算"），而这个状态不属于权威几何�
 
 ## 相关 Guidelines / Skills
 
-- [`../../../guidelines/cpp/multi-dll-plugin.md`](../../../guidelines/cpp/multi-dll-plugin.md) — 非拥有 Registry 的跨 DLL 单例实现 + 两阶段初始化
-- [`../../../guidelines/cpp/hot-path-cpp.md`](../../../guidelines/cpp/hot-path-cpp.md) — getExtensionAs 热路径缓存
-- [`../../../guidelines/code/reuse-before-implementing.md`](../../../guidelines/code/reuse-before-implementing.md) — 架构 pattern 级复用归 skill 的依据
+- `guidelines/cpp/multi-dll-plugin.md` — 非拥有 Registry 的跨 DLL 单例实现 + 两阶段初始化
+- `guidelines/cpp/hot-path-cpp.md` — getExtensionAs 热路径缓存
+- `guidelines/code/reuse-before-implementing.md` — 架构 pattern 级复用归 skill 的依据
 - `skills/ue/ue-module-architecture` — UE 版的 module 切分架构 skill（同形态，不同框架）
