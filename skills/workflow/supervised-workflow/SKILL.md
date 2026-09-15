@@ -36,9 +36,38 @@ Do not mix roots within one run. Project-local Codex skills and Codex private st
 
 If in doubt about trigger, **ask the user** which workflow they want — do not silently default.
 
+## Reuse Existing Decisions and Evidence
+
+Start at the first unfinished phase. Identify the user turn or durable record
+that approved the design/plan and confirm it still covers the current task.
+Reuse completed preparation and approvals; review only new or changed decisions.
+Unresolved scope or architecture changes still need approval. An explicitly
+requested new review remains a gate, even if an older approval exists.
+
+For a resumed task, preserve its original task baseline and failure history;
+record the current checkout status separately and resolve new ownership overlaps.
+Do not reset the baseline to hide earlier task changes. Create a new baseline
+only for a new task, not simply because the conversation resumed.
+
+Use one review record for requirements coverage, scope attribution, correctness,
+structure/comments, and integration findings. Reuse existing records rather than
+creating a separate walkthrough tracking file. Each required review perspective
+must still be covered; self-review does not substitute for required independent
+review, user-requested walkthrough output, or human visual verification.
+
+For reused verification, record the command/procedure, result, and tested source,
+artifact and relevant environment state (commit plus any uncommitted changes).
+Reuse evidence only while those inputs and its coverage remain applicable.
+Changes affecting them require targeted re-verification; committing the same
+tested content or an unrelated change alone does not invalidate evidence.
+Existing full-suite/build evidence can satisfy a final check on that same state;
+missing integration coverage still requires verification. Extra refactoring
+remains subject to scope and user approval.
+
 ## The Chain
 
-Five phases, three gates. Gates are **hard** — agent must stop and wait for user response before advancing.
+Four phases, three gate types. Gates are **hard** — if a gate has no applicable explicit approval yet, stop
+and wait for the user before advancing.
 
 ```
 Phase 1: Brainstorm
@@ -59,7 +88,8 @@ Phase 1: Brainstorm
     summary to the Phase 1 output.
 
 [GATE 1] User reviews brainstorm output.
-  Wait for explicit user confirmation. Do NOT proceed on silence or vague replies.
+  Use an existing applicable explicit approval, or wait for user confirmation.
+  Do NOT proceed on silence or vague replies.
   If user redirects, restart Phase 1 with updated framing.
 
 Phase 2: Implementation Plan
@@ -77,7 +107,8 @@ Phase 2: Implementation Plan
     test/verification approach, completion criteria.
 
 [GATE 2] User reviews impl-plan.
-  Wait for explicit user confirmation on Milestone breakdown.
+  Use an existing applicable explicit approval of this Milestone breakdown,
+  or wait for user confirmation.
   If user adjusts Milestones, regenerate plan with the adjustments.
 
 Phase 3: Per-Milestone Implementation
@@ -86,8 +117,12 @@ Phase 3: Per-Milestone Implementation
       status, commits, reviewer prompts, and Gate 3 output; stop and reconcile
       any private/user-visible numbering mismatch
     → invoke superpowers:executing-plans for THIS Milestone only
-    → invoke superpowers:test-driven-development AND tdd-with-fixtures
-      for test discipline — milestone NOT done if tests fail
+    → Apply test skills within their own scope: new behavior and bug fixes
+      require red-before-green; fixture/manual verification remains required
+      where automation cannot cover behavior. For a pure refactor, run existing
+      tests that cover the changed paths and retain their results. For doc-only
+      or mechanical non-behavior changes, run applicable content/link checks
+      rather than inventing a failing test. Missing coverage is not an exemption.
     → validate (build / tests / smoke as appropriate). Reading code is NOT
       validation — run commands and observe output.
     → commit. Format: `<type>: <subject>`. One theme per commit. Commit only at
@@ -147,7 +182,8 @@ Each gate is a hard checkpoint. At each gate:
 
 1. **Output a focused summary** for the user to review. Keep it under what fits in one screen — bullet points, files changed, decisions made. Don't dump the full plan or full diff; the user can ask if they want detail.
 
-2. **Stop and wait.** Do not proceed to the next phase until the user gives a response that either:
+2. **Check for an applicable explicit approval of this decision.** Reuse it when
+   present; otherwise stop and wait for a response that either:
    - confirms (e.g., "ok", "go", "looks good", "继续", "认可")
    - redirects (which restarts the current phase with adjustments)
 
@@ -182,9 +218,11 @@ three-failure budget in `guidelines/workflow/agent-lifecycle.md`.
 Agent proposes Milestone breakdown in Phase 2. User confirms or adjusts at Gate 2. Guidelines:
 
 - A Milestone should produce a **commit-able state**: code compiles, existing tests pass, intermediate scope is coherent.
-- Prefer 3-7 Milestones for a substantial feature. Fewer means too coarse (hard to review); more means too fine (gate overhead dominates).
+- Choose Milestones by coherent, verifiable delivery units; one Milestone is valid.
+  Do not split work merely to reach a target count.
 - A Milestone that introduces a new public interface should include at least one consumer or test.
-- If you propose <3 or >8 Milestones, justify in the plan why this granularity is right.
+- Even with one Milestone, Gate 2 approves the plan before implementation and
+  Gate 3 reviews the result afterward. They are not interchangeable.
 
 ## Trivial-Task Exclusion
 
@@ -198,8 +236,8 @@ This skill is an **orchestrator** — it invokes other skills, does not replace 
 - `superpowers:writing-plans` — owns Phase 2 content
 - `superpowers:executing-plans` — owns Phase 3 implementation
 - `superpowers:requesting-code-review` — owns Phase 4
-- `superpowers:test-driven-development` — base red/green/refactor cycle, invoked inside Phase 3
-- `tdd-with-fixtures` — milestone-level test discipline + fixture/manual escape hatch for behaviors auto-tests can't cover; invoked inside Phase 3 alongside superpowers:TDD. Non-negotiable: workflow gates do not suspend its rules.
+- `superpowers:test-driven-development` — red/green/refactor for applicable Phase 3 behavior changes
+- `tdd-with-fixtures` — milestone-level test discipline + fixture/manual escape hatch for behaviors auto-tests can't cover; invoked inside Phase 3 alongside superpowers:TDD. Respect its trigger and skip conditions; workflow gates do not suspend required verification.
 - Project-side `pattern-recognition-prep` skill (optional, design-time prep) — if `<project-skill-root>/pattern-recognition-prep/SKILL.md` exists, invoke it at Phase 1 (read direction: surface reusable Established / Watching patterns before GATE 1) and Phase 4 (write direction: audit novel pattern → Watching / Watching → Established promotion). Findings drive Milestone breakdown to favor reuse. User approve required before any catalog write.
 
 When invoking each composed skill, **follow that skill's own discipline fully**. Do not skip steps of a composed skill because this orchestrator is also running.

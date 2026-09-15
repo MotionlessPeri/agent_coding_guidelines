@@ -14,14 +14,15 @@ description: 用于产出非平凡代码改动后的对话收尾，或用户要�
 ## 触发与范围
 
 - **触发**:编码对话收尾;或用户说「walkthrough / review 这个对话改的代码 / 看有没有重构点 / 整理注释」。
-- **范围**:**本对话改过的代码**。用 `git diff <对话起始 commit>~1 <最后 commit>` + 工作区改动圈定文件集,不漫游全仓。
+- **范围**:独立 walkthrough 按用户指定的范围或**本对话改过的代码**;作为 workflow 收尾时,按任务的原始 `TASK_BASELINE` 到 HEAD 的全部 task-owned 提交 + 工作树改动(含 untracked),恢复前做的部分不能丢。基线是改动前的 HEAD,不做 `~1`(那会多带一个提交)。不漫游全仓,不扩到无关他人的工作。
 - **跳过**:平凡/机械改动;或用户把 review 推迟到后面 milestone。
 
-## 配套铁律:tracking 文档 + 分主题 commit
+## 配套纪律:一份记录锚点 + 分主题 commit
 
-- **建一份 ephemeral tracking 文档**(放项目的 `docs/plans/<date>-*-walkthrough.md` 之类)当**讨论主线锚点**:范围、结构 map、发现、决策、进度 log 都进去。深入代码细节时随时拉回主线,防偏移。
-  - ⚠️ 这份文档**本身 ephemeral**(review 完 cleanup),按「注释自包含」原则**不被任何代码注释引用**。
+- **复用既有的审查记录当讨论主线锚点**:任务已有 handoff worklog / brief(autonomous)、plan 或 gate 输出(supervised)、或别的 durable 任务记录时,范围、结构 map、发现、决策、进度都追加进它,**不另建 tracking 文档**。只有**没有任何既有记录、且这次 review 需要持续跟踪或交接**(多轮讨论 / 换人续做)时,才建一份 ephemeral tracking 文档(如项目的 `docs/plans/<date>-*-walkthrough.md`)当锚点;单次做完的 walkthrough 用聊天里的 Phase 1 map + Phase 4 recap 即可。
+  - ⚠️ 若建了 ephemeral 文档,它**本身会被 cleanup**,按「注释自包含」原则**不被任何代码注释引用**。
 - **重构与注释清理分成不同主题、各自 commit**(`guidelines/workflow/commits.md` 一 commit 一主题):结构重构 = `refactor:`,注释清理 = `docs:`。**先提已验证的重构,再单独提注释**——结构改动和文字改动混一个 diff,review 时分不清「这行是搬过来的还是改了语义」。
+- **用户明确提出的要求不因复用而省略**:用户要完整 walkthrough、独立评审(fresh 对话 / 另一人)、人工验收、或对某次重构单独批准时,照做。本 skill 的复用只针对**重复的记录**与**已覆盖同一输入的证据**,不针对用户点名要的检查。
 
 ## Phase 1 — 结构 map（呈给用户的 MR 式 review 摘要）
 
@@ -105,9 +106,9 @@ int splitSpline(int splineIdx, double t);
 ## Phase 4 — 执行 + 验证
 
 1. 用户拍定重构范围后动手:结构改动**保持注释原样搬**(注释清理留下一个 diff,结构/prose 分开 review)。
-2. **验证语义没变**:cold rebuild(插件/native 必 cold,不 hot reload)+ 冒烟/headless 跑一遍既有 verify 脚本(`guidelines/code/validation.md` 对抗式)。重构尤其要「行为不变」实证,不能只「看代码对」。
+2. **验证语义没变**:cold rebuild(插件/native 必 cold,不 hot reload)+ 冒烟/headless 跑一遍既有 verify 脚本(`guidelines/code/validation.md` 对抗式)。重构尤其要「行为不变」实证,不能只「看代码对」。**已有有效证据可复用**:此前对同一份输入(受影响的源文件 / 产物 / 环境)跑过同样的验证并留有输出,且现在的实际内容与证据记录的状态一致——源文件比内容(如 `git hash-object` 对照记录的 blob),产物与环境比记录的标识;`git diff` 只作已跟踪源码的辅助检查:它看不见 untracked / 产物 / 环境,而验证未提交树后再提交,与旧 HEAD 的 diff 非空也不表示证据失效。一致则引用那份证据、不重跑;不能确定一致就补验受影响的部分。证据是否仍有效看它覆盖的输入变没变,不看之后有没有别的 commit。
 3. 重构 commit(`refactor:`)→ 注释清理 commit(`docs:`),各自单一主题。
-4. 更新 tracking 文档进度 log。
+4. 把进度追加进所用的记录(既有任务记录,或本轮建的 tracking 文档)。
 5. **呈 MR 式收尾 recap**:给用户一段总结——本单元 commit 清单(hash + 一句话各做了什么)/ 改动范围 / 验证结果(测试 PASS / 行为不变实证 / 残留 finding)。让用户像看 MR 一样确认,不是改完静默过。
 6. **promote 评估**:本轮发现的可复用 lesson 按 `guidelines/workflow/knowledge-promotion.md` 评估是否回灌 meta-corpus(两-strike / 框架 hidden contract)。
 
@@ -117,7 +118,8 @@ int splitSpline(int splineIdx, double t);
 |---|---|---|
 | Phase 1 只给文件级 map,不列函数 | Phase 2 🔴/🟢 退化成顺带发现,漏覆盖;用户拿到零散发现而非覆盖率清单 | Phase 1 必给函数级清单,显式标 🔑key / 📏超长 + 行数 |
 | 自审完直接改 + move on,不给用户 MR 式摘要 | 用户看不到改了哪些范围 / 架构影响 / 哪些 🔑key·📏超长函数被动了,等于黑箱重构 | 每单元先呈 Phase 1 map(scope+架构+函数清单)+ Phase 2 发现,像 MR description 一样获批再动手;Phase 4 末补「改了什么」recap |
-| 不建 tracking 文档,边聊边深入 | 讨论偏移、丢主线、决策无记录 | 先建 ephemeral tracking 文档锚主线 |
+| 需持续跟踪 / 交接的 review 没有任何记录锚点,边聊边深入 | 讨论偏移、丢主线、决策无记录 | 复用既有任务记录;没有才建 ephemeral tracking 文档 |
+| 每次 walkthrough 另建 tracking 文档、重跑已覆盖同一输入的验证 | 记录与证据重复,收尾成本随流程叠加 | 复用既有记录与有效证据;用户点名要的完整 walkthrough / 独立评审 / 人工验收照做 |
 | 重构 + 注释清理混一个 commit | review 分不清结构改动 vs 语义改动 | 分主题各自 commit,先重构后注释 |
 | 注释清理时连 why 一起删 | 丢失设计理由 | 先浓缩 inline 再删 ephemeral 引用 |
 | 重构后只「看代码对」不实测 | 隐性语义漂移 | cold rebuild + 冒烟/headless 验证 |
