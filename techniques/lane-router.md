@@ -99,7 +99,28 @@ smoke 回复至少回显原 dispatch ID、当前工作目录、handoff/SoT hash 
 lane-router-rotate <codex|claude> <lane-address> --handoff-file <absolute-path> [--terminal <wt|powershell|cmd>]
 ```
 
-handoff 文件必须位于 `~/.lane-router/rotation-handoffs/`，使用 UUID `.md` 文件名。新 conversation 只接替完全相同的地址并省略 `role_description`；恢复 cwd、Git 状态、批准范围、验证证据和 pending mailbox 后先报告就绪，不自行推进新功能。launcher 返回成功只证明新 terminal 已创建，必须等新 conversation 报告 attach 成功后，才能关闭旧 terminal 或把轮换记为完成。
+handoff 文件必须位于 `~/.lane-router/rotation-handoffs/`，使用 UUID `.md` 文件名。新 conversation 只接替完全相同的地址并省略 `role_description`；恢复 cwd、Git 状态、批准范围、验证证据和 pending mailbox 后先报告就绪，不自行推进新功能。
+
+`lane-router-rotate` 返回成功只证明 successor CLI 已启动，状态是“轮换已发起”，不是“轮换已完成”。Router 为避免截断旧 generation 正在运行的 turn，会让新 conversation 的 `lane_attach_current` 等待旧 turn 上报 `Stop`。因此旧 agent 在命令返回成功后只允许发送一条最终状态，然后必须立即结束当前 turn；不得再调用工具、查询 `lane_directory`、等待或轮询接替结果。旧 turn 持续运行会使新 generation 一直无法完成 attach。
+
+```mermaid
+sequenceDiagram
+    participant Old as 旧 generation
+    participant OldTerminal as 旧 terminal
+    participant Router as Lane Router
+    participant New as 新 generation
+    participant Observer as 用户或独立协调者
+
+    Old->>New: 启动 successor CLI
+    Old-->>Observer: 报告轮换已发起
+    Old->>Router: 结束 turn，上报 Stop
+    New->>Router: lane_attach_current
+    Router-->>New: generation 增加，接替完成
+    New-->>Observer: 报告接替成功并等待指示
+    Observer-->>OldTerminal: 确认后可关闭
+```
+
+旧 **turn** 必须停止，旧 **terminal** 可以暂时保留；二者不是同一个动作。接替成功只能由新 generation，或能独立查询 Router 的用户/协调者确认。旧 agent 不负责在同一个 turn 里等待回执，也不得宣称轮换完成。确认新 generation 已报告 attach 成功后，才能关闭旧 terminal 或把轮换记为完成。
 
 Windows 上创建交互式独立 terminal 时，不要把 Node `spawn` 的 `spawn` 事件当作窗口可见且持续存在的证据。真实验证表明，直接 `spawn` PowerShell 并设置 `detached: true` 可以先报告成功、随后立刻退出，既没有窗口也没有启动目标 CLI。Lane Router 因此通过 PowerShell `Start-Process -WindowStyle Normal` 创建可见 terminal；若轮换没有窗口，检查实际进程链应为 `PowerShell → terminal-child → lane-router-codex/claude`（terminal child 旧名 `rotation-terminal-child`，2026-08-18 泛化为三条开窗命令共享），不要只看 launcher 退出码。
 
