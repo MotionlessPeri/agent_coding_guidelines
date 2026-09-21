@@ -183,8 +183,9 @@ lane-router-lane open <project>/<lane> [--cwd <dir>] [--terminal <wt|powershell|
 
 - 调用方不需要知道目标 lane 是什么 agent：`open` 从 Router 的 binding 记录读出 backend 与 conversation id。当前只支持 claude；codex 报"暂不支持"，可手动 `lane-router-codex resume <thread-id>`。
 - **`new` 是拓扑变更**：调用方 conversation 必须先在对话中说明并取得用户明确确认，再调命令——与 `lane_attach_current` 的政策一致，命令不设机械式 confirm 参数。命令开出新 terminal，bootstrap prompt 指示新对话读 AGENTS.md、查目录、带 `role_description` attach、报告就绪后等待指令。地址已存在时报错并提示改用 `open`。`--cwd` 默认取调用命令时的目录。
+- **`new` 返回后 lane 不会立刻出现在目录里**：命令成功只说明新 terminal / CLI 已启动，不说明 bootstrap turn 已完成或 `lane_attach_current` 已调用。新模型还要读创建 prompt、仓库 `AGENTS.md` 与适用规范、查询目录，再主动 attach；这一段可能持续几十秒到数分钟，期间 `lane_directory` 查不到新地址是正常状态。**不要因为命令没有输出或目录暂时没有地址而再次执行同一条 `new`**，否则会开出重复 terminal。先观察原窗口是否仍在初始化，并等待它报告 ready；只有原窗口明确启动失败或已经退出、且目录仍无该 lane 时，才能重试。
 - **`open` 只恢复离线 lane**：目标在线（channel 仍开着）时拒绝；lane 不存在提示走 `new`；lane 存在但无 active binding 提示走轮换流程——`open` 不会顺手升级成接替。恢复在 Router 记录的工作目录进行（该记录由 lifecycle hook 随每次 turn 上报），Router 没有记录时要求显式 `--cwd`。恢复后 channel 重连，pending 通知会自动重发。
-- 三条开窗命令（`lane-router-lane new` / `lane-router-lane open` / `lane-router-rotate`）都遵循同一验证纪律：窗口开了不算成功，等新窗口里的 CLI 真启动、launcher 退出 0 才算。
+- 三条开窗命令（`lane-router-lane new` / `lane-router-lane open` / `lane-router-rotate`）都遵循同一验证纪律：窗口开了不算 CLI 启动成功；CLI 启动成功也不等于 lane attach 完成。`new` 以新窗口报告 ready 或目录出现预期 binding 为完成证据，不能拿短时间的目录空缺当失败证据。
 - 开窗时 claude 会话自动以 lane 地址命名（`--name "<project>/<lane> genN"`）：窗口标题、prompt 框、`/resume` picker 三处都显示 lane 地址，重开旧 lane 也会把它的会话名纠正过来。codex 无对应 flag，只有窗口标题。
 
 `--terminal` 三档通用，默认 `wt`：`wt` 强制 Windows Terminal 窗口（机器缺 wt 时默认档静默回退 `powershell`，显式传 `wt` 则报错）；`powershell` / `cmd` 只定 shell，窗口宿主由系统默认决定——Win11 或配置过 console delegation 的 Win10 机器上同样出 Windows Terminal 窗口。
