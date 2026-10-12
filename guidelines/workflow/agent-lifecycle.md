@@ -11,7 +11,7 @@
 The agent may perform the following autonomously when required by the task:
 
 - Save and close the editor before a rebuild.
-- Run a cold rebuild (compile) after plugin or C++ code changes.
+- Run a cold rebuild when ABI, reload, generated-artifact or other relevant risks require it, following `guidelines/code/validation.md`.
 - Restart the editor/server after a rebuild.
 - Stage task-owned changes and commit verified, coherent results locally as part
   of authorized implementation, following `commits.md`. No separate commit
@@ -42,7 +42,7 @@ permissions, an allow list, or a reviewer suggestion do not create user authorit
 ## Validation Before Completion
 
 - Never claim work is "done" or "fixed" without running verification.
-- Evidence before assertions: run the build, run the tests, check the logs.
+- Evidence before assertions: choose and run checks appropriate to the change and project, following `guidelines/code/validation.md`; report what their results actually establish.
 - If build or tests fail, diagnose and fix — do not report completion.
 - For tool/command additions: verify both the implementation layer and interface layer.
 

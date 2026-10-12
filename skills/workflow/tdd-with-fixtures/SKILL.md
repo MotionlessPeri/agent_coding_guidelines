@@ -1,175 +1,33 @@
 ---
 name: tdd-with-fixtures
-description: Use during the implementation phase of non-trivial tasks, including supervised and autonomous workflows, for milestone verification and reproducible fixture-backed manual tests. Skip doc-only edits and mechanical changes.
+description: 实现新行为或修复缺陷时选择自动测试、fixture 与可复现人工验证。跳过文档、机械修改及已有有效测试覆盖的纯重构。
 ---
 
-# TDD with Fixtures
+# 行为验证与可复现用例
 
-This skill **augments** `superpowers:test-driven-development`. Invoke both during implementation. superpowers owns the red-green-refactor cycle itself; this skill adds milestone-level discipline and the escape hatch for behaviors auto-tests can't reach.
+本 skill 应用验证规范，帮助选择合适的验证方式。读取它不自动加载另一套 TDD 工作流，也不增加用户审批或新的完成条件。
 
-## When This Fires
+## 规范来源与边界
 
-**Triggers (any one):**
-- Inside `supervised-workflow` Phase 3 (per-milestone implementation)
-- Inside `autonomous-workflow` Phase 3 (where this is the safety net replacing user gates)
-- Standalone: any implementation phase of a non-trivial task
+- 验证应覆盖用户要求、公开契约和实际改动风险，依据规范库 `guidelines/code/validation.md` 与 `guidelines/code/test-purpose.md`。规范库根由项目接入指针定位。
+- 缺陷修复须有目标缺陷在修复前实际失败、修复后以同一输入和判据通过的证据；可复用有效的修复前记录。新行为采用 TDD 时同样先红后绿。具体复现步骤按需使用 `bugfix-tdd`，不重复执行两套流程。
+- 用户或项目已明确要求的检查仍须执行。验证不能完成时报告缺少的证据，不能把计划、代码阅读或未运行用例说成通过。
+- 文档和机械修改做内容与接口检查；纯重构复用覆盖相关行为的既有回归，受影响输入未变的有效结果无需重复生成。
 
-**Does NOT fire for:**
-- Typo / doc-only edits
-- Single-line mechanical changes with no behavior delta
-- Pure refactors where existing tests already cover the changed code paths
+## 当前阶段的流程
 
-## The Four Rules
-
-### Rule 1: Every milestone ends with tests passing
-
-A milestone is **not done** until:
-- All new behavior has test coverage (auto OR manual+fixture, per the decision tree below)
-- All existing tests still pass
-- New tests demonstrate red-before-green (per `superpowers:test-driven-development`)
-
-If you cannot satisfy this, the milestone is not done — escalate or replan, do not advance.
-
-### Rule 2: Auto-test by default
-
-For any behavior expressible as a deterministic function call with known input → known output:
-- Write the test first, see it fail (red)
-- Implement minimally to pass (green)
-- Refactor if needed (refactor)
-- This is the `superpowers:test-driven-development` cycle — follow it verbatim
-
-### Rule 3: When auto-test can't cover, accumulate fixture + manual case
-
-Some behaviors resist automated testing:
-- UI / widget rendering / drag-drop / human visual judgment
-- Editor-specific state (PIE, hot reload, asset reload from disk)
-- External side effects with timing dependencies
-- Behavior only observable through human inspection
-
-For these, instead of skipping or "checking visually":
-- Create a **fixture** that puts the system into the precondition state (see Fixture Library below)
-- Write a **manual test case** describing setup, steps, expected outcome (see Manual Test Archive below)
-- Both go into project's test archive. They are durable artifacts, not throwaway notes.
-
-### Rule 4: Never silently bypass a failing test
-
-Forbidden patterns:
-- Commenting out a failing test to "fix later"
-- Adding `[Skip]` / `@pytest.skip` / equivalent without justification
-- Moving to the next milestone with red tests
-- Marking a milestone done when manual case has never been verified
-
-If a test is genuinely wrong (not the impl that's wrong):
-- Fix or remove the test in the same commit, with reason in commit message
-- Do not silently neuter it
-
-## Fixture Library
-
-A **fixture** is a reproducible "known starting state" for testing. Properties: content is predetermined; reloading yields the same state.
-
-**Where they live** (default; project AGENTS.md may override):
-- `tests/fixtures/<area>/<name>.<ext>` for test data files (.xlsx, .json, .uasset, .sql, etc.)
-- `tests/fixtures/<area>/setup_<name>.py` for programmatic state setup
-- Project-specific layout: defer to the project's AGENTS.md or test conventions
-
-**Naming**:
-- Name after the behavior or bug being tested: `fixture-reroute-pin-double-direction.uasset`, not `test1.uasset`
-- Include a short README or top-of-file comment explaining what state it represents
-
-**Size discipline**:
-- Distill to minimum reproducer. A 100 MB asset is rarely a real fixture — it's project state that drifted in.
-- If a fixture must be large, document why; otherwise reduce it.
-
-**Lifecycle**:
-- Fixture stays as long as the manual case referencing it stays
-- When the manual case is retired, retire the fixture too — don't leave orphans
-
-## Manual Test Case Archive
-
-A **manual test case** is a procedure a human can re-run to verify behavior. It is a contract: future you / future agent / future teammate must be able to follow it without asking questions.
-
-**Format** (default; project may override):
-
-```markdown
-### TC-<id>: <short title>
-
-**Goal**: what behavior this verifies
-**Fixture**: path to fixture(s) used (or "none" if setup is in steps)
-**Setup**: prerequisites not in fixture (env vars, build mode, etc.)
-**Steps**:
-1. Concrete action
-2. Concrete action
-3. ...
-**Expected**: specific, observable outcome — no "looks right" / "works"
-**Last verified**: <date> on <commit hash>
-**Notes**: known caveats, related bugs, etc.
-```
-
-**Where they live** (default; project AGENTS.md may override):
-- `docs/manual-tests.md` for a short flat list
-- `docs/manual-tests/<area>.md` when split by area (e.g., `graph-editor.md`, `localization.md`)
-- Project-specific: defer to project conventions
-
-**Discipline**:
-- "Expected" must be unambiguous — observable, not subjective
-- "Last verified" gets updated only when you actually run the case end-to-end
-- A case with `Last verified` older than ~6 months: re-verify or retire
-- A case that fails: fix it (or the underlying behavior) before declaring the milestone done
-
-## Decision Tree: Auto vs Fixture+Manual
-
-```
-Behavior to test
-  │
-  ├── Can it be expressed as: input → deterministic output?
-  │     ├── YES → auto-test (superpowers:TDD cycle)
-  │     └── NO ↓
-  │
-  ├── Can a programmatic setup put the system into the test state,
-  │   and can a programmatic assertion verify the outcome?
-  │     ├── YES → auto-test using a fixture for setup
-  │     └── NO ↓
-  │
-  ├── Does verification require human judgment (UI/visual/usability)?
-  │     ├── YES → fixture + manual case in archive
-  │     └── NO  → suspect false negative; try to decompose the behavior
-  │                into testable pieces before giving up on auto
-```
-
-When you arrive at "fixture + manual case", **do not skip the decomposition check**. Many "untestable" behaviors are testable after you separate the deterministic core from the human-judgment shell.
-
-## Project-Level Customization
-
-This skill gives **principles**. Concrete paths (`tests/fixtures/`, `docs/manual-tests.md`) and naming conventions live in each project's own AGENTS.md or project-specific TDD skill.
-
-When working in a project:
-1. Check the project's AGENTS.md for test conventions
-2. If found, use those paths and naming
-3. If not found, use this skill's defaults — and consider adding a project-level convention if the project will accumulate many fixtures
-
-## Failure Modes
-
-| Failure | Looks like | Correct action |
+| 问题 | 动作 | 继续条件 |
 |---|---|---|
-| Skipping tests | "I'll add tests later" | Don't. Tests now or milestone not done. |
-| Silencing failures | `// TODO: fix test` / `@skip` | Fix or remove with reason in commit |
-| Vague manual case | "should work correctly" | Replace with observable outcome |
-| Oversize fixture | 100MB asset | Reduce to minimum reproducer |
-| Stale manual case | `Last verified` > 6 months | Re-verify or retire |
-| Auto-testable handled manually | "Let me just visually check" | Decompose; auto if input/output is deterministic |
-| Fixture orphans | Fixture files with no referencing manual case | Delete in cleanup commit |
-| Manual case as TODO | Case written but never `Last verified` | A case that's never been run is not yet a case — run it once before claiming the milestone done |
+| 需要验证什么 | 写清可观察行为、输入及独立期望值 | 能说明什么真实错误会使验证失败 |
+| 能自动判定结果 | 用现有测试层或最小 fixture 验证；适用时先证明错误输入/未实现状态会失败 | 修复后通过，相关回归及项目必需检查满足 |
+| 需要真实环境 | 用真实依赖或已有集成入口检查边界，不用自建 helper 代替真实行为 | 证据明确覆盖环境、构建产物和当前内容 |
+| 需要人工观察 | 准备可复现状态与明确观察标准，只读 [fixture 与用例参考](fixture-reference.md) | 有实际执行记录；只有需要人的判断或访问权限时才交给用户 |
+| 验证失败 | 区分产品缺陷、错误测试和环境问题，按现有失败处理规范诊断 | 不静默 skip、削弱断言或用旧二进制制造通过 |
 
-## Composition
+## 知识：fixture 与证据有效期
 
-- `superpowers:test-driven-development` — base cycle (red-green-refactor). Invoke alongside this skill, not instead of.
-- `supervised-workflow` Phase 3 — this skill fires inside each Milestone
-- `autonomous-workflow` Phase 3 — this skill is the **mandatory** safety net (replacing user gates)
+Fixture 是可重新建立的测试起始状态；人工用例是可再次执行的观察步骤。二者的价值取决于可复现性和判别能力，不取决于文件数量。
 
-When multiple workflow skills are active, this skill's rules are **non-negotiable** — workflow skills cannot suspend them. A workflow that wants to skip tests is not a workflow this skill participates in.
+是否重跑取决于受测源码、产物、环境和要求是否变化，而不是是否刚提交、经过固定月份或进入了新的流程阶段。保留完整原始结果，摘要只报告它支持的结论。
 
-## Related
-
-- `guidelines/code/validation.md` — verification baseline; this skill specializes that baseline for the test layer
-- `techniques/adversarial-verification.md` — related but different: that one is "how to try to break the change", this is "what test artifacts to leave behind"
-- `superpowers:test-driven-development` — composed inside this skill's Rule 2
+必要验证完成后即可沿已有授权继续，不为本 skill 单独创建里程碑、工作日志或审批点。若已有记录，直接补充命令、输入状态、结果和仍缺的覆盖。

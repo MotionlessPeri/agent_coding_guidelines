@@ -1,144 +1,33 @@
 ---
 name: conversation-walkthrough
-description: 用于非平凡代码改动收尾，或用户要求 walkthrough、结构化 review、重构检查和注释整理时。复用已授权的范围与验证；新增可选重构需确认。平凡机械改动或用户明确推迟 review 时跳过。
+description: 非平凡代码改动后的收尾走查，或用户要求 walkthrough、结构化 review、正确性复核和注释整理时使用。跳过平凡机械改动，以及用户明确推迟的 review。
 ---
 
-# 对话代码 Walkthrough（编码收尾的标准 review 环节）
+# 代码改动走查入口
 
-编码对话产出了**非平凡代码改动**后,收尾跑一次结构化走查。**默认开**——除非用户明说「后面是迭代,不用 review」。
+本技能以审查工作流为主，注释知识和表达规范按实际发现使用。走查用于检查已授权工作，不自动扩大为重构、文档整理或另一套交付流程。
 
-> 单项目（curve_articulation_maya）验证一轮,apply-and-refine。
+## 范围与授权
 
-> **路径说明**：本文里 `guidelines/...`、`techniques/...` 这类路径相对于本项目接入的规范仓根（由项目 `AGENTS.md` / `CLAUDE.md` 里的接入指针定位）；其他 skill 按本会话实际可用的 skill 路径找。没有接入指针时如实说明缺失，不要把业务仓或 skill 安装目录当规范根。
+- 独立审查使用用户指定范围，未指定时检查本对话改过的代码。
+- 跨会话任务使用原始任务基线到当前状态的任务所属改动，包括未提交文件；不把恢复前的改动漏掉，也不漫游到他人工作。
+- 已授权目标所必需的修正沿用现有授权。新增可选重构先给出具体建议；用户选择逐项审批时按其要求执行。
+- 用户要求完整逐函数走查、独立评审或人工验收时照做，不能用已有自审替代。
+- 不自动加载其他 review、重构、写作或工作流技能。
 
-## 触发与范围
+## 按当前需要读取
 
-- **触发**:编码对话收尾;或用户说「walkthrough / review 这个对话改的代码 / 看有没有重构点 / 整理注释」。
-- **范围**:独立 walkthrough 按用户指定的范围或**本对话改过的代码**;作为 workflow 收尾时,按任务的原始 `TASK_BASELINE` 到 HEAD 的全部 task-owned 提交 + 工作树改动(含 untracked),恢复前做的部分不能丢。基线是改动前的 HEAD,不做 `~1`(那会多带一个提交)。不漫游全仓,不扩到无关他人的工作。
-- **跳过**:平凡/机械改动;或用户把 review 推迟到后面 milestone。
-
-## 配套纪律:一份记录锚点 + 分主题 commit
-
-- **复用既有的审查记录当讨论主线锚点**:任务已有 handoff worklog / brief(autonomous)、plan 或 gate 输出(supervised)、或别的 durable 任务记录时,范围、结构 map、发现、决策、进度都追加进它,**不另建 tracking 文档**。只有**没有任何既有记录、且这次 review 需要持续跟踪或交接**(多轮讨论 / 换人续做)时,才建一份 ephemeral tracking 文档(如项目的 `docs/plans/<date>-*-walkthrough.md`)当锚点;单次做完的 walkthrough 用聊天里的 Phase 1 map + Phase 4 recap 即可。
-  - ⚠️ 若建了 ephemeral 文档,它**本身会被 cleanup**,按「注释自包含」原则**不被任何代码注释引用**。
-- **重构与注释清理分成不同主题、各自 commit**(`guidelines/workflow/commits.md` 一 commit 一主题):结构重构 = `refactor:`,注释清理 = `docs:`。**先提已验证的重构,再单独提注释**——结构改动和文字改动混一个 diff,review 时分不清「这行是搬过来的还是改了语义」。
-- **用户明确提出的要求不因复用而省略**:用户要完整 walkthrough、独立评审(fresh 对话 / 另一人)、人工验收、或对某次重构单独批准时,照做。本 skill 的复用只针对**重复的记录**与**已覆盖同一输入的证据**,不针对用户点名要的检查。
-
-## Phase 1 — 结构 map（呈给用户的 MR 式 review 摘要）
-
-两张表,目标:让人(和半年后的自己)30 秒看懂骨架。
-
-> **这两张表 + Phase 2 的发现 = 像 MR/PR description 一样【主动呈给用户】的 review 摘要**:
-> 「改了哪些范围 / 架构·数据流 / 关键函数与可读性发现」。完成已授权目标所必需的修正，沿用现有授权，不因收尾走查而增加审批。
-> 新增可选重构先给用户具体建议；用户选择了逐项审批时，按其要求执行。多单元 review 可汇总呈报，只有用户要求时才逐单元等待确认。
-
-1. **文件级**:改了哪些文件 / 各自角色 / 本对话新增了什么;再一两句「这些拼起来是一条什么数据流/调用链」。
-2. **函数级(必给,别省)**:范围内每个非平凡函数列一行 —— 函数名 + 一句话职责 + **行数**,并显式标两类:
-   - **🔑 key function**:public API / 跨边界入口 / 非平凡契约(带参数 + 返回语义 + 前置条件)。这些是 Phase 2 🟢 对抗式正确性 + Phase 3 Doxygen 契约头的重点对象。
-   - **📏 超长函数**:>~50 行(标「缺 leading 概览?」)/ 单步骤 >~80 行(标「该拆 sub-function?」)。直接喂给 Phase 2 🔴。
-   - trivial getter / 签名自明的一行函数可合并成一句「其余 N 个 trivial,从略」,不逐行列。
-
-> 为什么 Phase 1 就要把 key + 超长函数摊出来:不先建函数级清单,Phase 2 的 🔴(超长)/ 🟢(key 函数正确性)就退化成「过的时候顺带发现」,容易漏覆盖 —— 用户拿到零散发现,而不是「这些函数我都过了、行数都标了,这几个超长 / 这几个是 key」。函数级清单是 Phase 2 的覆盖率清单。
-
-## Phase 2 — self-review 三档
-
-对着改动逐块过,分三档,**每条带 file:line + 决策列**(做/不做/可选),最后让用户拍重构范围:
-
-| 档 | 找什么 | 判据(套 `guidelines/code/function-clarity.md` + `reuse-before-implementing.md`) |
+| 内容类型 | 当前需要 | 参考 |
 |---|---|---|
-| 🔴 重构/可读性 | 大函数、重复代码、缺概览 | 按 `function-clarity.md` 的软警觉线判断可读性；重复逻辑按 `reuse-before-implementing.md` 判断复用价值。第二次出现时考虑复用，不仅因出现次数就强制抽 helper。 |
-| 🟡 优化 | 热路径冗余、重复昂贵调用、魔数 | 非阻塞,标出来让用户定;性能结论要 profiler/实测,不臆断 |
-| 🟢 正确性 | 对抗式读查 | 主动找 bug 不是确认无 bug:边界/越界、约定(如行向量)、优先级覆盖、退化兜底 |
+| 工作流 | 确定审查范围、结构摘要、发现处理及验证 | [审查步骤](review-guide.md) 对应阶段 |
+| 知识与示例 | 发现注释依赖临时文档、接口契约含糊或需要示例 | [注释参考](comment-reference.md) 对应条目 |
+| 规范 | 判断是否可扩范围、是否可以声称验证完成 | 本页边界及项目已有约定 |
 
-**拆函数的天然切法**:若一个函数按「输入→若干独立输出/分支」组织(典型:DG node 的 `compute` 按 plug 派发),**一个分支 = 一个 sub-function**,主函数收成派发 + 顶部一段「各分支算什么」概览。语义零改,只是把它本来就有的结构摊开。
+## 审查和证据边界
 
-## Phase 3 — 注释体检
-
-注释跟文档同源——一条写得烂的注释(夹生英文、翻译腔、箭头公式)跟一份写得烂的文档是同一种病。本 Phase 查**三个轴**,别只查后两个:
-
-1. **prose 质量**——注释措辞走 `guidelines/writing/prose-and-register.md`:工作语言写散文 + 标识符保留原文 / 不说黑话(半通用 CS 词 marshalling·parity·legacy 也算) / 别要翻译腔·别压箭头公式 / 简洁 ⇔ 不丢信息(砍冗余措辞、不砍"为什么这样设计"的事实)。跟 `doc-writing-style` skill 共用同一份 SoT,只是对象从文档散文换成注释。
-2. **stability(自包含原则)**——剥 transient、保留 stable why,见下。
-3. **结构**——关键函数 Doxygen 契约头,见下。
-
-### stability:注释自包含原则
-
-迭代积攒的注释常被 transient / 给-agent-看的标签污染。按下面这条清:
-
-> **注释自包含原则**:注释解释设计意图(**stable why**)必须 **inline、不依赖任何外部文档即可读懂**。
-> - **禁止引用实现期临时产物**——milestone/Task/Phase 标签、会被 cleanup 的 plan/impl-plan 文档、「旧 X 已废 / 改自 Y」历史(反查靠 `git blame`)。
-> - **只允许引用 durable 目标**(论文/规范章节、committed 架构文档、框架源码),且仅作**可选深入指针**,不作理解前提。
-> - **清理旧引用时**:先把它承载的 why **浓缩成一句 inline,再删引用**——别连理由一起删(最常见的错:把噪音和理由一起删了)。
-
-判据 = **引用目标 durable 还是 ephemeral**,不是「内部 vs 外部」:
-
-| 目标 | 例子 | 处理 |
-|---|---|---|
-| Ephemeral | 实现期 plan/impl-plan、Task/Phase/milestone 标签、「旧 X 已废」 | ❌ 剥(why 浓缩 inline 后删) |
-| Durable | 论文 §、committed 架构文档、框架源码 | 🟡 可留作可选深入指针,不作前提 |
-
-**保留**:解释「为什么这样设计 / 防什么」的 stable why(质量好的注释主体)。
-
-### 关键函数用 Doxygen 风格契约头
-
-**关键函数**(public API / 跨边界入口 / 非平凡契约——带参数、有返回语义、有前置条件的那些)的头注释用 Doxygen `/** @param @return */` 形式,把接口契约结构化:
-
-```cpp
-/**
- * <一句话职责> + <stable why / 不变式（可选）>。
- * @param splineIdx 要分裂的 spline 池索引
- * @param t         分裂参数 ∈ [0,1]
- * @return 新端点池索引；越界 → -1（no-op）
- */
-int splitSpline(int splineIdx, double t);
-```
-
-铁律(防 Doxygen 最常见的噪音坑):
-
-- **每个 tag 必须带真内容**——语义 / 空间(如「中性空间」) / 单位 / 所有权 / null/空 的含义 / 前置条件 / 取值范围。
-- **空 tag 或只复述参数名**(`@param pos 位置`)= 噪音,**比不写更糟** → 没内容可写就**省掉那个 tag,或整块不套 Doxygen**。
-- **不全量**:trivial getter / 签名自明的私有一行函数 / 框架样板(如 Maya `creator`/`initialize`)**不套**,否则满屏空 tag。
-- **块写契约(what),stable-why 仍 inline**(块内首句或函数体),两者不重复。
-- Doxygen 块放**声明处**(头文件,消费方读的地方);file-local/static helper 放定义处。
-
-> 本 Phase 三个轴的出处:**prose 质量** = `guidelines/writing/prose-and-register.md`(跨文档 / 注释共享的 SoT);**stability**(不引用 ephemeral 文档 + 自包含)扩展 `guidelines/code/function-clarity.md` Rule 2(那条讲 milestone tag / transient when);**结构**(关键函数 Doxygen 契约头,tag 必带真内容)是本 skill 加的维度。
-
-## Phase 4 — 执行 + 验证
-
-1. 在现有授权范围内执行必要修正；新增可选重构取得确认后再动手。结构改动**保持注释原样搬**(注释清理留下一个 diff,结构/prose 分开 review)。
-2. **验证语义没变**:cold rebuild(插件/native 必 cold,不 hot reload)+ 冒烟/headless 跑一遍既有 verify 脚本(`guidelines/code/validation.md` 对抗式)。重构尤其要「行为不变」实证,不能只「看代码对」。**已有有效证据可复用**:此前对同一份输入(受影响的源文件 / 产物 / 环境)跑过同样的验证并留有输出,且现在的实际内容与证据记录的状态一致——源文件比内容(如 `git hash-object` 对照记录的 blob),产物与环境比记录的标识;`git diff` 只作已跟踪源码的辅助检查:它看不见 untracked / 产物 / 环境,而验证未提交树后再提交,与旧 HEAD 的 diff 非空也不表示证据失效。一致则引用那份证据、不重跑;不能确定一致就补验受影响的部分。证据是否仍有效看它覆盖的输入变没变,不看之后有没有别的 commit。
-3. 重构 commit(`refactor:`)→ 注释清理 commit(`docs:`),各自单一主题。
-4. 把进度追加进所用的记录(既有任务记录,或本轮建的 tracking 文档)。
-5. **呈 MR 式收尾 recap**:给用户一段总结——本单元 commit 清单(hash + 一句话各做了什么)/ 改动范围 / 验证结果(测试 PASS / 行为不变实证 / 残留 finding)。让用户像看 MR 一样确认,不是改完静默过。
-6. **promote 评估**:本轮发现的可复用 lesson 按 `guidelines/workflow/knowledge-promotion.md` 评估是否回灌 meta-corpus(两-strike / 框架 hidden contract)。
-
-## Anti-Patterns
-
-| 反 pattern | 后果 | 修法 |
-|---|---|---|
-| Phase 1 只给文件级 map,不列函数 | Phase 2 🔴/🟢 退化成顺带发现,漏覆盖;用户拿到零散发现而非覆盖率清单 | Phase 1 必给函数级清单,显式标 🔑key / 📏超长 + 行数 |
-| 自审后擅自扩大重构范围，或不报告改动 | 用户无法判断新增工作的范围与影响 | 现有授权内的必要修正直接执行并报告；新增可选重构先呈具体建议并取得确认 |
-| 需持续跟踪 / 交接的 review 没有任何记录锚点,边聊边深入 | 讨论偏移、丢主线、决策无记录 | 复用既有任务记录;没有才建 ephemeral tracking 文档 |
-| 每次 walkthrough 另建 tracking 文档、重跑已覆盖同一输入的验证 | 记录与证据重复,收尾成本随流程叠加 | 复用既有记录与有效证据;用户点名要的完整 walkthrough / 独立评审 / 人工验收照做 |
-| 重构 + 注释清理混一个 commit | review 分不清结构改动 vs 语义改动 | 分主题各自 commit,先重构后注释 |
-| 注释清理时连 why 一起删 | 丢失设计理由 | 先浓缩 inline 再删 ephemeral 引用 |
-| 重构后只「看代码对」不实测 | 隐性语义漂移 | cold rebuild + 冒烟/headless 验证 |
-| self-review 只确认「没问题」 | 漏 bug | 对抗式:主动找边界/越界/退化失败 |
-| tracking 文档被代码注释引用 | ephemeral 文档消失后悬空引用 | tracking 文档不进注释(自包含原则) |
-
-## 项目实例参考
-
-curve_articulation_maya(Maya C++ 插件)2026-06-15 对一轮「posed 编辑」实现(CurvenetNode 等 4 文件)跑本流程:
-- Phase 1 结构 map:`compute()` 三分支(follow / 中性 deformer / posed 显示)。
-- Phase 2:🔴 `compute()` ~140 行三分支无概览 → 按「一输出 plug 一 sub-function」拆(`computeDeformerPosed/DisplayKnots/OutPosedKnots`)+ 派发概览;🔴「GC-safe 读 pointArray」重复 4 次 → 抽 `readPointArray` helper。
-- Phase 3 注释体检:剥 `Task 2.4`/`Phase 1`/`旧 editInput 已废删`/`见 design §2.1`(impl-plan 引用),把 why 浓缩 inline,保留「防 double-deform / 恒等不变式 / 行向量约定」等 stable why。
-- Phase 4:cold rebuild + headless 回归(`_verify_walkthrough_refactor.py`:follow 跟姿势 101.29 / deformerPosed 反算回中性 0.0001=恒等)GREEN;`refactor:`(c64c439)+ `docs:`(bcc2570)两 commit。tracking 文档 `docs/plans/2026-06-15-posed-edit-walkthrough.md`。
-
-## 相关 Guidelines / Skills
-
-- `guidelines/writing/prose-and-register.md` — Phase 3 轴 1(prose 质量)的 SoT;跟 `doc-writing-style` skill 共用,对象从文档散文换成注释
-- `skills/workflow/doc-writing-style/SKILL.md` — 同一份 prose-and-register 的文档场景执行面(+ 图示 discipline)
-- `guidelines/code/function-clarity.md` — 行数阈值(Rule 1)+ 注释 stability(Rule 2);本 skill 是它的「系统化执行 + 注释自包含扩展」
-- `guidelines/code/reuse-before-implementing.md` — ≥2 次重复抽 helper 的判据
-- `guidelines/workflow/commits.md` — 一 commit 一主题(重构/注释分开)
-- `guidelines/code/validation.md` + `techniques/adversarial-verification.md` — Phase 4 的对抗式验证
-- `guidelines/workflow/knowledge-promotion.md` — Phase 4 末尾的 promote 评估
+1. 结构摘要按改动规模组织。逐函数表格、行数统计和图示只在有助于覆盖复杂范围或用户要求时使用，不作为每次结束对话的门槛。
+2. 可读性判断看职责、控制流和修改风险；行数、重复次数是线索，不自动触发拆分。
+3. 注释遵循项目风格，保留理解行为所需的契约与理由。Doxygen 是可选格式，不要求给所有关键函数换格式。
+4. 验证取决于实际改动及项目要求。构建、冷编译和运行检查各自证明不同事情，不因使用本技能就一律执行。
+5. 复用仍覆盖当前输入的有效证据。报告检查范围、发现、修正和未验证部分，不以自审代替未执行的测试。
+6. 复用已有任务记录；一次能完成的走查可直接在对话中报告。本技能不要求额外跟踪文档、知识提升或提交。

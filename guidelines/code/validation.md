@@ -1,67 +1,28 @@
 # Validation Guidelines
 
-## Build Verification
+## Choose Evidence for the Change
 
-- Run a full build before reporting that code changes are complete.
-- Use cold rebuild (not hot reload) when plugin or native code is changed.
-- Example build invocation pattern (adapt to project):
-  ```
-  Build.bat <Project>Editor Win64 Development -Project="<uproject>" -WaitMutex -FromMSBuild
-  ```
-- If the build fails, fix the errors before proceeding. Do not report success.
-- **A failed build can leave a stale test binary**, and a test runner (ctest, etc.) may
-  then run the OLD binary and report false green. Check the build output for compile/link
-  errors — do not read only the test result — or run the binary directly and confirm it is
-  the rebuilt one. Running the test suite is not the same as running the new code.
-- **不要在读之前过滤构建输出。** 把构建命令管给 `tail` / `grep` / `head` 再读，会把真正的
-  错误行吞掉——而**吞掉的表现跟"没有错误"一模一样**（这正是"缺席有两种成因"的一个面，见
-  [`reporting-limits-and-null-results.md`](reporting-limits-and-null-results.md) 规则 3）。
-  ⇒ **整份输出落盘再读**（`> build.log 2>&1`，然后读文件）。要摘要就在**读过全文之后**摘。
-- **包装命令的退出码不是被包裹命令的退出码。** 后台任务 / shell wrapper / 脚本返回 0，
-  不代表它包的那个构建成功了。判断构建成功看**日志里有没有编译 / 链接错误**，不看包装器的
-  退出码。（PowerShell 侧的具体形态见
-  [`../ci-windows/powershell-native-command-pitfalls.md`](../ci-windows/powershell-native-command-pitfalls.md)。）
-  > 这两条跟本文件其余部分**差一层**：其余部分管"验证做得对不对"，这两条管"**证据在采集环节
-  > 就被丢掉了**"——不是量错、也不是量具坏，是根本没采。实测在同一天内多次复现，每次都表现为
-  > "我看不到错误 ⇒ 应该没问题"。
+- Run the checks required by the project and checks that can detect the failure modes of the change. New behavior and bug fixes need behavioral evidence; documentation and mechanical edits need relevant content or structural checks.
+- Choose regression coverage from affected interfaces, callers, and shared dependencies. Run a full suite or full build when the project requires it or the impact warrants it; do not require one for every edit.
+- For behavioral changes, exercise the relevant error or boundary cases as well as the happy path. Prefer an independent observable result over assertions that merely repeat the implementation.
+- Reuse valid evidence for unchanged inputs, artifacts, and environment. Rerun when those premises change or a failure leaves a concern unresolved.
 
-## Smoke Testing
+## Build and Artifact Verification
 
-- After a build, run a minimal smoke test to verify the tool or server starts:
-  ```
-  python server.py   # or project equivalent
-  ```
-- For new commands or API endpoints: verify the happy path works end-to-end.
+- Build affected code before claiming that it builds. Use a cold rebuild or process restart when hot reload or incremental output cannot validate the change, such as ABI, module loading, or stale generated artifacts. Native code alone does not make every incremental build invalid.
+- A failed build can leave a stale test binary. Establish that tests executed the intended artifact; a green test result from the old binary does not validate the change.
+- Preserve complete build output when it is needed for diagnosis. Read the actual build result and relevant diagnostics; use targeted searches and summaries without discarding the underlying log. Reading every line of a large log is not itself evidence of success.
+- A wrapper's exit code may differ from the build process's exit code. Capture and propagate the actual process result, then inspect failure diagnostics. A search that finds no error text is insufficient on its own. For PowerShell pitfalls, read [the platform notes](../ci-windows/powershell-native-command-pitfalls.md) when applicable.
+- If a required build or check fails, fix it or report the unresolved failure and its effect on the claim. Do not describe blocked verification as passing.
 
-## Adversarial Mindset
+## Integration Checks
 
-- The goal of verification is to try to break the change, not just confirm it works.
-- Reading code is not verification — run commands and observe actual output.
-- Do not write explanations of why code is correct; run the code and show evidence.
-- Always test at least one non-happy-path scenario (error case, boundary value, edge case).
-- Tests passing is necessary but not sufficient — tests can be self-referential. Verify
-  behavior independently when practical.
-- For change-type-specific verification steps (frontend, backend, CLI, infra, bug fix,
-  refactor), see `techniques/adversarial-verification.md`.
+- When startup, registration, or packaging changes, run a relevant smoke check.
+- When adding or changing a command, tool, or API endpoint, verify the implementation and its exposed entry point together, and update user-facing documentation as needed.
+- For Unreal Engine graph changes, exercise a representative asset and inspect graph compilation diagnostics; C++ compilation alone cannot establish graph correctness.
 
-## Tool/Command Additions
+## Reporting
 
-When adding a new command, tool, or API endpoint, verify:
-1. The implementation layer handles the command correctly.
-2. The interface layer (Python wrapper, route registration, etc.) exposes it correctly.
-3. The documentation is updated in the same change.
-
-## Graph/Blueprint Commands (Unreal Engine projects)
-
-- Validate against a real test asset — do not rely only on compile success.
-- Check engine logs for blueprint compile errors after any graph modification.
-
-## Reporting Completion
-
-- Only say "done" or "fixed" after running verification and confirming it passes.
-- Include the verification output or a summary in your report to the user.
-
-## Related Techniques
-
-- See `techniques/adversarial-verification.md` for detailed procedural checklists and
-  adversarial probes.
+- State what was checked, what the result supports, and any material unverified part. Code inspection can support a review finding but does not establish runtime behavior.
+- Match completion claims to the available evidence. Include a concise result summary; retain detailed logs where they are useful rather than pasting them all into the conversation.
+- For a task that needs additional adversarial probes, consult [adversarial verification](../../techniques/adversarial-verification.md) for the applicable change type.
