@@ -101,9 +101,10 @@ Keep out of the shared repo:
    existing files as style reference — declarative rules, concise bullets,
    tables where comparisons help. Keep under ~200 lines; split if longer.
 
-5. **Register it in `AGENTS.md`** by adding `@guidelines/<subdir>/<name>.md`
-   in the appropriate section. Without the `@` import, the file is
-   invisible to agents even after commit.
+5. **Register a discovery entry** in `AGENTS.md` or a linked topic index.
+   Use a task-specific link or skill for conditional material. Add an `@` import
+   only when the content merits loading for every task in a host that expands
+   imports. Discoverability does not require loading the whole file at startup.
 
 6. **Commit separately** with a `governance:` or `docs:` message. Do not
    bundle the promotion commit with unrelated project work.
