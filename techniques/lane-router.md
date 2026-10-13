@@ -74,7 +74,7 @@ Claude 的 user-scope MCP 保存的是 `dist` 的绝对路径。仓库移动、`
 | `lane_directory(project)` | 只读列出同 project 的 lane 和角色说明；无需用户确认。拓扑变更前先调用它，优先复用职责匹配的 lane。 |
 | `lane_attach_current(address, role_description?)` | 创建、接替、轮换 lane 或修改角色说明。调用前必须在普通对话中解释拓扑变化并取得用户明确确认；不要添加机械式 `confirmed` 参数。接替现有 lane 且不改角色时省略 `role_description`。 |
 | `lane_send(target, kind, body, reply_to?)` | 向目标 `pending` mailbox 写入不可修改的消息。普通消息用 `normal`；修正旧消息用 `correction` 并以 `reply_to` 指向原 message ID。 |
-| `lane_ack(message_ids)` | 当前 lane 完成处理后，批量把每个已处理 ID 从 `pending` resolve。未完成、未理解或仍需重试的消息不要提前 ack。 |
+| `lane_ack(message_ids)` | 读完、纳入自己的工作状态之后就 ack，批量把每个 ID 从 `pending` resolve。**ack 是通信层的「已收到并读懂」，不是「任务做完」**：等人裁定、活还没干完，照样先 ack，用自己的 worklog / 回信跟踪进度。只有真没读到或没读懂的才留着不 ack。原因见故障排查「同一封信每个 turn 都来叫」。 |
 | `lane_restore_project(lanes?)` | 已绑定的 caller 一键恢复本 project 其他离线 lane 的原 conversation（机器重启场景；不传 `lanes` 恢复全部 peer）。只在用户明确要求重开 lane 时调用；它不是拓扑变更，不走 attach 的确认流程。旧 Codex thread 无法刷新工具清单时，用兼容 CLI `lane-router-restore-project [lane-address ...]`（需要 shell 里有 `CODEX_THREAD_ID`）。 |
 
 lane 是长期 role/context 边界，不要为每个临时 task 创建一条 lane。创建、接替、轮换和修改 `role_description` 都是持久拓扑变化；先查目录、提出具体建议、取得确认，再 attach。当前 conversation 已绑定另一条 active lane 时，Router 会拒绝隐式换绑。
@@ -286,7 +286,7 @@ Lane Router 是 coordination transport，不是业务程序的逐步控制器。
 | `lane-router-lane open` 报 `not found` | 正在运行的 Router 是没有 resume 查询端点的旧构建。等用户决定受控重启 Router，不要自行结束共享进程。 |
 | `lane-router-lane open` 报 `already online` | 目标 lane 的 channel 还开着（terminal 没关或刚关不久），这是正常拒绝语义，不是故障。 |
 | `lane-router-lane open` 要求 `--cwd` | 该 lane 在 cwd 记录功能上线后还没跑过任何 turn。让它跑一个 turn 再开，或显式传原项目目录。 |
-| 消息反复提醒 | 检查对应 ID 是否仍在 `pending`。未 ack 会再次提醒；处理完成后批量调用 `lane_ack`。 |
+| 同一封信每个 turn 都来叫（消息反复提醒） | 通知泵在**每个 turn 结束时**对仍在 `pending` 的信重发通知——这是兜底，防首次通知丢失。所以一条 lane 若为了「表示还没做完」扣住一封信不 ack，就会每个 turn 把自己叫醒一次，直到有人来：空转 turn、刷屏。2026-10-12 真机撞过，连叫三次。修法：读完就 ack（ack 不等于做完，见上表），进度走 worklog。 |
 | repo 移动或更新后失效 | 重新 build；Claude 重新检查/注册绝对 `dist` 路径，Codex 重新检查 `npm link`。 |
 | 代理环境变化但已运行的 Router 未采用 | 代理补全只在创建新 Router process 时发生。不要自行结束共享 Router；先确认没有其他使用者，再由用户或维护者决定受控重启。 |
 
