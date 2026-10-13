@@ -56,6 +56,15 @@ claude --dangerously-load-development-channels server:lane
 
 自定义 Channel 当前是 research preview；首次启动需由用户确认 local development warning。不要使用旧的 `--channels server:lane` 写法。
 
+**每台跑 lane 的机器还必须有一份托管设置开启 channel**，否则 flag 加了也白加：Claude 客户端会把 channel 通知**静默丢弃**——工具全能用、发送方看到的 `notificationState` 也是 `sent`，只有 MCP 日志（`~/.cache/claude-cli-nodejs/<cwd>/mcp-logs-lane/*.jsonl`）里那行 `Channel notifications skipped: channels not enabled by org policy` 说了实话。文件内容就一行 `{ "channelsEnabled": true }`，位置按系统：
+
+| 系统 | 路径（需管理员 / root 写） |
+|---|---|
+| Windows | `C:\Program Files\ClaudeCode\managed-settings.json` |
+| Linux | `/etc/claude-code/managed-settings.json` |
+
+放好后重开会话，日志里应变成 `Channel notifications registered`。2026-09-21 在一台新装的 Linux VM 上踩到：账号、组织、Claude 版本、flag、lane-router 版本跟 Windows 全部一致，只差这个文件。
+
 Claude 的 user-scope MCP 保存的是 `dist` 的绝对路径。仓库移动、`dist` 尚未构建或构建产物被清理后，配置会失效；重新 build，并用 `claude mcp get lane` 检查连接。Codex 命令缺失时先运行 `Get-Command lane-router-codex`，再检查 `npm link` 是否仍指向当前构建。
 
 ## 五项对话工具
@@ -271,7 +280,7 @@ Lane Router 是 coordination transport，不是业务程序的逐步控制器。
 |---|---|
 | `lane-router-codex` 找不到 | 运行 `Get-Command lane-router-codex`；若不存在，在当前 Lane Router repo 重新 build 并 `npm link`。 |
 | Claude 看不到 tools | 运行 `claude mcp get lane` 和 `claude mcp list`；确认绝对 `dist` 路径仍存在且已构建。 |
-| Claude tools 可用但没有自动通知 | 确认本次启动使用 `claude --dangerously-load-development-channels server:lane`，并已接受首次 development warning。 |
+| Claude tools 可用但没有自动通知 | 先看 MCP 日志 `~/.cache/claude-cli-nodejs/<cwd>/mcp-logs-lane/*.jsonl`：有 `Channel notifications skipped: channels not enabled by org policy` ⇒ 这台机器缺托管设置，按上文建 `managed-settings.json`；没有这行 ⇒ 确认本次启动使用 `claude --dangerously-load-development-channels server:lane`，并已接受首次 development warning。另：会话刚（重）启动那一瞬间到达的通知不会唤醒它（消息不丢，下一次唤醒会一并带出），不是故障。 |
 | Codex launcher 启动失败 | 直接读取 launcher 暴露的 Router stderr；不要把启动失败简化成“等待超时”，也不要凭历史 PID 手动处理进程。 |
 | `lane-router-rotate` 返回成功但没有新窗口 | 检查是否使用包含 Windows `Start-Process` 修复的构建，并核对是否存在 `PowerShell → rotation-terminal-child → CLI` 进程链；Node 的 `spawn` 事件本身不是可见窗口证据。 |
 | `lane-router-lane open` 报 `not found` | 正在运行的 Router 是没有 resume 查询端点的旧构建。等用户决定受控重启 Router，不要自行结束共享进程。 |
