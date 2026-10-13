@@ -408,7 +408,7 @@ Limitation 1/2 的修法——加 `Config/FilterPlugin.ini` + CI package stage P
 
 ## 相关 Guidelines
 
-- skill `ue-reference-engine-source` （`skills/ue/ue-reference-engine-source/SKILL.md`）—— 强调"写 UE 功能前先找 reference"。这三个 limitation 都是从 engine source / 产物实测看出来的，符合"读 source 比读 doc 准"原则
+- [UE 框架查证方法](../../skills/ue/ue-reference-engine-source/reference-engine-source.md) —— 按目标版本查证不熟悉、变化或可疑的契约，可复用有效证据；本文保留了源码与产物实测的证据记录。
 - `guidelines/ue/ue58-upgrade-gotchas.md` —— 同属 UE 构建/打包 hidden contract 族(5.8 升级期的 Target/RapidJSON/redist 契约)
 - `guidelines/ue/localization-pitfalls.md` —— UE 框架 hidden contracts 集
 - `guidelines/ci-windows/powershell-native-command-pitfalls.md` —— CI 后处理用 PowerShell 时撞的相关 pitfall

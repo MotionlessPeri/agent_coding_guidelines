@@ -1,47 +1,16 @@
 ---
 name: ue-reference-engine-source
-description: Use before implementing UE framework features or reviewing unfamiliar UE API usage, and when diagnosing framework behavior against the current engine source or official samples. Skip non-UE work and edits without framework behavior changes.
+description: Use for unfamiliar, changed, or suspect UE framework contracts during implementation, review, or debugging. Skip non-UE work and contracts covered by valid evidence for the target version and execution path.
 ---
 
 # UE Reference Engine Source
 
-Meta prep-work rule for UE work: **before implementing any UE framework feature, locate the closest reference implementation and read it first.**
+用于实现、审查或排查中不熟悉、发生变化或有疑点的 UE 框架契约。覆盖同一目标版本和调用路径的有效证据可以复用。
 
-UE framework is largely undocumented. Correct usage patterns, implicit contracts, and call-order requirements live in engine source / official samples, not in API doc comments or web tutorials.
+[`reference-engine-source.md`](reference-engine-source.md) 是本技能查证方法的主来源，包含适用范围、证据选择、参考差异与搜索无结果的处理，以及行为验证要求。
 
-The full content lives in the bundled doc:
+按当前问题阅读其中相关部分：
 
-[`reference-engine-source.md`](reference-engine-source.md) — 5-tier priority order, categorized reference table indexed by ~22 UE subsystems, official sample projects, search keyword patterns, 4 anti-patterns, and 11 project-validated examples.
-
-## When This Fires
-
-| Trigger | Reason to read engine source first |
-|---|---|
-| Authoring new `UEdGraph` / `Schema` / `SGraphNode` | Each has 10+ implicit contracts (NodeGuid init, Pin SetOwner, RF_Transactional, factory registration) only visible in engine source |
-| Authoring new `UAssetDefinition` / `Factory` / `Validator` / `Subsystem` | Framework expectations (e.g. `CanDuplicate` coverage scope) are not in docs |
-| Implementing Slate widget / Details Customization | Reference impl is the only way to learn correct `SetOwner` / `OnFinishedChangingProperties` / etc. usage |
-| Overriding any UE virtual method for the first time | Call order + side effects are encoded in engine usage, not doc comments |
-| Diagnosing crash / weird behavior | Engine source shows how UE intends the feature to work — your reproduction often deviates from intended usage |
-| Reviewing AI-generated UE code | Every API used must be grep-verified against current engine version (AI training data often stops at older UE versions) |
-
-## How to Apply
-
-1. **Pre-action**: open the bundled `reference-engine-source.md` and find the row in the "按 UE 子系统分类的 reference 清单" table matching what you are building. The right column lists the engine source files to read.
-2. **For unfamiliar features**: pick the simplest reference impl first (e.g. `SGraphNodeKnot` before `SGraphNodeK2Default`).
-3. **Cross-check**: when two reference impls differ, the constraint is weak / it's a style choice — pick the one closest to your context.
-4. **Never copy blind**: read for the implicit contracts ("why does this `check()` exist?"), then implement in your own naming / data model.
-
-## Pair With
-
-- `guidelines/code/reuse-before-implementing.md` — symmetric prep-work for project-internal code survey (UE engine vs project repo are two different "what already exists" searches; do both before writing new code).
-- `skills/ue/ue-module-architecture/SKILL.md` — module / layer decisions often happen at the same prep stage as reference lookup.
-- skill `ue-custom-graph-editor` — procedural application for graph editor work; its "Prerequisites" section is this skill applied to one specific subsystem.
-
-## Anti-Pattern Summary
-
-Full list in bundled doc. The four most common:
-
-1. "I assumed UE works this way" — most frequent bug source; locate the relevant implementation and verify its contracts against the current engine version before coding; elapsed reading time is not the criterion.
-2. Trusting AI-generated UE code without grep-verifying against current engine version.
-3. Copy-pasting forum workarounds without reading engine source to understand root cause.
-4. Pushing past "no reference found" — if no engine source / sample / forum post exists for what you want, you are likely using the wrong path; redesign rather than force it.
+- 需要确定如何查证时，读“查证范围与已有证据”“选择证据”和“读参考实现与验证”。
+- 需要定位实现时，查“按 UE 子系统分类的 reference 清单”或官方 sample 导航。
+- 需要理解既有失败经验时，读对应反例与项目实例；这些案例的版本和上下文见附件。

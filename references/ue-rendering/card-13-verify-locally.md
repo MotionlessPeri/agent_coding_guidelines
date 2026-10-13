@@ -1,7 +1,8 @@
 # 本机核证方法 — 怎么自己确认一条结论真不真
 
-> **验证状态**：本文档描述的是方法与工具用法，不含引擎符号断言。工具本身在
-> `scripts/verify-ue-rendering-refs.py` 与 `scripts/ue-cvar-dump.py`。
+> **验证状态**：本文档以方法与工具用法为主，也保留引擎符号实例及 §6.1 的原跨版本核对数据。
+> 这些记录只覆盖当时检查的对象与版本；名称存在不证明行为兼容。本次未重跑引擎核验。
+> 工具本身在 `scripts/verify-ue-rendering-refs.py` 与 `scripts/ue-cvar-dump.py`。
 
 做渲染技术支持，最值钱的能力不是背下多少 CVar，是**拿到一个说法能自己在源码里落地确认**。
 这份文档就是那套动作。
@@ -203,7 +204,8 @@ CVar，代价远大于说一句「需要确认」。
 **给支持工作的结论**：客户在 5.5 或更早时，上面这几个家族的**细调项基本都不能直接给**——
 `HeterogeneousVolumes` 与 `MegaLights` 整个子系统不存在，`GPUCrashDebugging` 只有总开关没有厂商
 细分项，`ProfileGPU` 的输出控制项也没有。反过来，**子系统总开关**（`r.Nanite`、
-`r.Lumen.DiffuseIndirect.Allow`、`r.RDG.Validation`）在三个版本里都在，可以放心用。
+`r.Lumen.DiffuseIndirect.Allow`、`r.RDG.Validation`）的名称在原记录检查的三个版本里都存在；
+这只说明这些对象在该次检查中的名称可用，不保证其行为、参数或适用平台跨版本相同，使用前仍需核对当前目标。
 这跟上面那张经验判据表是一致的：总开关稳，内部细调项不稳。
 
 要查某一条具体 CVar 在客户版本有没有，重跑一次拿逐条表（比这里的家族归纳细）：

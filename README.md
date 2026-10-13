@@ -14,6 +14,8 @@ Extracted and generalized from real projects. Project-specific rules are exclude
 | `guidelines/collaboration/` | Multi-agent setup and artifact placement |
 | `techniques/` | Procedural patterns and operational guides |
 | `skills/` | Agent Skills shared by Claude Code and Codex. Sync via `scripts/sync-skills.ps1` |
+| [`references/`](references/README.md) | Source-linked knowledge and topic summaries; read for the current question, not as global rules |
+| `_radar/` | External candidates awaiting review; not approved guidance |
 | `scripts/` | Repo maintenance scripts (skill sync, etc.) |
 
 ## How to Connect to Your Projects
@@ -64,8 +66,11 @@ The script validates every skill before writing, replaces only same-named manage
 
 ## Adding New Content
 
-1. **Guideline** (declarative rule): create a `.md` under the appropriate `guidelines/` subdirectory; add a `@` reference in `AGENTS.md`.
-2. **Technique** (procedural pattern): create a `.md` under `techniques/`; add a `@` reference in `AGENTS.md`.
-3. **Skill** (shared Agent Skill): create `skills/<category>/<name>/SKILL.md` with matching `name` and a self-contained `description`; add a line under AGENTS.md's Skills section; run the sync script.
+1. **Guideline** (scoped rule or domain contract): use the appropriate `guidelines/` subdirectory and register it in [the topic index](guidelines/INDEX.md).
+2. **Technique** (operational method): use `techniques/` and register it in [the operation index](techniques/INDEX.md).
+3. **Skill** (on-demand package): create `skills/<category>/<name>/SKILL.md` with matching `name` and a self-contained `description`; register it in [the skill index](skills/INDEX.md). Sync only the intended packages when other source changes are pending.
+4. **Reference or synthesis**: use [references](references/README.md), preserve source links and applicable evidence limits, and register it in the relevant topic index. A summary does not become a behavioral rule merely by being saved.
+
+Use normal links for discovery. Add an eager import only for material needed in every task; see [content boundaries](guidelines/workflow/instruction-content.md). For source updates, conflicting claims and superseded material, use [knowledge maintenance](guidelines/workflow/knowledge-promotion.md#maintenance-and-evidence).
 
 Keep each file focused on one topic. See `AGENTS.md` for the full organization rules. For portable frontmatter, use only `name` and a self-contained `description`; put detailed procedures and platform branches in the skill body.

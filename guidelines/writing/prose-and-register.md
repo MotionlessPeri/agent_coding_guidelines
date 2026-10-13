@@ -2,7 +2,7 @@
 
 面向**人读的散文**的通用文体规则——不管这段散文落在哪：交付文档 / 代码注释 / 任务书 / CHANGELOG / brainstorm 结论稿。防两个反方向的失败：一边是英文夹生 + 黑话 + 冗余把读者劝退，另一边是"简洁"过头把读者照做时需要的信息删了。
 
-这是**声明式 SoT**——具体执行面由 skill 承接：文档场景走 [`skills/workflow/doc-writing-style`](../../skills/workflow/doc-writing-style/SKILL.md)（另加图示 discipline），代码注释场景走 [`skills/workflow/conversation-walkthrough`](../../skills/workflow/conversation-walkthrough/SKILL.md) Phase 3（另加注释 stability + Doxygen 契约头）。两个 skill 都引用本条，不各自复制。
+这是文体规则的主来源。文档表达可按需使用 [`doc-writing-style`](../../skills/workflow/doc-writing-style/SKILL.md) 的图示参考；代码注释审查可按需使用 [`conversation-walkthrough`](../../skills/workflow/conversation-walkthrough/SKILL.md) 的注释参考。两者引用本条，不各自复制；这些指针不要求自动调用技能、增加图示或统一改成 Doxygen 格式。
 
 ## 适用范围
 
@@ -17,7 +17,7 @@
 
 ### 1. 用项目工作语言写散文，技术标识符保留原文
 
-- **散文 / 解释 / 流程描述**：用项目工作语言（写进项目 AGENTS.md 的 "Documentation Language Policy" 段）。
+- **散文 / 解释 / 流程描述**：用项目约定或用户选择的工作语言；不要求项目必须存在特定标题的语言政策段。
 - **保留原文不翻译**：框架类型名 / API 签名 / 字段名 / SQL 关键字 / shell 命令 / UI 按钮 label / 技术缩写（DB / UI / UPROPERTY …）/ 业务专名（LineID / Choice …）/ code block 内注释。
 - **判据**：这个 token 对应代码里的某个标识符 → 保留原文（强译反增查找成本）；是说人话的散文 → 用工作语言。
 - **保留原文 ≠ 裸着写**：标识符落进散文要**加代码环境**（反引号）—— `settings.json` / `session id` / `.mcp.json`。裸着写有三个后果：机械检查器把它当普通英文词（本仓库实测：一个中文术语大小写检查器的**全部**命中都是裸标识符，零真问题——见 [`_radar/2026-08-21.md`](../../_radar/2026-08-21.md)）；自动排版 / 修正工具会去改它的大小写和中英文空格；读者分不清这是文件名还是一个词。

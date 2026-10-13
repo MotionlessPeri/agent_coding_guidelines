@@ -236,7 +236,8 @@ public:
   `PostEditChangeProperty` 同步路径。fork 和官方 MCP 都必须遵守这条
 - [`guidelines/ue/build-plugin-limitations.md`](build-plugin-limitations.md) — UE plugin
   打包分发的两个 limitation，跟 fork ship 给团队成员相关
-- `skills/ue/ue-reference-engine-source/SKILL.md` — 写 UE 功能前先找 reference 实现。
+- [UE 框架查证方法](../../skills/ue/ue-reference-engine-source/reference-engine-source.md) —
+  按目标版本查证不熟悉、变化或可疑的契约，可复用有效证据。
   本文档关于官方 MCP 扩展机制的判断（C++ Path B 适合什么场景）就来自读 engine source
   `Plugins/Experimental/AIAssistant/Source/AIAssistant/Private/AIAssistantToolset.h` +
   `Plugins/Experimental/ToolsetRegistry/Source/ToolsetRegistry/Public/ToolsetRegistry/ToolsetDefinition.h`

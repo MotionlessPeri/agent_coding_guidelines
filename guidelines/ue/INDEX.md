@@ -13,7 +13,7 @@ UE 是 meta-corpus 最重的框架子目录——Unreal Engine framework 的 hid
 
 | Skill | 何时触发 |
 |---|---|
-| `ue-reference-engine-source` | 写**任何** UE 功能（尤其 UI / Editor / Asset Editor / Slate / Localization / Validator / Factory）**动手前**——先找最相近的 engine source reference impl 读一遍 |
+| [`ue-reference-engine-source`](../../skills/ue/ue-reference-engine-source/SKILL.md) | 实现、审查或排查不熟悉、变化或可疑的 UE 框架契约；查证方法以技能的[附件](../../skills/ue/ue-reference-engine-source/reference-engine-source.md)为准 |
 | `ue-module-architecture` | 设计 UE module / plugin 切分、写 / review 任何 `*.Build.cs`、决定新类 / test / setting 归哪个 module、诊断 cook / package 的 missing-module 错 |
 | `ue-settings-persistence` | 加 / 改 UE Project Settings / `UDeveloperSettings` / config UObject / per-asset metadata；settings 重启后丢 / 开发机 vs CI 不一致 |
 | `ue-custom-graph-editor` | 从零建一个自定义 `UEdGraph` 节点图编辑器（7 步流程 + graph 数据归属设计）|
@@ -75,7 +75,7 @@ UE 是 meta-corpus 最重的框架子目录——Unreal Engine framework 的 hid
 
 ## 看哪几篇取决于你在做什么
 
-- **写任何 UE 功能动手前** → skill `ue-reference-engine-source`（按 22 子系统找 engine reference）
+- **需要核对 UE 框架契约** → 上方 `ue-reference-engine-source` 入口，按问题定位子系统参考
 - **第一次建 UE custom graph editor** → skill `ue-custom-graph-editor`（7 步流程 + 数据归属）+ 每步翻 [`graph-editor-constraints.md`](graph-editor-constraints.md)
 - **写新 Asset Editor + 持久化设置** → skill `ue-settings-persistence` + [`asset-definition-can-duplicate-limit.md`](asset-definition-can-duplicate-limit.md)
 - **Details 面板定制** → 先 [`details-customization-prefer-reflection.md`](details-customization-prefer-reflection.md)（能反射别写 customization），要写就守 [`property-handle-strong-capture.md`](property-handle-strong-capture.md)
@@ -86,7 +86,7 @@ UE 是 meta-corpus 最重的框架子目录——Unreal Engine framework 的 hid
 - **本地化 / 翻译 pipeline** → [`localization-pitfalls.md`](localization-pitfalls.md) + skill `ue-settings-persistence`
 - **升级到 UE 5.8 / BuildPlugin 打包 / CI 跑 automation** → [`ue58-upgrade-gotchas.md`](ue58-upgrade-gotchas.md) / [`build-plugin-limitations.md`](build-plugin-limitations.md) / [`automation-test-from-ci.md`](automation-test-from-ci.md)
 - **撞到 "`X` targets are not currently supported from this engine distribution"** → [`installed-engine-build-constraints.md`](installed-engine-build-constraints.md)（先分清 UBT 拒绝 vs 真编不出来；BuildPlugin 场景的绕法在 [`build-plugin-limitations.md`](build-plugin-limitations.md) Limitation 4）
-- **接到一个 UE bug / weird behavior** → skill `ue-reference-engine-source` 的按子系统 reference 清单，找最相近 engine source 看怎么实现的
+- **UE bug 涉及可疑框架行为** → 上方 `ue-reference-engine-source` 入口，核对相关契约与实际调用路径
 
 ## 增长状态
 

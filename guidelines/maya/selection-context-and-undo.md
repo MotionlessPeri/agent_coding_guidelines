@@ -5,6 +5,12 @@ press/drag/release + hit-test + 选择），以及**由 manip 自持拖拽**（�
 `MPxManipContainer` 自己 doPress/doDrag/doRelease）时，Maya 文档没明说的回调时序与 undo 约束。跟
 [`manip-container-constraints.md`](manip-container-constraints.md) 是兄弟篇。
 
+## 适用范围与证据
+
+- 区分 context 自持交互与 manip 自持拖拽；第 4、5 节的命令提交路径不能脱离这个前提互换。普通属性编辑不自动适用整套工具配方。
+- 本仓提交 `56ee831`（2026-06-04）引入规则 1–4，`40bc4f9`（2026-07-02）补充规则 5–6；下方“项目实例参考”保留了两类工具的观察。原记录未注明 Maya/DevKit 版本，也未给出原项目 commit 或可重跑场景，不能标成全版本验证。
+- 采用相关条目时，在目标 Maya 版本的 viewport 中检查对应回调、一次拖拽的 undo/redo 数据结果，以及适用时 stock manip 的视觉还原。本次未运行 Maya，仅整理已有记录。
+
 ## 核心规则
 
 1. **VP2.0 只调 3-param 版本的 `doPress/doDrag/doRelease`，必须同时重载 1-param + 3-param 并转发到共同实现**

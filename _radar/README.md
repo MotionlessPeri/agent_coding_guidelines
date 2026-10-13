@@ -15,8 +15,8 @@ workflow guideline + 相关工具」,把**狠过滤后的 3-5 个候选**写成�
 
 - `_radar/` 的内容是 **inbox / 待审清单**,不是 corpus。
 - **绝不**在 `AGENTS.md` 里写 `@_radar/...`。一旦 @-import 就会污染每个 session 的
-  always-loaded context(见 [`techniques/context-budget-audit.md`](../techniques/context-budget-audit.md))。
-- digest 文件本身永远不进 context,只在你主动读时才看。
+  always-loaded context(见 [`context-budget-audit`](../skills/workflow/context-budget-audit/SKILL.md))。
+- digest 不在启动时自动加载；只有当前调研或用户请求涉及候选时才读取，并保留待审状态。
 
 ## 促成(promotion)funnel —— 人工 gate
 
