@@ -138,6 +138,8 @@ Guidelines are grouped by topic under `guidelines/`:
 > `techniques/cpp-coverage-and-crap-measurement.md`（C++ per-function 覆盖率 / CRAP 测量：lizard + gcov/gcovr + OpenCppCoverage，含 OpenCppCoverage 盘符 bug 等 pitfall）同样不 eager `@`-import——**只在 C++ 项目要拿覆盖率 / 算 CRAP 时按需读**，常驻侧的指标使用认知在 `guidelines/code/complexity-coverage-metrics.md`。（2026-07-24）
 >
 > `techniques/blackbox-api-characterization.md`（黑箱刻画第三方 API 的**参数语义**：扫了没反应的**五种原因**及各自指纹 / 比较维度不独立时拆混淆变量 / 自证阈值要给浮点噪声留余量 / 数量级不合理先查场景 / 优先找"不是你写的判官"——厂商返回值与库自己填好的对应关系）同样不 eager `@`-import——**只在要搞清一个闭源或无文档库的参数到底控制什么时按需读**。跟 `adversarial-verification.md`（常驻，管"我改的东西对不对"）是**对称的另一半**：本条管"别人的黑箱是什么语义"。比 skill `reverse-maya-closed-nodes` 轻且框架无关（那条覆盖 Ghidra / 汇编且 Maya 专属）——先用本条，不够再上那条。**单项目验证**（其中"五种原因"该项目内 5 次独立复现、每次真因不同），未满足两击规则，apply-and-refine。（2026-07-29 从 HumanIK 闭源库参数刻画提升）
+>
+> [`techniques/dcc-plugin-gui-e2e-automation.md`](techniques/dcc-plugin-gui-e2e-automation.md)（DCC 插件的真界面端到端自动测试：宿主启动脚本在界面空闲回调里轮询命令文件、在主线程执行 / UI Automation 按控件名找按钮、向窗口投递鼠标消息，没有脚本接口也能点且不动真实鼠标 / 插件日志行作完成信号、先确认加载的是刚编的插件 / 判据用宿主自己的求值而不是插件的数 / MotionBuilder 2023 实测隐藏约束 / 说"测不了"之前先查本会话做过什么）同样不 eager `@`-import——**只在要在 DCC 宿主真界面里验证插件时按需读**。跟 `guidelines/code/gui-visual-machine-gating.md` 分工：那条把**画面**对不对交人工，本条管**入口在界面、判据是数据**的那部分，全自动。通用流程跨 2 项目（Maya 那篇 `guidelines/maya/gpu-deformer-gui-validation.md` 是一次性 fixture 形态），点按钮那套只在 MotionBuilder 2023 用过，apply-and-refine。（2026-10-14 从 MotionBuilder 工具插件的回归实测提升，用户批）
 
 ---
 
