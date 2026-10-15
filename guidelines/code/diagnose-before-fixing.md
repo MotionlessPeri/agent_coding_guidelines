@@ -3,7 +3,8 @@ class: experience
 scope: universal
 triggers: [bug, 修复, 根因, 八成是, 直接改, 校验器告警, 框架报警, 打不开, 卡住, 复现不了, 诊断日志, 取证]
 born: "2026-06，写下时的模型未记录"
-retested: []
+retested:
+  - "2026-10-15 claude-fable-5-1，claude -p 全新会话、无工具：D1 pass、D2 pass、D3 fail；见 docs/evaluations/experience-retest-2026-10-15.md"
 incidents:
   - 2026-06-visualizer-fix-before-evidence
   - 2026-08-validator-warning-pointed-at-local-code

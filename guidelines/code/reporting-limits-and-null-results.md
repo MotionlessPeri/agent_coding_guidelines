@@ -3,7 +3,8 @@ class: experience
 scope: universal
 triggers: [报结论, 做不到, 不支持, 能力边界, 框架不支持, 没变, 没接上, 不起作用, 零命中, 找不到, 不存在, 没发生, 搜了没有, ABSENT, 这个数, 搬数字, 聚合统计量, p95, 均值]
 born: "2026-08，写下时的模型未记录"
-retested: []
+retested:
+  - "2026-10-15 claude-fable-5-1，claude -p 全新会话、无工具：R1 pass、R2 partial、R3 pass、R4 pass、R5 pass；见 docs/evaluations/experience-retest-2026-10-15.md"
 incidents:
   - 2026-08-port-covered-half-the-operator
   - 2026-08-optional-dict-blamed-on-the-contract
