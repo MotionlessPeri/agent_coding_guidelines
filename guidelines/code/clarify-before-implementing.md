@@ -47,17 +47,6 @@ fix an obvious typo). Do not ask permission for the obvious.
 | "Make search faster" | Add an index on the most obvious column | "Which queries are slow? I see three search paths: name autocomplete, full-text body, geo-radius. Which one are we tuning?" |
 | Request conflicts with an unresolved constraint | Ignore the conflict | "The request says X, but the documented compatibility requirement needs Y. Should that requirement change?" |
 
-## How to Ask (User Preference)
-
-When you do ask — whether clarifying a task, choosing between approaches, or
-confirming a decision — **ask in plain conversational text in your reply**.
-Do **not** route questions through a structured multiple-choice question
-tool/UI (e.g. Claude Code's `AskUserQuestion`). State the question directly and
-let the user answer in their own words.
-
-This applies to **all** questions, not only pre-implementation clarification —
-the intent is a direct back-and-forth, not a form to fill in.
-
 ## Anti-Patterns
 
 - "Based on my best guess, I will …" — if you need to guess, ask first.

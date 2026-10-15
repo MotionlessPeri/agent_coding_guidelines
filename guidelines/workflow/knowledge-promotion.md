@@ -81,9 +81,11 @@ Do not promote the following into cross-project rules or operational defaults:
 - **Rules already in the framework's own docs** — if it's in the UE engine
   source comments or the tool's official guide, cite the source from the
   project instead of duplicating here.
-- **Organization-specific policies** (a specific company's code-review
-  norms, compliance frameworks) — they belong in that organization's own
-  AGENTS.md.
+- **Organization-specific or personal content** (a specific company's
+  machines, services, forks or review norms; one person's preferences) — keep
+  it in a narrower-scope corpus, an organization or personal overlay that links
+  to this one. Promote upward only the part that still holds after those
+  specifics are stripped.
 - **Exploratory or unverified patterns** — if it has only been tried once
   and it worked, it is not yet a guideline. Wait until it proves itself
   in a second use.
