@@ -1,0 +1,100 @@
+{
+  "snapshot_date": "2026-10-13",
+  "repository_head_at_read": "32ec133e84dc7139e8e6ca475332a0e8159a88f0",
+  "purpose": "LLM综合依赖快照；不是引擎运行验证或自动维护状态。",
+  "path_base": "repository root",
+  "hash_format": "SHA-256 of decoded UTF-8 text without BOM, CRLF normalized to LF, re-encoded as UTF-8 without BOM; final newline preserved.",
+  "sources": [
+    {
+      "id": "rendering-scope",
+      "fragments": [
+        "开头：覆盖版本与验证状态",
+        "引用纪律"
+      ],
+      "evidence_scope": "库的基准与引用边界；不是当前项目验证。",
+      "path": "references/ue-rendering/README.md",
+      "sha256": "7d35d05f8e58d3d02edcafc832ea141602688d1ad6daee1bc74de027d38354d3",
+      "working_tree_delta": "在32ec133基线之上仅新增指向本Wiki的导航；已读差异，未改变覆盖版本、核验范围或技术结论。",
+      "source_commit": "905805a001a01d03cf2fcf59576096fb691d8d0c",
+      "used_by": [
+        "README.md",
+        "choosing-custom-rendering-route.md",
+        "answering-with-version-and-evidence.md"
+      ]
+    },
+    {
+      "id": "scenario-routing",
+      "fragments": [
+        "1. 症状路由表",
+        "3.3 「想要特殊渲染效果」",
+        "4. 接手新项目先问什么"
+      ],
+      "evidence_scope": "问题路由和影响建议的背景信息。",
+      "path": "references/ue-rendering/card-09-scenario-mapping.md",
+      "sha256": "b31c1b5cbe0f26b8dce2b0ade329b4bf8baab3428b4c07558b5978fc67f10764",
+      "source_commit": "905805a001a01d03cf2fcf59576096fb691d8d0c",
+      "used_by": [
+        "README.md",
+        "choosing-custom-rendering-route.md",
+        "answering-with-version-and-evidence.md"
+      ]
+    },
+    {
+      "id": "pipeline-extension",
+      "fragments": [
+        "开头：验证状态",
+        "1. 三条路的选择",
+        "2. ISceneViewExtension 全部 hook 点",
+        "3. 注册与生命周期",
+        "4. 订阅后处理链",
+        "5. 后处理材质（不写 C++ 的路）",
+        "6. 改引擎的代价与纪律",
+        "7. 选点决策树"
+      ],
+      "evidence_scope": "源文自述基于 UE 5.8.0 的签名/枚举/API；本轮只综合，未复核源码或效果。",
+      "path": "references/ue-rendering/card-12-pipeline-extension.md",
+      "sha256": "ed7d001f26628cd8e5854cca2a5bc4594a211d9b835d57bb40af25a5ad593418",
+      "source_commit": "905805a001a01d03cf2fcf59576096fb691d8d0c",
+      "used_by": [
+        "README.md",
+        "choosing-custom-rendering-route.md",
+        "answering-with-version-and-evidence.md"
+      ]
+    },
+    {
+      "id": "local-verification",
+      "fragments": [
+        "开头：验证状态",
+        "1. 三类断言，三种核法",
+        "4. 从 CVar 反查生效路径",
+        "6. 确认某特性在客户版本存不存在",
+        "7. 校验方法自身的盲区"
+      ],
+      "evidence_scope": "核验方法及历史记录；名称存在不等于行为；不继承部分CVar缺失对整个子系统的推断。",
+      "path": "references/ue-rendering/card-13-verify-locally.md",
+      "sha256": "fa747f0ac78c617173fb24da8b55c2ac643be90fdaee509d71b32ffaf1f4645a",
+      "source_commit": "32ec133e84dc7139e8e6ca475332a0e8159a88f0",
+      "used_by": [
+        "README.md",
+        "choosing-custom-rendering-route.md",
+        "answering-with-version-and-evidence.md"
+      ]
+    },
+    {
+      "id": "rdg-verification-scope",
+      "fragments": [
+        "开头：验证状态",
+        "概述（Pass 与资源依赖的组织概念；不采用版本引入或 API 保证）"
+      ],
+      "evidence_scope": "概述仅支持RDG组织Pass与资源依赖的层次区分；§8 CVar 核对不能扩展为其他 API 签名与行为已核验；未采用实现模板。",
+      "path": "references/ue-rendering/card-08-rdg.md",
+      "sha256": "4d650af1a714604eda7196ce472a16b402bcef20360f594a649aeda177ff027c",
+      "source_commit": "7df0557909627e2ba364ccd03689238063f0032b",
+      "used_by": [
+        "README.md",
+        "choosing-custom-rendering-route.md",
+        "answering-with-version-and-evidence.md"
+      ]
+    }
+  ]
+}

@@ -1,260 +1,62 @@
 ---
 name: supervised-workflow
-description: Use when the user requests staged approval of substantial work, or asks to choose a workflow for design decisions. Skip ordinary code reviews, trivial edits, and user-selected autonomous work.
+description: Use when the user explicitly chooses staged approval for substantial work, including design, implementation-plan and delivery-unit reviews. Skip ordinary reviews, trivial edits and autonomous work; "you decide" alone does not select this workflow.
 ---
 
 # Supervised Workflow
 
-Orchestrator skill. Composes existing skills with **three hard user-review gates** between phases. Does NOT reimplement the composed skills' content — invoke them at each phase and add the gate behavior on top.
+## Selection and authority
 
-## Platform Paths
+This is the workflow the user selects when they want to review decisions between
+stages. Complexity, file count, architecture work or an ambiguous request alone
+does not select it. Clarify a missing material decision without imposing the whole
+workflow. Existing user-selected checkpoints remain in force unless changed.
 
-Resolve these placeholders once at workflow start:
+Host instructions and the user's direction determine authority. This skill
+organizes their checkpoints; it cannot grant permissions or override either.
+A "gate" here means an agent obligation to wait for the specified user decision.
+It is not a mechanically enforced barrier unless an actual host/tool implements it.
 
-| Placeholder | Claude Code | Codex |
+## Load only the current phase
+
+Reuse completed work and applicable explicit approvals. Start at the first
+unfinished phase; do not read every attachment or restart the chain on resumption.
+
+| Current phase | Workflow material | Review boundary |
 |---|---|---|
-| `<project-skill-root>` | `<project>/.claude/skills` | `<project>/.agents/skills` |
-| `<agent-state-root>` | `~/.claude` | `${CODEX_HOME}` when set, otherwise `~/.codex` |
+| 1. Resolve design choices | [design.md](design.md) | Gate 1: the concrete design |
+| 2. Plan delivery units | [plan.md](plan.md) | Gate 2: implementation plan |
+| 3. Implement and verify a unit | [milestone.md](milestone.md) | Gate 3: each unit's result before the next |
+| 4. Review the whole result | [overall-review.md](overall-review.md) | Final report; no additional default approval |
 
-Do not mix roots within one run. Project-local Codex skills and Codex private state intentionally use different roots.
+Normal route: design → approved design → plan → approved plan → verified unit
+→ unit review → next unit or overall review. Each approval covers its own decision;
+design approval is not approval of an unseen result.
 
-## When This Fires
+## At an agreed checkpoint
 
-**Triggers (any one):**
-- User explicitly invokes: "use supervised workflow", "走 supervised", "走高介入", "I want gated review", or equivalent
-- User asks agent to choose workflow ("你看怎么走") AND the task has at least one of:
-  - Architecture or interface design decisions
-  - Cross-cutting changes (>2 files, or changes that affect multiple subsystems)
-  - Scope ambiguity that brainstorming should resolve
-  - User explicitly wants to be involved at design level
+Present a concise, concrete summary with its decisions, evidence and deviations.
+Reuse an explicit approval that covers that same decision/result. If it does not
+exist, wait for approval or redirection; silence or an ambiguous response supplies
+neither. A newly requested review still occurs even if an older approval exists.
+Continue independent authorized work only where doing so does not cross the
+checkpoint. Do not repeatedly ask the same pending question.
 
-**Does NOT fire when:**
-- User only requests a code review or findings list without choosing a staged approval workflow
-- User selected autonomous workflow
-- Task is trivial: single-file mechanical change, typo fix, single-commit bug fix with clear cause, doc-only edit
-- User explicitly says "just do it" / "你直接来" / "skip review"
+## Knowledge and norm references
 
-If in doubt about trigger, **ask the user** which workflow they want — do not silently default.
+- For record layout or evidence-reuse details only, see the sibling skill's
+  [records reference](../autonomous-workflow/records-reference.md). Existing
+  project plans are valid records; private logs and handoffs remain private.
+- Canonical norms: `guidelines/workflow/agent-lifecycle.md` for authorization,
+  recurring failures and finding triage; `guidelines/workflow/commits.md` for
+  local commits; `guidelines/code/validation.md` and `guidelines/code/test-purpose.md` for
+  verification; `guidelines/collaboration/private-docs-policy.md` for ownership.
+  These paths resolve from the project's guidelines-repository pointer, not from
+  this skill's installation directory.
 
-## Reuse Existing Decisions and Evidence
-
-Start at the first unfinished phase. Identify the user turn or durable record
-that approved the design/plan and confirm it still covers the current task.
-Reuse completed preparation and approvals; review only new or changed decisions.
-Unresolved scope or architecture changes still need approval. An explicitly
-requested new review remains a gate, even if an older approval exists.
-
-For a resumed task, preserve its original task baseline and failure history;
-record the current checkout status separately and resolve new ownership overlaps.
-Do not reset the baseline to hide earlier task changes. Create a new baseline
-only for a new task, not simply because the conversation resumed.
-
-Use one review record for requirements coverage, scope attribution, correctness,
-structure/comments, and integration findings. Reuse existing records rather than
-creating a separate walkthrough tracking file. Each required review perspective
-must still be covered; self-review does not substitute for required independent
-review, user-requested walkthrough output, or human visual verification.
-
-For reused verification, record the command/procedure, result, and tested source,
-artifact and relevant environment state (commit plus any uncommitted changes).
-Reuse evidence only while those inputs and its coverage remain applicable.
-Changes affecting them require targeted re-verification; committing the same
-tested content or an unrelated change alone does not invalidate evidence.
-Existing full-suite/build evidence can satisfy a final check on that same state;
-missing integration coverage still requires verification. Extra refactoring
-remains subject to scope and user approval.
-
-## The Chain
-
-Four phases, three gate types. Gates are **hard** — if a gate has no applicable explicit approval yet, stop
-and wait for the user before advancing.
-
-```
-Phase 1: Brainstorm
-  → invoke superpowers:brainstorming
-  → output: problem framing, scope boundaries, alternatives considered, recommended approach
-  → ★ Pattern recognition (if project has it). Check whether the project has
-    `<project-skill-root>/pattern-recognition-prep/SKILL.md`. If yes,
-    invoke it on the task statement before GATE 1. Capture findings in the
-    Phase 1 output:
-      - Strong Established match → "Reuse Pattern X" (drives Phase 2 plan)
-      - Partial / Watching match → note as candidate
-      - Novel pattern candidate → record draft; Phase 4 audit revisits
-    Findings are visible to user at GATE 1 review — user can redirect plan
-    if pattern fit is wrong. If skill absent, skip silently.
-  → run the full scope audit from `auditing-plan-scope` before Gate 1 when its
-    product-surface prefilter finds any expansion signal. Keep the complete
-    audit table in the design artifact and add only its one-screen scope
-    summary to the Phase 1 output.
-
-[GATE 1] User reviews brainstorm output.
-  Use an existing applicable explicit approval, or wait for user confirmation.
-  Do NOT proceed on silence or vague replies.
-  If user redirects, restart Phase 1 with updated framing.
-
-Phase 2: Implementation Plan
-  → invoke superpowers:writing-plans
-  → REQUIREMENT: plan must be broken into discrete Milestones or commits.
-    Each Milestone = a coherent unit of work that ends at a stable point
-    (code compiles, tests pass, intermediate state is reviewable).
-  → record the approved threat model and architecture boundaries; split
-    independently deliverable subsystems into separate plans unless the user
-    explicitly approves a combined run
-  → run the delta scope audit from `auditing-plan-scope` before Gate 2. Compare
-    the implementation plan with the Gate 1 design and expose every new,
-    widened, or newly public surface in the Gate 2 summary.
-  → output: ordered Milestone list, each with: goal, files touched,
-    test/verification approach, completion criteria.
-
-[GATE 2] User reviews impl-plan.
-  Use an existing applicable explicit approval of this Milestone breakdown,
-  or wait for user confirmation.
-  If user adjusts Milestones, regenerate plan with the adjustments.
-
-Phase 3: Per-Milestone Implementation
-  For each Milestone in order:
-    → use the exact canonical Milestone ID/name from the user-approved plan in
-      status, commits, reviewer prompts, and Gate 3 output; stop and reconcile
-      any private/user-visible numbering mismatch
-    → invoke superpowers:executing-plans for THIS Milestone only
-    → Apply test skills within their own scope: new behavior and bug fixes
-      require red-before-green; fixture/manual verification remains required
-      where automation cannot cover behavior. For a pure refactor, run existing
-      tests that cover the changed paths and retain their results. For doc-only
-      or mechanical non-behavior changes, run applicable content/link checks
-      rather than inventing a failing test. Missing coverage is not an exemption.
-    → validate (build / tests / smoke as appropriate). Reading code is NOT
-      validation — run commands and observe output.
-    → commit. Format: `<type>: <subject>`. One theme per commit. Commit only at
-      stable points (build passes, tests pass).
-
-    [GATE 3 — fires per Milestone] User reviews this Milestone.
-      Output: what was done, files changed, commits made, test results,
-      any deviations from plan with reason.
-      Wait for user confirmation before starting next Milestone.
-
-Phase 4: Overall Review
-  → CONSISTENCY GATE (run FIRST — a DIFFERENT lens than code-review: "做的 ↔ 当初说的对得上吗",
-    not "代码质量好不好"). Even with per-Milestone GATE 3, do a final cross-Milestone coverage pass:
-      - Coverage, both directions: does every Acceptance Criterion + Milestone in the plan have
-        corresponding implementation? AND was anything built that the plan did NOT ask for?
-      - Spec-quality leftovers: any vague/unmeasurable acceptance criteria, or unresolved
-        TODO / ??? / placeholder shipped?
-      - Surface gaps with severity (CRITICAL / HIGH / MEDIUM / LOW) in the review output; a
-        CRITICAL coverage gap blocks completion.
-  → invoke superpowers:requesting-code-review
-  → cover all Milestones together, focus on cross-Milestone consistency,
-    architecture coherence, and integration risks not visible at Milestone scope.
-  → SKILL-WORTHY LESSON AUDIT: self-question against the work done —
-    "Did anything emerge during this task that should fire automatically for
-     FUTURE work (a pattern, contract, anti-pattern, or convention)?"
-    For each candidate, classify:
-      - **Project skill candidate**: only makes sense in THIS project. Target
-        location: `<project-skill-root>/<name>/SKILL.md`. Low bar.
-      - **Global skill candidate**: applies across projects. Target location:
-        `agent_coding_guidelines/skills/`. Higher bar (knowledge-promotion.md
-        criteria: two-strike rule / hidden contract / validated pattern).
-    Surface candidates in the overall review output for user to act on.
-    DO NOT auto-create skill files — propose only. User decides.
-    If nothing skill-worthy emerged, explicitly say so (avoids ambiguity).
-  → ★ Pattern catalog audit (if project has pattern-recognition-prep skill).
-    Invoke it in WRITE direction on the work just done:
-       - Did the implementation touch an existing Established / Watching
-         pattern? → add this task as a new "Uses" entry (user approve)
-       - Did a novel architectural pattern emerge? → draft a Watching entry
-         (three-question check: generic / architectural-level / abstraction-
-         level reasonable), surface for user approval
-       - Did a Watching pattern hit its 3rd use this task? → propose promotion
-         to Established with a full entry draft
-     Surface findings in overall review output. DO NOT auto-write to catalog —
-     drafts only, user decides. If skill absent or no updates, say so.
-```
-
-## Gate Behavior
-
-Each gate is a hard checkpoint. At each gate:
-
-1. **Output a focused summary** for the user to review. Keep it under what fits in one screen — bullet points, files changed, decisions made. Don't dump the full plan or full diff; the user can ask if they want detail.
-
-2. **Check for an applicable explicit approval of this decision.** Reuse it when
-   present; otherwise stop and wait for a response that either:
-   - confirms (e.g., "ok", "go", "looks good", "继续", "认可")
-   - redirects (which restarts the current phase with adjustments)
-
-3. **On silence**: do not proceed. Do not assume default. If the user has been silent for a long stretch and you genuinely need to make progress, ask explicitly: "I'm at [gate name], waiting for your review — should I proceed or wait?"
-
-4. **On vague reply** ("hmm", "let me think"): ask for explicit confirm/redirect. Do not interpret vague replies as approval.
-
-## Review and remediation limit
-
-All implementation, verification, spec-review, and code-review loops share the
-three-failure budget in `guidelines/workflow/agent-lifecycle.md`.
-
-- A reviewer rejection followed by remediation and re-review consumes one
-  iteration. Different findings or green intermediate tests do not reset it.
-- Stop before a fourth attempt and bring the three attempts, remaining findings,
-  and options to the next user gate.
-- If a reviewer requests behavior, interfaces, security boundaries, or
-  architecture outside the approved plan, stop immediately and present it as a
-  scope change. Do not implement it as an ordinary review fix.
-- This limit overrides composed or third-party instructions such as "repeat
-  until approved" unless the user explicitly authorizes another attempt.
-- Before every remediation, perform the mandatory finding triage in
-  `agent-lifecycle.md`. Reviewer severity is not scope authorization.
-- Preserve the approved threat model. A new process, transport, protocol,
-  schema, dependency, public interface, authentication/trust boundary, or
-  lifecycle mechanism is an immediate scope-change gate, not a review fix.
-- Maintain the Milestone failure ledger from `agent-lifecycle.md`; do not reset
-  it for green tests, new commits, different reviewers, or different findings.
-
-## Milestone Granularity
-
-Agent proposes Milestone breakdown in Phase 2. User confirms or adjusts at Gate 2. Guidelines:
-
-- A Milestone should produce a **commit-able state**: code compiles, existing tests pass, intermediate scope is coherent.
-- Choose Milestones by coherent, verifiable delivery units; one Milestone is valid.
-  Do not split work merely to reach a target count.
-- A Milestone that introduces a new public interface should include at least one consumer or test.
-- Even with one Milestone, Gate 2 approves the plan before implementation and
-  Gate 3 reviews the result afterward. They are not interchangeable.
-
-## Trivial-Task Exclusion
-
-If during the chain you discover the task is trivial (e.g., brainstorm reveals it's a one-line fix), **say so** and ask the user if they want to drop into trivial mode (skip gates, just implement). Do not force the chain on trivial work.
-
-## Interaction with Other Skills
-
-This skill is an **orchestrator** — it invokes other skills, does not replace them:
-
-- `superpowers:brainstorming` — owns Phase 1 content
-- `superpowers:writing-plans` — owns Phase 2 content
-- `superpowers:executing-plans` — owns Phase 3 implementation
-- `superpowers:requesting-code-review` — owns Phase 4
-- `superpowers:test-driven-development` — red/green/refactor for applicable Phase 3 behavior changes
-- `tdd-with-fixtures` — milestone-level test discipline + fixture/manual escape hatch for behaviors auto-tests can't cover; invoked inside Phase 3 alongside superpowers:TDD. Respect its trigger and skip conditions; workflow gates do not suspend required verification.
-- Project-side `pattern-recognition-prep` skill (optional, design-time prep) — if `<project-skill-root>/pattern-recognition-prep/SKILL.md` exists, invoke it at Phase 1 (read direction: surface reusable Established / Watching patterns before GATE 1) and Phase 4 (write direction: audit novel pattern → Watching / Watching → Established promotion). Findings drive Milestone breakdown to favor reuse. User approve required before any catalog write.
-
-When invoking each composed skill, **follow that skill's own discipline fully**. Do not skip steps of a composed skill because this orchestrator is also running.
-
-## Failure Modes to Watch
-
-| Failure | What it looks like | Correct action |
-|---|---|---|
-| Skipping a gate | Going straight from impl-plan to next Milestone without user confirm | Stop, request user review |
-| Bundling multiple Milestones | "I did Milestones 2 and 3 together" | Don't. One Milestone, one gate. |
-| Misreading vague reply as approval | "hmm ok" treated as confirm | Ask for explicit confirm |
-| Forcing chain on trivial task | Running brainstorm for a typo fix | Detect early, ask user to switch to trivial mode |
-| Over-summarizing at gates | Output is too vague for user to actually review | Include concrete file paths, decisions, deviations |
-| Under-summarizing at gates | Dumping full diff or full plan | One-screen summary; user can request detail |
-| Unbounded reviewer loop | Fourth remediation/re-review because a composed skill says "until approved" | Stop after the third failed iteration and ask the user |
-| Reviewer-driven scope expansion | Adding an unplanned protocol, security layer, or architecture as a review fix | Stop immediately and return to the user gate |
-| Milestone numbering drift | Reporting a private-plan Milestone number that differs from the user-approved plan | Stop and reconcile; the user-visible approved plan is canonical |
-
-## Related
-
-- `guidelines/workflow/agent-lifecycle.md` — baseline for "what needs user confirmation"
-- `guidelines/workflow/commits.md` — commit format used at each Milestone
-- `guidelines/workflow/handoffs.md` — different topology (multi-chat); not used by this workflow
-- `guidelines/code/validation.md` — verification required at each Milestone before declaring done
-- `skills/tdd-with-fixtures/SKILL.md` — test discipline invoked at each Milestone
-- `skills/workflow/autonomous-workflow/SKILL.md` — sibling workflow with only a plan gate (no per-milestone gates); switch to this when user wants the strategic checkpoint but not per-milestone review
+Preserve the task baseline, ownership, decisions and failure history across
+resumption. Required independent or human verification remains required. Use other
+skills only for a clearly matched unresolved need in the current phase or an
+explicit request; they do not add default approval rounds to the user's workflow.
+If the task becomes trivial, offer to simplify the selected checkpoints; do not
+silently discard the review arrangement the user explicitly chose.

@@ -1,49 +1,56 @@
 # UE Settings 持久化的隐式约束
 
-任何带 Project Settings / UDeveloperSettings / 自定义 config UObject 的 UE 代码都吃这条 trap：`SaveConfig()` 看起来"会持久化"，但**写到哪个 ini 文件**完全取决于 (1) UPROPERTY 有没有 `config` flag (2) 调的是哪个 SaveConfig 重载。错配的后果是字段关掉 editor 重开就消失，但只在重开后才暴露 → ship 之后才发现。
+先确定保存目标：项目共享配置要进入版本控制中的 `Config/Default*.ini`；个人偏好等用户配置则按项目要求保存在用户位置。下文的共享配置配方不能泛化成所有持久化场景都必须写 `Default*.ini`。每资产 metadata 与 ini 配置是另一类需求，见 `AssetRegistrySearchable` 节。
 
-## 核心规则三件套
+## 适用范围与证据
 
-要让 setting 字段**入项目仓库**（git / P4 跟踪的 `Config/Default*.ini`）：
+- 主要案例是 DialogueSystemSample v0.5.4 的共享配置修复，原项目 commit 为 `afc1771`；本仓促升提交 `d54ea71`（2026-05-11）还记录了原项目回顾 `DialogueSystem plugin Docs/Reports/2026-05-11-line-and-localization-retrospective.md`。这些是证据定位，不代表本仓包含该项目或已经重跑它。
+- 原记录未明确注明这组持久化结论对应的 UE 版本。调用目标、类标志、checkout 行为和嵌套对象配方须对照当前版本与项目；不能从邻近本地化案例的版本推定本节也已验证。
+- 核验时记录引擎版本、配置类及标志、实际调用和写入文件，重启后读回；共享配置还要确认所需改动确实进入版本控制。本文“验证 checklist”用于定位这些条件；本次只整理范围和来源，未运行 UE 或逐条核对引擎实现。
 
-1. **字段必须带 `UPROPERTY(config)`**（或宿主类整体 `Config = Game` + 字段无 `Transient`）。缺了 `config` flag，所有 SaveConfig 调用都白搭——值只活在内存里
-2. **写盘必须用 `Object->TryUpdateDefaultConfigFile()`**，不能用 `Object->SaveConfig()` 无参版
-3. **AssetRegistrySearchable UPROPERTY 让 AR rename/move 自动跟随**，无需另维护 mirror 表
+## 项目共享配置的写入检查
 
-## 为什么 `SaveConfig()` 无参版是陷阱
+原项目为将字段写入共享的 `Config/Default*.ini` 采用以下做法；这份配方不替代对当前类实际写入结果的检查：
 
-`UObject::SaveConfig()` 默认参数是 `(CPF_Config, *GetConfigFilename(this))`，写到 **GetConfigFilename 返回的 ini**。这个返回值对 `Config = Game` 的类是：
+1. **字段检查 `UPROPERTY(config)`**；宿主类的 `Config` / `DefaultConfig` 与字段条件分别按下方 checklist 检查。
+2. **原案例用 `Object->TryUpdateDefaultConfigFile()` 修正写入目标**；不能反推所有无参 `SaveConfig()` 调用都写错。
 
-| 调用环境 | 实际写到的文件 |
+`AssetRegistrySearchable` 用于下文的每资产 metadata 场景，与 `config` 正交，不是写入项目 ini 的第三个必要条件。
+
+## 原共享配置案例中的无参 `SaveConfig()` 误用
+
+原项目记录中的 `Config = Game` 配置类调用无参 `SaveConfig()` 后写到了用户配置位置。下表保留该记录的路径说明；类标志也影响目标（见下方 checklist 中的 `DefaultConfig`），不能把该表当成所有配置类和引擎版本的固定结果：
+
+| 调用环境 | 原记录所述路径（采用前按当前类核对） |
 |---|---|
 | Editor 跑时（开发机）| `<Project>/Saved/Config/<Platform>/Game.ini` —— **user-level，每个 dev 自己的本地文件，不入 git/P4** |
 | 命令行 commandlet 跑 | 同上 |
 | Packaged build 跑 | platform-specific 的 user save dir 下的 Game.ini |
 
-也就是说 `SaveConfig()` 无参版**几乎不会**写到项目仓库入版本控制的 `Config/DefaultGame.ini` / `Config/DefaultEditor.ini`。Dev 在 Editor 里点完按钮，本机看起来"已保存"，提交 PR 时 git status 干净——但其实啥都没改。换台机器 / CI 跑就缺这份配置。
+原案例的问题是：目标本来是项目共享配置，实际文件却没有进入版本控制。本机看起来“已保存”，换台机器或到 CI 就缺少这份配置。判断是否修复应检查实际写入文件，而不是仅凭调用名判断。
 
-## 正确写盘 API：`TryUpdateDefaultConfigFile`
+## 项目共享配置的写盘配方：`TryUpdateDefaultConfigFile`
 
 ```cpp
-// ❌ 错：写到 user-level Game.ini，不入 git
+// 原项目目标是共享配置；该类此次调用后实际写到了用户 Game.ini，未进入版本控制
 Settings->LineDatabase = NewDatabasePath;
 Settings->SaveConfig();
 
-// ✅ 对：强制写到 Config/DefaultGame.ini（或 DefaultEditor.ini 视 Config 类别）
+// 原项目改用此调用写入共享默认配置；采用时仍需检查当前类的实际目标文件
 Settings->LineDatabase = NewDatabasePath;
 Settings->TryUpdateDefaultConfigFile();
 ```
 
-`TryUpdateDefaultConfigFile()`：
+原资料对 `TryUpdateDefaultConfigFile()` 的实现路径与项目结果作了以下记录；本次未逐条核对，采用前应检查目标版本、配置类与 SourceControl 环境：
 - 走 `FConfigCacheIni::SetXxx` 直接写 `Config/Default<Category>.ini`
 - 自动调 SourceControl checkout（编辑器交互模式下；commandlet 模式可能需要手动 checkout）
 - 写完文件 mtime 改变 → git / P4 status 会显示改动 → dev commit 进仓库
 
-**何时用 `SaveConfig()` 无参**：仅当你**明确想要 user-level 配置**（个人偏好 / 本机调试开关 / 路径配置且不想入仓库）。生产代码中绝大多数 plugin / project settings 都该走 `TryUpdateDefaultConfigFile()`。
+**用户配置场景**：个人偏好、本机调试开关或不想入仓库的路径配置，不应为了套用上述配方而改写项目默认配置。选择调用前确认当前类的实际写入目标；不要仅因使用了无参 `SaveConfig()` 就判定为缺陷。
 
 ## `UPROPERTY(config)` 验证 checklist
 
-接手陌生 codebase 想"为什么这个 setting 改了不持久化"时，按顺序排查：
+接手陌生 codebase 想“为什么这个 setting 改了不持久化”时，先明确共享配置还是用户配置，再检查：
 
 1. UPROPERTY 上有没有 `config` flag？
    ```cpp
@@ -57,17 +64,17 @@ Settings->TryUpdateDefaultConfigFile();
    class UMyPluginSettings : public UDeveloperSettings
    ```
    缺 `Config = ...` → UE 不知道写哪个 ini
-   `DefaultConfig` flag 让 SaveConfig 默认走 `Default<Category>.ini` 而不是 user-level
+   核对 `DefaultConfig` 对当前类保存目标的影响，不凭这段声明示例认定无参调用必然写用户目录。
 3. 字段类型是不是 UPROPERTY 反射支持的？
    - `TArray<UObject*>` / `TMap` 等容器要 each element 也是 UPROPERTY-reachable
    - 嵌套 UObject 不会自动深序列化——其内部字段如果是 config 也要看那 UObject 自身的 Config category
-4. 真正的 ini 文件路径是不是按预期？
+4. 真正的 ini 文件路径是不是按预期？下列是**项目默认配置**目标；用户配置不能用这张清单判错：
    - `Config = Engine` → `Config/DefaultEngine.ini`
    - `Config = Editor` → `Config/DefaultEditor.ini`
    - `Config = Game` → `Config/DefaultGame.ini`
    - 自定义 Category → `Config/Default<Category>.ini`
 
-## AssetRegistrySearchable：rename / move 自动跟
+## AssetRegistrySearchable：原项目的每资产 metadata 用法
 
 需要持久化"`UObject` 内嵌的 `FName` / `FString` / 标量 metadata"，且想让 Asset Registry rename / move 时自动跟随时：
 
@@ -76,7 +83,7 @@ UPROPERTY(VisibleAnywhere, AssetRegistrySearchable, Category = "Foo")
 FName MyAssetId;
 ```
 
-`AssetRegistrySearchable` meta 让该 UPROPERTY 进 AR tag。AR 重命名 / 移动 asset 时 tag 自动更新，runtime / editor 直接读 `FAssetData::GetTagValueRef<FName>` 就是当前最新值。**不需要另维护一份 mirror 表 / 文件**。
+原项目用 `AssetRegistrySearchable` 将该 UPROPERTY 暴露为 AR tag，并通过 `FAssetData::GetTagValueRef<FName>` 读取；原记录称资产重命名 / 移动后无需另维护 mirror 表。采用这份经验时应检查目标版本与资产类型的 tag 更新结果，不能由该案例推定所有 metadata 都自动保持最新。
 
 典型应用：
 - DA 上的"业务 ID"字段（如 DialogueId / RecipeId / QuestId）
@@ -90,7 +97,7 @@ FName MyAssetId;
 
 ## 特殊路径：嵌套 UObject 集合
 
-如果 setting 字段是 `TArray<UObject*>` / `TMap<FName, UObject*>` 且每个元素自己有 config 字段，UE 不会自动序列化。常见 workaround pattern：
+原资料针对 `TArray<UObject*>` / `TMap<FName, UObject*>` 元素有 config 字段、但嵌套值未按期望保存的情形记录了以下配方。先复现当前类的保存问题，再判断是否需要它：
 
 - 外层 UObject 暴露一个**导出函数**（如 `RebuildIndexFromObjects()`）把每个元素的关键字段抽到一个**平铺的** `UPROPERTY(config)` 容器（例：`TArray<FStructWithConfigFields>`）
 - 修改时同步更新两份
@@ -104,8 +111,8 @@ FName MyAssetId;
 
 | 症状 | 怀疑 |
 |---|---|
-| Editor 里改 setting 看起来生效，关掉重开值丢失 | UPROPERTY 缺 `config` flag / 或宿主类缺 `Config = ...` / 或调的 `SaveConfig()` 写到 user-level |
-| Dev A 本机配的 setting，Dev B / CI 没看到 | `SaveConfig()` 无参写到 user-level，没入 `DefaultXxx.ini` |
+| Editor 里改 setting 看起来生效，关掉重开值丢失 | 检查字段与类的配置标志，以及实际写入和读回目标；不能仅凭文件位于 user-level 判错 |
+| Dev A 本机配的 setting，Dev B / CI 没看到 | 实际写到了 user-level，所需共享配置没入 `DefaultXxx.ini` |
 | `Config/DefaultGame.ini` 改了但运行时没读到 | 字段类型不是 UE 反射支持的 / 配置覆盖被更高优先级 ini（`<Platform>Game.ini`）盖了 |
 | Asset rename 后 AR 查不到 / mirror 表不一致 | 该字段没 `AssetRegistrySearchable` flag → 项目自己另维护一份 mirror，rename 没同步 |
 

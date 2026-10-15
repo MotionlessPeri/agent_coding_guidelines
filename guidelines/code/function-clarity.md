@@ -2,10 +2,10 @@
 
 ## 核心规则
 
-两条函数级 clarity 规则，**始终在线的 baseline coding discipline**——每次写函数 / 加注释当下就该应用，不是 audit 时才应用：
+写函数和注释时，关注两件事；表达形式按代码复杂度和项目约定选择：
 
-1. **流程化结构**：函数实施应当**反映自身的流程**——超阈值的函数顶部有 leading 流程概览注释、每个步骤段加 numbered marker、单步骤超长就拆 sub-function
-2. **注释 stability**：注释写 **"stable why"**（为什么这样设计），不写 **"transient when"**（什么时候加 / 哪个 commit 修 / 哪个 milestone 引入）
+1. **结构可读**：读者能看清函数的职责、主要分支和数据流。命名、控制流、拆分和概览注释都是可选手段，行数不单独决定采用哪一种。
+2. **理由可用**：注释保留理解当前行为所需的设计理由、前提和契约；单纯的实施日期、提交或阶段编号通常留给版本历史。
 
 跟 `constraints.md` "Edit Scope Discipline" 关系：那条防 drive-by 改邻近代码；本条管**正在写**的代码本身的 readability。两条互补。
 
@@ -13,17 +13,17 @@
 
 ### 何时适用
 
-| 信号 | 必做 |
+| 可读性信号 | 可选处理 |
 |---|---|
-| 函数 > **~50 行** | 函数顶部 doc comment 加 leading "流程：1./2./.../N." 概览 |
-| 函数能识别出多步骤流程（不论行数） | 每步骤段加 `// 步骤 N: ...` 锚点 marker |
-| 单步骤段 > **~80 行** | 拆 sub-function（按 `code-size-audit` skill Split Form 决策表选形态 a/b/c）|
+| 函数较长，读者难以看清主要职责和分支 | 改善命名或控制流；概览能减少理解成本时再补概览 |
+| 多阶段处理的边界不明显，步骤顺序对行为有意义 | 用有意义的函数名、分段说明或项目已有的步骤编号表达 |
+| 一段处理混合独立职责、依赖过多或难以单独验证 | 评估按职责拆分，避免把连贯逻辑切成需要来回跳转的小函数 |
 
-阈值（50 / 80）是**软警觉线**——判断 readability，不机械化套数字。具体项目可调（在项目 AGENTS.md 或 dev-guide.md 写明）。本 guideline 提供 starting point。
+行数只能帮助定位值得查看的代码。此前使用过的 50 / 80 行不是必须加注释或拆函数的阈值；项目有明确约定时按其范围执行，不能把数字本身当作可读性缺陷。
 
-### Leading 流程概览（必填）
+### 流程概览（按需）
 
-让 6 个月后的 dev 读 30 秒就懂结构。
+函数承担多个不易从签名和代码看出的阶段时，概览可以帮助读者先理解整体。简单函数无需复述实现。下面的块注释只是示例；Doxygen、普通注释或项目已有格式都可以，不要求统一换成某种格式。
 
 **正例**：
 ```cpp
@@ -44,7 +44,7 @@
 static bool ApplyEntryToDA(...);
 ```
 
-**反例**（散落注释，无 leading）：
+**需要结合上下文判断的例子**：
 ```cpp
 static bool ApplyEntryToDA(...)
 {
@@ -56,11 +56,11 @@ static bool ApplyEntryToDA(...)
     ...
 }
 ```
-读者每次重读都要从头 piece together，零复用价值。
+如果这些分支之间还有隐藏的顺序或状态依赖，仅给局部动作起名不足以解释流程，可以补充整体理由或调整结构。若控制流本来清晰，没有顶部概览并不构成缺陷。
 
 ### Numbered Step Marker
 
-函数体每段加 `// 步骤 N: <概述>`（或项目约定的同等格式），对应 leading 概览的步骤号。grep `// 步骤 3:` 可直接跳转。
+长流程确实需要按步骤定位时，可以使用 `// 步骤 N: <概述>` 或项目已有格式。编号不是每段必填项；有意义的子函数名或简短分段说明也能表达阶段。
 
 ```cpp
 static bool ApplyEntryToDA(...)
@@ -79,13 +79,13 @@ static bool ApplyEntryToDA(...)
 }
 ```
 
-**关键 invariant**：leading 概览的步骤数 = 函数体 numbered marker 数。增删步骤**同步改两处**。docs 漂移比没 docs 更糟。
+采用编号和概览时，让二者准确描述实际流程；增删步骤后检查相关说明。不要为了维持两份逐项对照的清单而增加重复注释；概览可以只说明关键阶段。
 
 ### 长步骤拆 sub-function
 
-某 numbered step 段超 ~80 行 → 拆 sub-function，主函数收缩成调度。否则 leading 概览说"5 步"但实际单步骤几百行，概览失去意义。
+当一段处理有独立职责、稳定输入输出，且拆出后更容易理解或验证时，可以提取子函数。若拆分产生大量参数、隐藏共享状态或迫使读者频繁跳转，保留连续实现可能更清楚。
 
-拆函数选形态时按 `code-size-audit` skill 的 Split Form 决策表（a/b/c）；不在本 guideline 重复。
+先查看已有实现能否复用，再判断局部函数、私有方法或独立模块哪种边界合适。相似代码出现两次只是调查线索；只有它们表达同一职责、预计需要一起变化时，提取公共 helper 才有意义。不为达到行数或重复次数指标引入抽象。
 
 ## Rule 2: 注释 Stability
 
@@ -117,14 +117,12 @@ static bool ApplyEntryToDA(...)
 
 ### 注释自包含：不引用 ephemeral 文档
 
-transient when 不止「milestone 标签」一种形态——**引用实现期临时文档**是同源的另一种。注释解释设计意图
-（stable why）必须 **inline、不依赖任何外部文档即可读懂**。判据是**引用目标 durable 还是 ephemeral**，
-不是「内部 vs 外部」：
+仅描述实施历史的注释不止「milestone 标签」一种形态，**依赖实现期临时文档**也会产生同样的问题。代码附近应写清理解当前行为所需的理由、前提和契约；长篇推导可以引用稳定来源，不必复制进每处注释。判断依据是引用目标是否长期可用，而不是「内部 vs 外部」：
 
 | 目标 | 例子 | 处理 |
 |---|---|---|
-| Ephemeral（会消失 / 失意义） | 实现期 plan / impl-plan 文档（写完即抛 / cleanup commit 删）、milestone/Task/Phase 标签、`见 design §2.1`、`旧 X 已废 / 改自 Y` | ❌ 剥——指向消失的文档 = 悬空引用，比没注释更糟 |
-| Durable（长期在） | 论文 / 规范章节、**committed** 架构文档、框架源码 | 🟡 可留作**可选深入指针**，不作理解前提 |
+| 临时材料（会清理或失去含义） | 准备删除的实施计划、仅在某次任务内有意义的 milestone/Task/Phase 标签、只描述旧实现的说明 | 提取仍有效的理由，再删除或替换失效引用；不能仅凭文件名含 `plan` 就删除 |
+| 稳定材料（长期维护） | 论文、规范章节、保留维护的架构文档、框架源码 | 可作为深入阅读来源；附近说明当前代码依赖的关键事实 |
 
 清理旧引用时**先把它承载的 why 浓缩成一句 inline，再删引用**——最常见的错是把噪音和理由一起删了。
 
@@ -147,42 +145,41 @@ transient when 不止「milestone 标签」一种形态——**引用实现期�
 
 | 反 pattern | Why 错 | 修法 |
 |---|---|---|
-| 函数 200 行无 leading 概览 | 读者重读都要 piece together | 加 leading 流程段 |
-| 概览写了，体内无 numbered marker | grep 跳转失败 / 概览-体对不上 | 每段加 `// 步骤 N:` |
-| Numbered marker 但缺概览 | 看 step 3 不知整体上下文 | 概览必填，跟 marker 配套 |
-| 步骤 N 段超 80 行 | 概览失去意义，等于没流程 | 拆 sub-function（Split Form 决策表）|
-| 概览跟实施漂移 | docs 漂移比没 docs 更糟 | 增删步骤**同步改两处**，否则不算 done |
+| 只按行数要求概览、编号或拆分 | 形式增加了，实际理解成本可能更高 | 先指出职责、控制流或状态方面的具体问题 |
+| 概览和逐段注释反复复述清晰代码 | 两份说明增加同步成本，却没有补充理由 | 保留有助于理解的部分，优先用清晰命名表达动作 |
+| 仅因相似代码出现两次就抽 helper | 表面相似不等于需要共同变化 | 判断职责、依赖和未来修改边界 |
+| 一段逻辑混合多个独立职责却只加编号 | 编号没有解决耦合和理解困难 | 评估按职责拆分及其参数、共享状态成本 |
+| 概览跟实现漂移 | 读者据此形成错误理解 | 更新或删去过期说明，保留仍有效的理由 |
 | `// M11 fix` 不写 why | 半年后失意义 | 改成 stable why |
 | `// 2026-05-12 加的` | 加日期没意义，git blame 已有 | 删 / 改 stable why |
 | `// 原来是 X，改 Y` 不说为什么 | 等于没注释 | `// Y 而非 X：<理由>` |
-| `// TODO` 不带 grep 锚点 | 找不回 | `// TODO(<grep-able-key>): ...` |
+| `// TODO` 没有说明问题或移除条件 | 读者无法判断何时处理 | 补充具体问题和条件；关联编号沿用项目约定 |
 
 ## 项目 Tuning
 
-下列值**项目-specific**，本 guideline 给 starting point，具体值由项目 AGENTS.md / dev-guide 写明：
+项目已有明确约定时沿用。需要建立新约定时，以实际阅读和维护问题为依据，不为应用本文件额外建立配置：
 
-| 项 | Guideline starting point | 项目可调 |
+| 项 | 默认判断 | 项目可选表达 |
 |---|---|---|
-| 函数 leading 概览触发线 | ~50 行 | 30 / 80 都合理 |
-| 单步骤拆 sub-function 触发线 | ~80 行 | 跟 `code-size-audit` 的 helper 阈值对齐 |
-| Step marker 格式 | `// 步骤 N: ...` | `// N) ...` / `// Step N: ...` 等 |
-| 注释语言 | 跟项目文档语言一致 | 中文 / 英文 / 其他 |
+| 流程概览 | 仅在签名和实现难以表达整体流程时补充 | 普通注释、项目既有文档格式或 Doxygen |
+| 子函数拆分 | 看职责、依赖、控制流和验证边界 | 私有方法、局部函数或确有独立职责的模块 |
+| 步骤定位 | 不要求编号 | `// 步骤 N: ...`、分段说明或有意义的函数名 |
+| 注释语言 | 沿用项目工作语言和既有风格 | 中文、英文或其他 |
 
 ## When This Applies
 
-- **Coding time**：写新函数 / 加注释当下，自检本 guideline
-- **Audit time**：项目可装 `code-clarity-audit` skill 跑 systematic 检查（见项目 skill）；autonomous-workflow Phase 3 末尾自动 compose
+- **编码时**：针对正在修改的函数和注释应用上述判断，不顺手清理无关代码。
+- **审查时**：按用户要求或实际可读性问题检查相关范围。项目审查工具或技能只是可选辅助；本文件不要求安装、自动调用或串联其他技能。
 
 ## 项目实例参考
 
 DialogueSystem (UE 5.5 plugin) 项目 2026-05-13 把 `FDialogueImportPipeline::Apply` (245 行) 拆成 main Apply (47 行) + `ApplyEntryToDA` (163 行) + `ApplyDBWrites` (45 行) + `MaybeAutoDeriveStringTables` (15 行)。原 245 行版本里堆了大量 transient when 注释（"M11 (2026-05-12) ..." / "I-034 修复 ..."），缺 leading 流程概览。
 
-后续按本 guideline 改造的样板：见 `Plugins/DialogueSystem/Source/DialogueSystemEditor/Private/Lines/DialogueImportPipeline.cpp` 改造 commit（待落地）。
+这个案例说明按入口处理、数据库写入和字符串表派生等职责拆分的做法；它不证明相同行数的函数都应该拆，也不要求其他项目复制其概览或注释格式。
 
 ## 相关 Guidelines
 
-- `guidelines/code/constraints.md` "Edit Scope Discipline" —— 防 drive-by 改邻近代码；本条是正写代码本身的 readability
-- `guidelines/code/reuse-before-implementing.md` —— 拆 sub-function 前先看是否复用其他地方；2 次以上才抽 helper
-- `guidelines/code/clarify-before-implementing.md` —— 流程梳理本身是 prep work，应在 plan 阶段就想清楚
-- 项目侧 `code-clarity-audit` skill —— audit procedure + 项目 tuning
-- 项目侧 `code-size-audit` skill —— "拆 sub-function" 时用 Split Form 决策表选形态 a/b/c
+- [改动约束](constraints.md)的 "Edit Scope Discipline" —— 可读性建议不授权修改无关代码。
+- [先查复用](reuse-before-implementing.md) —— 拆分或新增抽象前查看已有实现；复用判断看职责和修改边界，不靠重复次数决定。
+- [澄清边界](clarify-before-implementing.md) —— 只有影响结果且现有授权无法解决的决定才需澄清；函数整理不自动启动规划审批。
+- [行文规范](../writing/prose-and-register.md) —— 注释语言、术语和数量表达。

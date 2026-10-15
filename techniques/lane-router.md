@@ -108,7 +108,28 @@ smoke 回复至少回显原 dispatch ID、当前工作目录、handoff/SoT hash 
 lane-router-rotate <codex|claude> <lane-address> --handoff-file <absolute-path> [--terminal <wt|powershell|cmd>]
 ```
 
-handoff 文件必须位于 `~/.lane-router/rotation-handoffs/`，使用 UUID `.md` 文件名。新 conversation 只接替完全相同的地址并省略 `role_description`；恢复 cwd、Git 状态、批准范围、验证证据和 pending mailbox 后先报告就绪，不自行推进新功能。launcher 返回成功只证明新 terminal 已创建，必须等新 conversation 报告 attach 成功后，才能关闭旧 terminal 或把轮换记为完成。
+handoff 文件必须位于 `~/.lane-router/rotation-handoffs/`，使用 UUID `.md` 文件名。新 conversation 只接替完全相同的地址并省略 `role_description`；恢复 cwd、Git 状态、批准范围、验证证据和 pending mailbox 后先报告就绪，不自行推进新功能。
+
+`lane-router-rotate` 返回成功只证明 successor CLI 已启动，状态是“轮换已发起”，不是“轮换已完成”。Router 为避免截断旧 generation 正在运行的 turn，会让新 conversation 的 `lane_attach_current` 等待旧 turn 上报 `Stop`。因此旧 agent 在命令返回成功后只允许发送一条最终状态，然后必须立即结束当前 turn；不得再调用工具、查询 `lane_directory`、等待或轮询接替结果。旧 turn 持续运行会使新 generation 一直无法完成 attach。
+
+```mermaid
+sequenceDiagram
+    participant Old as 旧 generation
+    participant OldTerminal as 旧 terminal
+    participant Router as Lane Router
+    participant New as 新 generation
+    participant Observer as 用户或独立协调者
+
+    Old->>New: 启动 successor CLI
+    Old-->>Observer: 报告轮换已发起
+    Old->>Router: 结束 turn，上报 Stop
+    New->>Router: lane_attach_current
+    Router-->>New: generation 增加，接替完成
+    New-->>Observer: 报告接替成功并等待指示
+    Observer-->>OldTerminal: 确认后可关闭
+```
+
+旧 **turn** 必须停止，旧 **terminal** 可以暂时保留；二者不是同一个动作。接替成功只能由新 generation，或能独立查询 Router 的用户/协调者确认。旧 agent 不负责在同一个 turn 里等待回执，也不得宣称轮换完成。确认新 generation 已报告 attach 成功后，才能关闭旧 terminal 或把轮换记为完成。
 
 Windows 上创建交互式独立 terminal 时，不要把 Node `spawn` 的 `spawn` 事件当作窗口可见且持续存在的证据。真实验证表明，直接 `spawn` PowerShell 并设置 `detached: true` 可以先报告成功、随后立刻退出，既没有窗口也没有启动目标 CLI。Lane Router 因此通过 PowerShell `Start-Process -WindowStyle Normal` 创建可见 terminal；若轮换没有窗口，检查实际进程链应为 `PowerShell → terminal-child → lane-router-codex/claude`（terminal child 旧名 `rotation-terminal-child`，2026-08-18 泛化为三条开窗命令共享），不要只看 launcher 退出码。
 
@@ -171,8 +192,9 @@ lane-router-lane open <project>/<lane> [--cwd <dir>] [--terminal <wt|powershell|
 
 - 调用方不需要知道目标 lane 是什么 agent：`open` 从 Router 的 binding 记录读出 backend 与 conversation id。当前只支持 claude；codex 报"暂不支持"，可手动 `lane-router-codex resume <thread-id>`。
 - **`new` 是拓扑变更**：调用方 conversation 必须先在对话中说明并取得用户明确确认，再调命令——与 `lane_attach_current` 的政策一致，命令不设机械式 confirm 参数。命令开出新 terminal，bootstrap prompt 指示新对话读 AGENTS.md、查目录、带 `role_description` attach、报告就绪后等待指令。地址已存在时报错并提示改用 `open`。`--cwd` 默认取调用命令时的目录。
+- **`new` 返回后 lane 不会立刻出现在目录里**：命令成功只说明新 terminal / CLI 已启动，不说明 bootstrap turn 已完成或 `lane_attach_current` 已调用。新模型还要读创建 prompt、仓库 `AGENTS.md` 与适用规范、查询目录，再主动 attach；这一段可能持续几十秒到数分钟，期间 `lane_directory` 查不到新地址是正常状态。**不要因为命令没有输出或目录暂时没有地址而再次执行同一条 `new`**，否则会开出重复 terminal。先观察原窗口是否仍在初始化，并等待它报告 ready；只有原窗口明确启动失败或已经退出、且目录仍无该 lane 时，才能重试。
 - **`open` 只恢复离线 lane**：目标在线（channel 仍开着）时拒绝；lane 不存在提示走 `new`；lane 存在但无 active binding 提示走轮换流程——`open` 不会顺手升级成接替。恢复在 Router 记录的工作目录进行（该记录由 lifecycle hook 随每次 turn 上报），Router 没有记录时要求显式 `--cwd`。恢复后 channel 重连，pending 通知会自动重发。
-- 三条开窗命令（`lane-router-lane new` / `lane-router-lane open` / `lane-router-rotate`）都遵循同一验证纪律：窗口开了不算成功，等新窗口里的 CLI 真启动、launcher 退出 0 才算。
+- 三条开窗命令（`lane-router-lane new` / `lane-router-lane open` / `lane-router-rotate`）都遵循同一验证纪律：窗口开了不算 CLI 启动成功；CLI 启动成功也不等于 lane attach 完成。`new` 以新窗口报告 ready 或目录出现预期 binding 为完成证据，不能拿短时间的目录空缺当失败证据。
 - 开窗时 claude 会话自动以 lane 地址命名（`--name "<project>/<lane> genN"`）：窗口标题、prompt 框、`/resume` picker 三处都显示 lane 地址，重开旧 lane 也会把它的会话名纠正过来。codex 无对应 flag，只有窗口标题。
 
 `--terminal` 三档通用，默认 `wt`：`wt` 强制 Windows Terminal 窗口（机器缺 wt 时默认档静默回退 `powershell`，显式传 `wt` 则报错）；`powershell` / `cmd` 只定 shell，窗口宿主由系统默认决定——Win11 或配置过 console delegation 的 Win10 机器上同样出 Windows Terminal 窗口。

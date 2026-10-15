@@ -22,7 +22,7 @@ Self-evaluation 不 work——问 agent "你违反了 policy 吗"，答永远是
 
 两条都是 **declarative**："开工前应当先 X"。Agent 读到 prompt 时通常会照做，但**当任务感觉 trivial / 时间压力大 / 上下文塞满**时，rule 容易被忽略。
 
-Fact-forcing gate 是**同一思路的 enforcement 版本**——不靠 agent 自律，靠"动作前必须 surface 事实"的硬约束。两套互补：declarative 解释"为什么要做"，gate 强制"必须做"。
+Fact-forcing 把抽象约定变成动作前的具体事实检查。**是否具有强制力取决于执行层**：prompt 和 skill 仍靠 agent 遵守；hook 只能拦截其覆盖的入口。Markdown 中写了 gate，并不意味着存在运行时门禁，也不能证明事实内容真实。下文的层级应分别评估。
 
 ## 实施层级（按 enforcement 强度排）
 
@@ -131,9 +131,9 @@ ECC GateGuard skill 引用了两次 A/B 测试（同 agent 同任务，gated vs 
 
 **对新接入项目**：
 
-1. 先走 prompt 层（让本 repo 的 AGENTS.md 通过 `@`-import 自然带入两条 declarative）
-2. 观察 ~6 周。如果 agent 经常 skip survey 直接 Edit → 升级到 skill 层
-3. 再观察。如果 skill 也被绕过 → 装 hook 层（接受维护成本 + 严格遵守 hook-conventions.md）
+1. 先按任务读取相关规则，不为本 technique 增加全局常驻导入。
+2. 若反复出现可归因的遗漏，先查规则是否适用、是否过宽以及读取入口是否清楚，再判断具体事实清单是否有帮助。
+3. 只有确实需要工具层拦截时才考虑 hook，并验证覆盖面、恢复路径与维护成本；不要仅因经过固定时间就升级流程。
 
 ## 相关 Guidelines / Techniques
 

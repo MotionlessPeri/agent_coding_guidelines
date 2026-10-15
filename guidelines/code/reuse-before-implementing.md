@@ -2,31 +2,31 @@
 
 ## 核心规则
 
-实现新功能 / 修 bug **动手前必须先扫一遍代码库**，确认有没有：
+实现新功能或修复缺陷前，围绕当前功能、调用方和相关模块查找已有实现；已有且仍有效的调查结果可以复用，不要求每次巡视整个代码库。重点确认：
 
-- **已经存在的同类功能** → 直接复用，不要再写一份
-- **流程近似但参数 / 行为有差异** → 抽 helper / 模板 / 基类，新旧调用方都走它
-- **局部相似的代码段** → 抽函数，避免 copy-paste
+- **已有实现满足当前契约**：核实正确性、前提和副作用后优先复用，避免无理由另写一份。
+- **流程近似但参数或行为有差异**：判断共同职责是否稳定；公共 helper、模板或基类是候选方案，不是发现相似后的必选动作。
+- **局部相似的代码段**：检查是否需要共同变化，再权衡保留重复与提取函数的成本。
 
-跟 `clarify-before-implementing.md` 对称：那条讲"开工前先澄清需求"，本条讲"开工前先 survey 现有实现"。两条都属于 prep work，**优先级高于直接动手写**。
+跟 `clarify-before-implementing.md` 互补：那条处理影响结果的需求歧义，本条查找或排除复用对象。调查范围服务于当前决定，不自动增加规划审批或无关探索。
 
 **抽象层级对应**：复用的 survey 有三个层级，从近到远：
 
 | 层级 | survey 什么 | 由谁管 |
 |---|---|---|
 | **helper / function 级** | grep 本仓库现有函数 / helper | **本条 guideline** |
-| **架构 pattern 级** | "流程跟 X 像不像 / 要不要走 X 的 base class" | 项目侧 `pattern-recognition-prep` skill（如 `<project>/.claude/skills/pattern-recognition-prep/SKILL.md`），跟项目的两个 workflow (autonomous / supervised) 的 Phase 1 设计阶段自动 compose |
+| **架构 pattern 级** | "流程跟 X 像不像 / 要不要走 X 的 base class" | 当前项目已有的架构资料或模式目录；相关技能仅在能解决当前设计问题时按需使用 |
 | **框架侧 reference impl 级** | 本机随装的 SDK samples 与头文件里，官方是怎么做这件事的 | **本条下面那一节** |
 
-三者**互补**：design 阶段先扫 architectural pattern catalog（skill），动手前查框架侧 reference impl（下一节），实施时再 grep 具体 helper（本文件其余部分）。
+三者互补，但不是固定读取顺序。局部函数修改通常只需查看相关实现；涉及架构选择或不熟悉的框架契约时，再查对应资料。目录或技能不存在时，不要求补建，也不自动调用其他工作流。
 
-## 框架侧 reference impl：先查本机随装的 SDK samples 与头文件
+## 框架侧 reference impl：按问题查目标版本的样例与头文件
 
-回答或实现任何涉及某个 DCC / 引擎 / SDK **具体版本**的问题之前，先查本机是否装了那个版本的 samples 与头文件。**它们是本地、离线、版本精确匹配的 oracle，优先于网络搜索和跨版本推测。**
+涉及不熟悉、变化或可疑的 DCC / 引擎 / SDK 契约时，可从本机目标版本的 samples 与头文件查起；已有适用于当前版本和调用路径的有效证据可以复用。先确认实际安装版本与资料来源，不能仅因文件在本机就认定版本匹配。
 
-**为什么**：这类框架的 API 文档普遍稀薄或滞后，**正确的 pattern 住在随装的可编译 samples 里**，硬约束住在头文件注释里。关键是**版本精确性**——网上搜到的答案常对不上你的版本，而本机 samples 的版本是精确的。这一查把"跨版本推测"这个高风险动作直接换成"读目标版本的实际代码"。
+**为什么**：样例与头文件能补充官方说明中的用法和调用前提，目标版本的实际代码也有助于排除跨版本推测。样例是否适用仍取决于对象类型、配置和执行路径；公开契约可先查对应版本的官方文档，不把资料载体排成固定读取顺序。
 
-**动作**：`ls` 一下宿主的安装目录，看有没有 samples / devkit / include 树；有就先读那个场景对应的样例，再动手。一次 `ls` 的成本，换掉的是一整轮推测。
+**动作**：需要本地证据时，定位安装目录下相关的 samples / devkit / include，按当前问题找定义、调用者和相近样例；没有随装资料时再查对应版本的其他来源。无需每次重复巡视安装目录。
 
 **实测的随装情况**（同一台机器核销，供估计概率用）：
 
@@ -38,7 +38,7 @@
 
 ⇒ "随装"不是普适前提（Max 就不成立，Houdini / Blender 未核），所以这条是**先查一下**，不是**假定有**。
 
-**跨域证据（两击）**：UE 域这条机制早已单独成篇（skill `ue-reference-engine-source`，自述即"UE framework is largely undocumented and correct patterns live in engine source, not API docs"）；MoBu 域今天第二次命中——一个"设备插件怎么写、跨版本有无差异"的问题，本来要靠旧版本经验加网络搜索推测，`ls` 一下发现 **2023 SDK samples 里就有正好对应那个场景的完整官方实现**，答案质量从"我推测"跃升为"官方样例就是配方"，并顺带在头文件注释里核销了四项 API 事实。
+**跨域经验**：UE 域的[查证方法与案例](../../skills/ue/ue-reference-engine-source/reference-engine-source.md)强调证据须适用于目标版本与调用路径；不熟悉、变化或可疑的契约需要查证，已有有效证据可复用，不把源码与 API 文档简单对立。MoBu 域原记录中，一个"设备插件怎么写、跨版本有无差异"的问题，本来要靠旧版本经验加网络搜索推测，`ls` 一下发现 **2023 SDK samples 里就有正好对应那个场景的完整官方实现**，由此获得了对应场景的直接参考，并顺带在头文件注释里核销了四项 API 事实。
 
 ⚠️ **这曾是本语料库的结构性覆盖漏洞**：机制框架无关，却只在 UE 域被写下（`guidelines/maya/` 对 samples / reference impl 零命中，尽管 Maya 也随装 devkit）⇒ 做 Maya / MoBu / 其他宿主的 agent 不会想到去查。所以它落在这份框架无关的文件里，UE skill 作为该层级的域内实例。
 
@@ -52,15 +52,15 @@
 
 | 时机 | 该做什么 |
 |---|---|
-| **第一次写**（codebase 里还没有同类代码）| 直接写，三行相似没事，**不要先抽** |
-| **第二次写**（开工前 survey 发现已有同类代码）| **必须**考虑复用 / 抽公共代码 |
-| **第三次写**（同类代码已经在 codebase 里出现 ≥2 处）| 抽抽象**是基本要求**，再 copy-paste 就是技术债 |
+| **第一次写**（还没有同类代码）| 实现当前需要；有清晰职责时可以拆单一调用方使用的函数，不为假想调用方设计通用接口 |
+| **发现第二处相似实现** | 对照语义、依赖和副作用，判断复用是否能减少共同维护成本 |
+| **多处代码需要同步修改** | 这是提取公共实现的有力信号；仍需确认共同契约，而非仅按出现次数抽象 |
 
 防的是两端：
-- **过早抽象**：还没第二处就先抽
-- **重复堆叠**：第二/三处出现却不抽
+- **过早抽象**：为不存在的需求加入参数、继承层次或通用接口。
+- **重复堆叠**：同一职责在多处实现，需要同步修正却没有合理的维护边界。
 
-本条防的是后者。
+调用方数量是线索，不是抽象是否合理的判据；按职责拆分和跨调用方复用也不是同一件事。
 
 ## 什么时候 survey
 
@@ -86,19 +86,19 @@
 
 ```
 找到 N 处相似代码
-  ├── 完全一致或几乎一致（差 < 10% 行）
-  │     → 直接复用（如果调用约定允许）/ 抽到 helper 函数
+  ├── 契约、前提与副作用一致
+  │     → 核实正确性后优先复用；多处需要共同维护时评估公共实现
   │
   ├── 流程一致但内层有差异
-  │     → 抽 template / strategy / 提取 hook function
-  │       新旧 caller 都走同一个 helper 接口
+  │     → 判断差异是否适合一个稳定接口
+  │       只有确有收益时才提取 helper / template / strategy
   │
   ├── 表面相似但语义不同（参数含义 / 副作用不一致）
   │     → 不要勉强复用
-  │       但**显式记录**为什么"看起来相似但不复用"，避免后人误判
+  │       差异不明显且容易被误改时，简短说明关键原因
   │
-  └── 一处现有 + 一处即将新建 = 2 处
-        → 至少抽函数，避免 copy-paste 进入 codebase
+  └── 只看到文本重复，尚未确认共同职责
+        → 先查调用上下文，不按重复次数或相似行比例决定抽象
 ```
 
 ## 复用之前先验它是否**正确**，不只读懂它的副作用
@@ -123,15 +123,15 @@
 
 ## 复用决策记录
 
-如果你**决定不复用**已发现的 similar code，commit message / PR description / 代码注释里**简短说明为什么**：
+只有不复用的理由不明显、预计会影响后续维护判断时，才在已有审查记录、PR 说明或相应代码附近简短解释。普通局部选择无需新增记录或注释。例如：
 
 ```cpp
 // NOTE: 看起来跟 ParseXlsxBatch 的 subprocess 逻辑相似，没复用 PythonSubprocessHelper 是因为
 // 这里需要返回 stderr 给 caller 做交互式 prompt，helper 当前签名只暴露 exit code。
-// 等 helper 加 stderr out-param 后再切。
+// 两者的错误交互契约不同，当前分别实现。
 ```
 
-这避免下一个人 review 时问"为什么不用 helper"——你已经给出了 trade-off。
+说明当前契约差异即可，不必承诺未来统一，也不要求每次选择都提交一份复用说明。
 
 ## Anti-Patterns
 
@@ -146,7 +146,7 @@
 
 每次新增 caller 都是 660 行膨胀；某次 subprocess timeout 行为要改，4 处都得改且容易漏。
 
-**修法**：第 2 处出现时**就**抽 helper，不要等第 4 处才动手。
+**修法**：发现相同 subprocess 契约需要在多处同步维护时，评估提取公共实现；重点是共享的超时、输出和错误处理行为，不是第几处出现。
 
 ### 2. 各自实现"看起来相似但实际相同"的功能
 
@@ -164,7 +164,7 @@
 
 刚抽完 `Helper::DoX` 就发现只有一处 caller 用得到，其他 caller 参数都不一样硬塞参数。
 
-**修法**：抽 helper 时至少有 **2 个真实 caller** 验证签名合理；不要为"未来的可能 caller"先抽。这是 `constraints.md` "Simplicity" 防的"premature abstraction"。
+**修法**：用真实调用场景检查接口是否自然，不为"未来可能的 caller"硬塞参数。只有一个调用方的函数，也可以因职责清晰、降低复杂度而值得提取；没有第二个调用方不构成撤销拆分的理由。`constraints.md` 的 "Simplicity" 防的是没有当前需求支撑的通用化。
 
 ## 项目实例参考
 
@@ -179,7 +179,7 @@ DialogueSystemSample 插件 3 个月开发期间，下列复用 / 抽公共代�
 | `SComboButton + SPathPicker popup` pattern —— I-005 修 Import preview modal AssetPath 输入后，commit `4d1e387` 把 Sidecar Bulk Create directory 输入也换上同 pattern | commits `dc779b2` + `4d1e387` |
 | `FillTopologyFromRows<RowT>` template helper —— `BuildTopologyFromDB` + `BuildTopologyFromLineRegistry` 同样"按行结构填 topology"的逻辑抽 template | commit `ce43071`（Phase 2 review F10）|
 
-反例：I-007 之前 660 行 subprocess 在 ParseXlsxBatch 内联了好几个月，到 Phase 3 要写第 2 个 / 第 3 个 subprocess caller 时才被 user surface 出来要求抽 helper——本该第 2 个 caller 出现时就动手。
+反例：I-007 之前 660 行 subprocess 在 ParseXlsxBatch 内联了好几个月，到 Phase 3 要写第 2 个 / 第 3 个 subprocess caller 时才由用户指出可以抽 helper。这个案例的复用依据是共同的进程执行与错误处理契约，不是“第二个调用方出现就必须抽象”。
 
 ## 相关 Guidelines
 
