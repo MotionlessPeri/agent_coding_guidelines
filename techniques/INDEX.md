@@ -16,5 +16,6 @@
 | 安装、使用或排查 Lane Router | [Lane Router](lane-router.md) |
 | CI 向 P4 部署 | [P4 部署](ci-deploy-to-p4.md) |
 | 配置 Claude Code 自主权限 | [Claude Code 权限](claude-code-autonomous-permissions.md) |
+| 维护本语料库：查断链、生成目录、按章节查资料、记事故 | [kb 工具](../scripts/kb/README.md)、[证据层](../evidence/README.md) |
 
 流程中的命令要按当前工具版本确认。文字检查点不会自行获得工具层的强制执行能力；授权来源仍以当前宿主、用户和项目约定为准。

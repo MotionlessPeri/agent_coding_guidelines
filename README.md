@@ -15,6 +15,7 @@ Extracted and generalized from real projects. Project-specific rules are exclude
 | `techniques/` | Procedural patterns and operational guides |
 | `skills/` | Agent Skills shared by Claude Code and Codex. Sync via `scripts/sync-skills.ps1` |
 | [`references/`](references/README.md) | Source-linked knowledge and topic summaries; read for the current question, not as global rules |
+| [`evidence/`](evidence/README.md) | Append-only incident records; experience guidelines derive from them and are retested against the current model |
 | `_radar/` | External candidates awaiting review; not approved guidance |
 | `scripts/` | Repo maintenance scripts (skill sync, etc.) |
 
@@ -70,6 +71,7 @@ The script validates every skill before writing, replaces only same-named manage
 2. **Technique** (operational method): use `techniques/` and register it in [the operation index](techniques/INDEX.md).
 3. **Skill** (on-demand package): create `skills/<category>/<name>/SKILL.md` with matching `name` and a self-contained `description`; register it in [the skill index](skills/INDEX.md). Sync only the intended packages when other source changes are pending.
 4. **Reference or synthesis**: use [references](references/README.md), preserve source links and applicable evidence limits, and register it in the relevant topic index. A summary does not become a behavioral rule merely by being saved.
+5. **Incident** (one observed agent mistake): use the `record-incident` skill or the template in [evidence/README.md](evidence/README.md), link it from the experience page's frontmatter, then run `python scripts/kb/kb.py lint` and `index`.
 
 Use normal links for discovery. Add an eager import only for material needed in every task; see [content boundaries](guidelines/workflow/instruction-content.md). For source updates, conflicting claims and superseded material, use [knowledge maintenance](guidelines/workflow/knowledge-promotion.md#maintenance-and-evidence).
 

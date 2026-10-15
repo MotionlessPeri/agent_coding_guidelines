@@ -36,6 +36,7 @@
 ## 仓库维护
 
 - `guidelines/` 保存有来源和适用范围的规范，也保留既有领域契约；`techniques/` 保存操作方法；`references/` 保存领域参考；`skills/` 是按需发现与组合它们的入口。既有路径不因分类而整体搬迁。
+- `evidence/` 是只追加的事故记录，经验类页面（frontmatter `class: experience`）从它派生；`scripts/kb/kb.py` 查断链与字段、生成目录、按章节检索。
 - 新文件在相应主题索引注册，不把摘要、案例历史或全文复制回根入口。每份资料聚焦一个主题，内容增加时优先按实际读取场景拆分。
 - skill 源码在 `skills/<category>/<name>/`；使用[同步脚本](scripts/sync-skills.ps1)安装。规范库外的插件、Superpowers 与宿主注入内容分开管理；文件更新不等于当前对话已卸载旧内容。
 - `_radar/` 是[待审外部资料](_radar/README.md)，不自动升级为规范。`references/` 的源码路径、符号和版本断言须有可复核依据；[UE 渲染资料](references/ue-rendering/README.md)已有配套校验，不能直接信任自动化调研结果。

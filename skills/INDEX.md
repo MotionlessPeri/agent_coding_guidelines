@@ -29,6 +29,7 @@ Skill 是包装；下表的“主要内容”描述它提供什么，不决定�
 | [unrealmcp-usage](ue/unrealmcp-usage/SKILL.md) | UnrealMCP fork 的操作与接入 | 未授权扩展工具或迁移后端 |
 | [multi-session-coordination](collaboration/multi-session-coordination/SKILL.md) | 带协调 hooks 的 Claude Code 同仓会话 | Codex 会话、无 hooks 的环境或擅自收走他人改动 |
 | [role-lane-coordination](collaboration/role-lane-coordination/SKILL.md) | 多个持久 lane 的分工与交接 | 每个临时子任务都新增持久 lane |
+| [record-incident](workflow/record-incident/SKILL.md) | 把一次误判按模板记成一条事故并挂到经验页 | 从一条事故直接派生规则或改动规范 |
 
 ## 规范应用为主
 

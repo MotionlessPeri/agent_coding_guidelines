@@ -2,6 +2,8 @@
 
 只读取当前行为涉及的条目。这里是导航，不是需要依次执行的清单；历史案例和领域契约保留在原文件中。
 
+页面的类别（知识 / 规范 / 经验 / 流程）标在各自 frontmatter 的 `class` 里，按类别的目录由 `python scripts/kb/kb.py index` 生成到 [CATALOG.md](CATALOG.md)；经验类页面的事故记录在 [evidence/](../evidence/README.md)，执行任务时不必读。
+
 ## 通用规范
 
 | 当前工作 | 资料 |
