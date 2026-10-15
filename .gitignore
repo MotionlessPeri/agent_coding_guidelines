@@ -1,4 +1,8 @@
 tmp.md
-docs/
+# docs/ 默认是私人工作区（计划草稿、handoff、prompt）；只有审计与评估记录入库。
+# 写 docs/* 而不是 docs/：被排除的目录里再放开子目录无效。docs/plans/ 按份强制加。
+docs/*
+!docs/audits/
+!docs/evaluations/
 __pycache__/
 *.pyc
