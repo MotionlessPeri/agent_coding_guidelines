@@ -1,3 +1,8 @@
+---
+class: norm
+scope: universal
+---
+
 # Handoff Workflow Guidelines
 
 ## Purpose

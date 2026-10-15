@@ -1,3 +1,9 @@
+---
+class: experience
+scope: gui-or-rendering-tools
+status: legacy
+---
+
 # GUI / 可视代码:机器 gate 压在「渲染无关的纯逻辑」,画面交人工
 
 做带 GUI / 3D 视口 / 图表 / 任何「输出是画面」的工具时,机器测试很难覆盖「画面对不对」。

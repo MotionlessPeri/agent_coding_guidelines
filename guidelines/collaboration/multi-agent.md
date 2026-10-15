@@ -1,3 +1,8 @@
+---
+class: norm
+scope: universal
+---
+
 # Multi-Agent Collaboration
 
 ## Single-Source Policy

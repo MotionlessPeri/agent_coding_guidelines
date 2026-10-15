@@ -1,3 +1,8 @@
+---
+class: norm
+scope: universal
+---
+
 # Validation Guidelines
 
 ## Choose Evidence for the Change

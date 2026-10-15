@@ -1,3 +1,8 @@
+---
+class: procedure
+scope: universal
+---
+
 # Coordination Patterns
 
 ## Four-Phase Workflow

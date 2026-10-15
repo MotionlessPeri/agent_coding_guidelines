@@ -1,3 +1,8 @@
+---
+class: norm
+scope: universal
+---
+
 # Knowledge Promotion Guidelines
 
 Rules for deciding when a lesson learned in a specific project should be

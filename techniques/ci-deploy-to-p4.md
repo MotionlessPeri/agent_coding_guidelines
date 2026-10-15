@@ -1,3 +1,8 @@
+---
+class: procedure
+scope: p4-windows-ci
+---
+
 # CI 自动 submit 到 P4 server 的标准流程
 
 把 CI build artifact 通过 `p4 submit` 部署到 P4 depot 让接收方 sync 即用。

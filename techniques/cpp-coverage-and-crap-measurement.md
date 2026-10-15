@@ -1,3 +1,8 @@
+---
+class: procedure
+scope: cpp
+---
+
 # 测 C++ per-function 覆盖率 / CRAP：lizard + gcov/gcovr + OpenCppCoverage
 
 C++ 项目想拿 **per-function 覆盖率**（或据此算 CRAP）做 review triage 时的完整操作流。C++ 分 g++（gcov）和 MSVC（OpenCppCoverage）两套覆盖率工具，同一项目常两套都要用。**非 C++ 项目跳过。** 指标本身怎么理解、怎么用，见 [`../guidelines/code/complexity-coverage-metrics.md`](../guidelines/code/complexity-coverage-metrics.md)。

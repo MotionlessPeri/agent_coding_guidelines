@@ -1,3 +1,9 @@
+---
+class: experience
+scope: multi-lane-projects
+status: legacy
+---
+
 # Lane 拓扑设计:怎么切、什么时候重切
 
 > 来源:一次真实的拓扑重划(2026-08-31,mocap 项目:8 条按「技术子域 + 职能」混切的 lane

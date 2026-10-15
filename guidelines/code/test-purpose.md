@@ -1,3 +1,8 @@
+---
+class: norm
+scope: universal
+---
+
 # 测试要有目的:钉行为,不测结构
 
 ## 核心规则

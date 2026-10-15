@@ -27,3 +27,5 @@ incidents:
 ```
 
 `retested` 条目是自由文本，但要含一个 `YYYY-MM-DD` 日期，lint 按最后一条判过期。事故记录的字段见 [`evidence/README.md`](../../evidence/README.md)。
+
+已判定为经验类、但还没改成「边界 + 事故」形状的页面，写 `class: experience` 加 `status: legacy`：lint 只提醒待改形，不要求字段；CATALOG 里能看到哪些还没改。其他类别（`knowledge` / `norm` / `procedure`）只需要 `class` 和 `scope` 两行，lint 不查别的字段。

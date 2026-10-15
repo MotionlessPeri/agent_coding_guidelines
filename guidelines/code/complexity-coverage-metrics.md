@@ -1,3 +1,8 @@
+---
+class: knowledge
+scope: universal
+---
+
 # 代码复杂度 / 覆盖率指标：作 review triage，别当 KPI
 
 ## 核心规则

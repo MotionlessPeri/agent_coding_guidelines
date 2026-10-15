@@ -6,7 +6,7 @@ model: claude-fable-5-1
 project: agent-coding-guidelines
 caught_by: 自查
 tags: [探针不干净, 对照组, 量具先自证]
-pages: []
+pages: [techniques/adversarial-verification.md]
 ---
 
 **现象**：给两份经验页做「干净模型还犯不犯」的复测，用本会话派生的子代理逐题作答，8 题全部通过，答案逐字复述规则原文，连「真名少一个 -er」「计数停在 01」这种只在事故里出现的细节都在。

@@ -1,3 +1,8 @@
+---
+class: procedure
+scope: model-worker-mcp
+---
+
 # Model Worker MCP 安装与使用
 
 ## 结论

@@ -1,3 +1,8 @@
+---
+class: norm
+scope: universal
+---
+
 # Function Clarity
 
 ## 核心规则

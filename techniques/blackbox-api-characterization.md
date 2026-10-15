@@ -1,3 +1,8 @@
+---
+class: procedure
+scope: closed-source-apis
+---
+
 # 黑箱刻画第三方 API 的参数语义
 
 ## 适用场景

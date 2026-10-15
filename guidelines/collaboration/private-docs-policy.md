@@ -1,3 +1,8 @@
+---
+class: norm
+scope: universal
+---
+
 # Private Docs Policy
 
 ## What Belongs Out of the Project Tree

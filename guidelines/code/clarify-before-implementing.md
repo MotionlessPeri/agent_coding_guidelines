@@ -1,3 +1,8 @@
+---
+class: norm
+scope: universal
+---
+
 # Clarify Before Implementing
 
 ## Purpose

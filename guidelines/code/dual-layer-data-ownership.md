@@ -1,3 +1,8 @@
+---
+class: knowledge
+scope: universal
+---
+
 # 双层数据模型：按类型定 source-of-truth，派生别双向 sync
 
 ## 核心问题

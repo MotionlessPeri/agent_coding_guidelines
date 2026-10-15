@@ -1,3 +1,8 @@
+---
+class: procedure
+scope: universal
+---
+
 # Profiling 工作流：采样 → 插桩 → 分析
 
 ## 目的

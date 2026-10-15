@@ -1,3 +1,8 @@
+---
+class: procedure
+scope: claude-code
+---
+
 # Claude Code: Task Authorization and Commit Permissions
 
 ## Purpose

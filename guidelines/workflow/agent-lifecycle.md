@@ -1,3 +1,8 @@
+---
+class: norm
+scope: universal
+---
+
 # Agent Lifecycle Guidelines
 
 ## Before Starting Any Task

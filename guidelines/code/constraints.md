@@ -1,3 +1,8 @@
+---
+class: norm
+scope: universal
+---
+
 # Code Constraints
 
 ## Architecture First

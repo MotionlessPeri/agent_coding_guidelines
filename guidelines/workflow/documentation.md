@@ -1,3 +1,8 @@
+---
+class: norm
+scope: universal
+---
+
 # Documentation Guidelines
 
 ## Sync Rules

@@ -1,3 +1,8 @@
+---
+class: procedure
+scope: universal
+---
+
 # Code Review Guidelines
 
 ## Merge Commit Review

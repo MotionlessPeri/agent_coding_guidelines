@@ -1,3 +1,9 @@
+---
+class: experience
+scope: universal
+status: legacy
+---
+
 # 报读数之前的四问:量具 / 样本 / 总体 / 判据
 
 ## 核心规则

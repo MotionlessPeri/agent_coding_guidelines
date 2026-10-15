@@ -183,6 +183,10 @@ def cmd_lint(_args) -> int:
             errors.append(f"{page_rel}: class 取值 {cls!r} 不在 {sorted(CLASSES)}")
         if cls != "experience":
             continue
+        if fm.get("status") == "legacy":
+            # 已判定为经验类、尚未改成「边界 + 事故」形状的页面：只提醒，不当错误
+            warnings.append(f"{page_rel}: 经验页待改形（status: legacy）")
+            continue
         if not fm.get("triggers"):
             errors.append(f"{page_rel}: 经验页缺 triggers")
         if not fm.get("born"):
@@ -231,8 +235,12 @@ def cmd_lint(_args) -> int:
         for page_rel in inc_pages:
             if not (ROOT / page_rel).exists():
                 errors.append(f"{here}: pages 里的 {page_rel} 不存在")
-            elif page_rel in pages and iid not in (pages[page_rel][1].get("incidents") or []):
-                errors.append(f"{here}: 页面 {page_rel} 的 incidents 没有列出本事故")
+            elif page_rel in pages:
+                # 只有已改形的经验页才要求反向列出；procedure / norm / knowledge 页和 legacy 经验页可以被事故单向引用
+                pfm = pages[page_rel][1]
+                if pfm.get("class") == "experience" and pfm.get("status") != "legacy" \
+                        and iid not in (pfm.get("incidents") or []):
+                    errors.append(f"{here}: 页面 {page_rel} 的 incidents 没有列出本事故")
 
     for w in warnings:
         print("WARN ", w)

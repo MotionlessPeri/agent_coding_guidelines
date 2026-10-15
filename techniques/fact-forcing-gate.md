@@ -1,3 +1,8 @@
+---
+class: procedure
+scope: universal
+---
+
 # Fact-Forcing Gate
 
 ## 核心思路

@@ -1,3 +1,8 @@
+---
+class: procedure
+scope: universal
+---
+
 # 调试器脚本化：lldb Python / gdb batch / WinDbg cdb 自动化调试
 
 ## 目的

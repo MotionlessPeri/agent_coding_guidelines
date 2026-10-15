@@ -1,3 +1,8 @@
+---
+class: procedure
+scope: universal
+---
+
 # Enumerate-Then-Adjudicate：先机械枚举候选，再让 LLM 逐条裁决
 
 ## 核心规则

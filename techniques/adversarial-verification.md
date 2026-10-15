@@ -1,3 +1,8 @@
+---
+class: procedure
+scope: universal
+---
+
 # Adversarial Verification
 
 ## Purpose

@@ -17,6 +17,40 @@
 - 发现方式：用户 3、实验 1
 - 标签：rule-1 1、上游数据 1、加载器 1、取证 1、操作史 1、方向性oracle 1、日志 1、校验器 1、用户产物 1、盲改 1
 
+## guidelines/code/generating-code-through-shell.md
+
+引用本页的事故 4 条。
+
+| 事故 | 时间 | 类型 | 发现方式 | 标签 | 现象 |
+|---|---|---|---|---|---|
+| [2026-08-heredoc-ate-a-backslash](incidents/2026-08-heredoc-ate-a-backslash.md) | 2026-08 | 命中 | 自查 | shell生成代码, 转义, 静默失败 | 用「shell heredoc 到解释器再生成文件」这条链落盘一个 `.py`，源里写的 `"A\\nB"` 到了解释器变成 `A` 加真… |
+| [2026-08-prose-four-tiers-script-two](incidents/2026-08-prose-four-tiers-script-two.md) | 2026-08 | 命中 | 第三方复核 | 交付文档代码块, 正文与工具漂移 | 文档正文讲了四档行为，文中附带的自检脚本只实现了两档。 |
+| [2026-08-sed-choked-on-windows-path](incidents/2026-08-sed-choked-on-windows-path.md) | 2026-08 | 命中 | 自查 | shell生成代码, 转义, sed | 用 `sed` 改一段含 Windows 路径的内容，报 `unterminated 's' command`。 |
+| [2026-08-two-people-each-did-half-the-compile-gate](incidents/2026-08-two-people-each-did-half-the-compile-gate.md) | 2026-08 | 命中 | 第三方复核 | 交付文档代码块, 先编译, 造红 | 一份十节文档里 8 个 ```python 代码块，交付前要「逐块 compile 一遍，且先造红」。两人各做了这条纪律的不同一半：一个编… |
+
+- 类型：命中 4
+- 发现方式：第三方复核 2、自查 2
+- 标签：shell生成代码 2、交付文档代码块 2、转义 2、sed 1、先编译 1、正文与工具漂移 1、造红 1、静默失败 1
+
+## guidelines/code/premises-not-in-the-text.md
+
+引用本页的事故 8 条。
+
+| 事故 | 时间 | 类型 | 发现方式 | 标签 | 现象 |
+|---|---|---|---|---|---|
+| [2026-08-autocrlf-was-system-level](incidents/2026-08-autocrlf-was-system-level.md) | 2026-08 | 命中 | 实验 | 前提, 机器, 内在前提 | 写下「本仓的 `core.autocrlf=true`」。 |
+| [2026-08-commit-email-domain-as-outsider-test](incidents/2026-08-commit-email-domain-as-outsider-test.md) | 2026-08 | 命中 | 实验 | 前提, 人员构成, 谁的仓 | 用「commit email 不是我们的域 ⇒ 这是外部的改动」做判据。 |
+| [2026-08-compression-dropped-two-qualifiers](incidents/2026-08-compression-dropped-two-qualifiers.md) | 2026-08 | 命中 | 第三方复核 | 前提, 改写压缩 | 把一份技术说明压成宣发版，两处作用域限定同时丢了：「仅旋转式导出成立」这个前提，和界面上的真实字样。 |
+| [2026-08-line-numbers-broken-by-own-insertion](incidents/2026-08-line-numbers-broken-by-own-insertion.md) | 2026-08 | 命中 | 自查 | 前提, 移动引用, 行号 | 为消歧在文档里插入了一节 14 行，节内用行号引用文中别处。 |
+| [2026-08-recipe-copied-missing-two-premises](incidents/2026-08-recipe-copied-missing-two-premises.md) | 2026-08 | 命中 | 事后复盘 | 前提, 配方 | 一条被标成「成本是一条命令」的验证配方发出后数分钟内被另一方原样照抄。 |
+| [2026-08-recipe-pinned-to-head](incidents/2026-08-recipe-pinned-to-head.md) | 2026-08 | 命中 | 事后复盘 | 前提, 时刻, 移动引用 | 一条复现配方写 `git show HEAD:<path>` 来取「坏版本」。 |
+| [2026-08-relative-time-quantifier-in-wrapup](incidents/2026-08-relative-time-quantifier-in-wrapup.md) | 2026-08 | 命中 | 事后复盘 | 前提, 相对时间量词, 收口 | 收口判断写成「最近三轮全是…」「至今没有新东西了」。 |
+| [2026-08-scope-words-four-lanes-one-day](incidents/2026-08-scope-words-four-lanes-one-day.md) | 2026-08 | 命中 | 第三方复核 | 前提, 作用域, 归纳 | 同一天四方并行对话各犯一次作用域缺失：一个实例写成整层禁令；修法层面的约束写成「做不成」；手列出来的几个面写成「仅此一处」；朝一个方向失效… |
+
+- 类型：命中 8
+- 发现方式：事后复盘 3、实验 2、第三方复核 2、自查 1
+- 标签：前提 8、移动引用 2、人员构成 1、作用域 1、内在前提 1、归纳 1、收口 1、改写压缩 1、时刻 1、机器 1、相对时间量词 1、行号 1、谁的仓 1、配方 1
+
 ## guidelines/code/reporting-limits-and-null-results.md
 
 引用本页的事故 24 条。
@@ -52,6 +86,30 @@
 - 发现方式：第三方复核 7、事后复盘 5、自查 5、用户 4、外部追问 2、实验 1
 - 标签：rule-3 11、rule-1 7、可达范围 6、rule-4 4、归错层 3、rule-2 2、数字的机制 2、上下文压缩 1、事件聚合 1、加载器 1、反方向 1、只取一个点 1、对照组 1、按名字查 1、数值聚合 1、文档写法 1、猜的名字 1、用户产物 1、继承的规格 1、观测窗口 1、规则生效统计 1、解法量词 1、镜像形态 1
 
-## 未归类
+## guidelines/code/reuse-before-implementing.md
 
-- [2026-10-retest-probe-inherited-the-rules](incidents/2026-10-retest-probe-inherited-the-rules.md)
+引用本页的事故 5 条。
+
+| 事故 | 时间 | 类型 | 发现方式 | 标签 | 现象 |
+|---|---|---|---|---|---|
+| [2026-05-subprocess-helper-extracted-late](incidents/2026-05-subprocess-helper-extracted-late.md) | 2026-05 | 命中 | 用户 | 复用, 重复堆叠 | 660 行的 subprocess 逻辑（路径校验、CreateProc、30 s 超时、exit code、MessageLog）在 `… |
+| [2026-08-lock-scope-outgrown-by-function-body](incidents/2026-08-lock-scope-outgrown-by-function-body.md) | 2026-08 | 命中 | 自查 | 复用, 隐含假设随演化失效 | 一个只做数据搬运时合理的「整函数加锁，在实时回调里调用」，后来被塞进了重计算。 |
+| [2026-08-mobu-samples-had-the-exact-device-example](incidents/2026-08-mobu-samples-had-the-exact-device-example.md) | 2026-08 | 命中 | 自查 | 复用, 框架侧reference-impl, 随装samples | 一个「设备插件怎么写、跨版本有无差异」的问题，本来要靠旧版本经验加网络搜索推测。 |
+| [2026-08-rotation-order-declared-never-read](incidents/2026-08-rotation-order-declared-never-read.md) | 2026-08 | 命中 | 自查 | 复用, 错误实现无害潜伏, 全链一致地错 | 配置文件声明了旋转序，解析进字段后再无任何读取点，全链走框架默认序。 |
+| [2026-08-wrong-matrix-overwritten-each-frame](incidents/2026-08-wrong-matrix-overwritten-each-frame.md) | 2026-08 | 命中 | 自查 | 复用, 错误实现无害潜伏, 输出被覆盖 | 一个「局部转全局」的矩阵函数把入参在函数内覆盖后自乘，算出的是父变换的平方，骨骼自身的成员从未参与。它有注释、命名合理、被真实调用，功能也… |
+
+- 类型：命中 5
+- 发现方式：自查 4、用户 1
+- 标签：复用 5、错误实现无害潜伏 2、全链一致地错 1、框架侧reference-impl 1、输出被覆盖 1、重复堆叠 1、随装samples 1、隐含假设随演化失效 1
+
+## techniques/adversarial-verification.md
+
+引用本页的事故 1 条。
+
+| 事故 | 时间 | 类型 | 发现方式 | 标签 | 现象 |
+|---|---|---|---|---|---|
+| [2026-10-retest-probe-inherited-the-rules](incidents/2026-10-retest-probe-inherited-the-rules.md) | 2026-10 | 命中 | 自查 | 探针不干净, 对照组, 量具先自证 | 给两份经验页做「干净模型还犯不犯」的复测，用本会话派生的子代理逐题作答，8 题全部通过，答案逐字复述规则原文，连「真名少一个 -er」「计… |
+
+- 类型：命中 1
+- 发现方式：自查 1
+- 标签：对照组 1、探针不干净 1、量具先自证 1
