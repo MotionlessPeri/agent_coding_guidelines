@@ -32,6 +32,20 @@
 - 发现方式：第三方复核 2、自查 2
 - 标签：shell生成代码 2、交付文档代码块 2、转义 2、sed 1、先编译 1、正文与工具漂移 1、造红 1、静默失败 1
 
+## guidelines/code/gui-visual-machine-gating.md
+
+引用本页的事故 3 条。
+
+| 事故 | 时间 | 类型 | 发现方式 | 标签 | 现象 |
+|---|---|---|---|---|---|
+| [2026-07-offscreen-gl-segfault-in-smoke](incidents/2026-07-offscreen-gl-segfault-in-smoke.md) | 2026-07 | 命中 | 实验 | GUI验证, 离屏渲染 | 想用 `QT_QPA_PLATFORM=offscreen` 无头渲染截图做冒烟，`pyqtgraph.opengl` 的 `GLView… |
+| [2026-07-pure-function-gate-with-gl-smoke-only](incidents/2026-07-pure-function-gate-with-gl-smoke-only.md) | 2026-07 | 生效 | 自查 | GUI验证, 纯函数gate | 一个 PySide6 加 pyqtgraph.opengl 视口的 GUI 测试工具，消费一个 pybind 的 C++ 重定向库。每个功… |
+| [2026-07-ui-framework-chosen-by-viewport-texture-path](incidents/2026-07-ui-framework-chosen-by-viewport-texture-path.md) | 2026-07 | 命中 | 事后复盘 | GUI验证, 框架选型, 渲染器视口 | 给一个主输出是实时 GPU 画面的工具选 UI 框架时，按控件多不多、好不好看比较。 |
+
+- 类型：命中 2、生效 1
+- 发现方式：事后复盘 1、实验 1、自查 1
+- 标签：GUI验证 3、框架选型 1、渲染器视口 1、离屏渲染 1、纯函数gate 1
+
 ## guidelines/code/premises-not-in-the-text.md
 
 引用本页的事故 8 条。
@@ -102,6 +116,27 @@
 - 发现方式：自查 4、用户 1
 - 标签：复用 5、错误实现无害潜伏 2、全链一致地错 1、框架侧reference-impl 1、输出被覆盖 1、重复堆叠 1、随装samples 1、隐含假设随演化失效 1
 
+## guidelines/collaboration/lane-topology-design.md
+
+引用本页的事故 10 条。
+
+| 事故 | 时间 | 类型 | 发现方式 | 标签 | 现象 |
+|---|---|---|---|---|---|
+| [2026-08-archived-address-semantics-changed-thrice](incidents/2026-08-archived-address-semantics-changed-thrice.md) | 2026-08 | 命中 | 事后复盘 | lane拓扑, 重划执行, 平台语义 | 「归档后的 lane 地址能否复用」在一周内收到三封互相推翻的更正。 |
+| [2026-08-four-cross-lane-errors-all-on-seams](incidents/2026-08-four-cross-lane-errors-all-on-seams.md) | 2026-08 | 命中 | 事后复盘 | lane拓扑, 接缝 | 一周内四次 lane 互抓错，全部发生在两条 lane 都会碰的契约面上：共享容器、双向信号、同名异义函数。`set_undo_stack… |
+| [2026-08-hotfix-lane-premise-silently-gone](incidents/2026-08-hotfix-lane-premise-silently-gone.md) | 2026-08 | 命中 | 事后复盘 | lane拓扑, 存在前提 | hotfix 独立 lane 一直在，值守流量很低。 |
+| [2026-08-lane-boundaries-crossed-repo-boundaries](incidents/2026-08-lane-boundaries-crossed-repo-boundaries.md) | 2026-08 | 命中 | 事后复盘 | lane拓扑, 按仓切 | 8 条 lane 按「技术子域 + 职能」混切（render、ui 按子域，arch、review、hotfix 按职能）。代码持续下沉进… |
+| [2026-08-lane-ran-in-removed-worktree-dir](incidents/2026-08-lane-ran-in-removed-worktree-dir.md) | 2026-08 | 命中 | 第三方复核 | lane拓扑, 重划执行, cwd | 一条 lane 长期跑在一个已拆掉的 worktree 残留目录里。 |
+| [2026-08-pin-advance-checks-missed-17-modules](incidents/2026-08-pin-advance-checks-missed-17-modules.md) | 2026-08 | 命中 | 事后复盘 | lane拓扑, 事件触发 | 版本钉定前进、目录搬迁之后的连带检查靠人记得，层表的登记欠账攒到 17 个模块才被撞见。 |
+| [2026-08-review-lane-idle-between-campaigns](incidents/2026-08-review-lane-idle-between-campaigns.md) | 2026-08 | 命中 | 事后复盘 | lane拓扑, 审查campaign制 | 一条常驻的 review lane，一场审计满负荷，平时零负载。 |
+| [2026-08-seam-count-inflated-by-test-references](incidents/2026-08-seam-count-inflated-by-test-references.md) | 2026-08 | 命中 | 第三方复核 | lane拓扑, 接缝计数 | 接缝表给一条缝的 breaking change 预告等级定高了一档。 |
+| [2026-08-seam-numbers-in-brief-anchored-all-lanes](incidents/2026-08-seam-numbers-in-brief-anchored-all-lanes.md) | 2026-08 | 命中 | 事后复盘 | lane拓扑, brief锚定, 独立复核 | 接缝表里的数字进了派单 brief，所有 lane 都读到了同一个数。 |
+| [2026-08-shared-tree-write-conflicts](incidents/2026-08-shared-tree-write-conflicts.md) | 2026-08 | 命中 | 事后复盘 | lane拓扑, 共享树, 实现权分散 | 多条 lane 同时写一个仓。三起事故：共享 git 索引互吞，索引差 3 秒吞掉 4 个文件；一条「只改 docstring」的 com… |
+
+- 类型：命中 10
+- 发现方式：事后复盘 8、第三方复核 2
+- 标签：lane拓扑 10、重划执行 2、brief锚定 1、cwd 1、事件触发 1、共享树 1、存在前提 1、实现权分散 1、审查campaign制 1、平台语义 1、按仓切 1、接缝 1、接缝计数 1、独立复核 1
+
 ## techniques/adversarial-verification.md
 
 引用本页的事故 1 条。
@@ -113,3 +148,23 @@
 - 类型：命中 1
 - 发现方式：自查 1
 - 标签：对照组 1、探针不干净 1、量具先自证 1
+
+## techniques/measurement-four-questions.md
+
+引用本页的事故 9 条。
+
+| 事故 | 时间 | 类型 | 发现方式 | 标签 | 现象 |
+|---|---|---|---|---|---|
+| [2026-08-biased-ground-truth-produced-fake-failures](incidents/2026-08-biased-ground-truth-produced-fake-failures.md) | 2026-08 | 命中 | 第三方复核 | 测量四问, 真值有偏 | 用有缺陷的真值去评一个判别器，得到一批失败点；下游据此建了「有一部分不受该缺陷影响」的结论。 |
+| [2026-08-commit-diff-rule-called-a-hole](incidents/2026-08-commit-diff-rule-called-a-hole.md) | 2026-08 | 命中 | 第三方复核 | 测量四问, 判据, 覆盖不了的两种意思 | 某类损坏没被「提交前读全 diff」拦住，被说成那条纪律有洞。 |
+| [2026-08-control-files-were-the-minority](incidents/2026-08-control-files-were-the-minority.md) | 2026-08 | 命中 | 实验 | 测量四问, 总体, 报分母 | 拿 3 个「没碰过的」文件当对照组判行尾口径，结论反了。 |
+| [2026-08-count-grew-with-observation](incidents/2026-08-count-grew-with-observation.md) | 2026-08 | 命中 | 自查 | 测量四问, 总体, 随观测增长 | 一个计数 4 变 5 变 6，涨的全是观测行为本身产生的。 |
+| [2026-08-filter-clause-judged-dead-by-constructed-sample](incidents/2026-08-filter-clause-judged-dead-by-constructed-sample.md) | 2026-08 | 命中 | 实验 | 测量四问, 样本, A/B | 判一条过滤子句是不是死代码，用构造样本推理，结论「死代码」。 |
+| [2026-08-four-probe-failures-one-day](incidents/2026-08-four-probe-failures-one-day.md) | 2026-08 | 命中 | 第三方复核 | 测量四问, 量具 | 同一天四条并行对话里，临时写的探针各坏了一次：grep 模式写错报 0 而内容在；用行号定位内容，文件被追加过，行号早漂了；求差指纹在混合… |
+| [2026-08-scanner-counted-itself](incidents/2026-08-scanner-counted-itself.md) | 2026-08 | 命中 | 自查 | 测量四问, 总体, 量具在总体里 | 一个扫描器把自己的脚本算成了「写过那个文件」的进程。 |
+| [2026-08-stub-gave-both-methods](incidents/2026-08-stub-gave-both-methods.md) | 2026-08 | 命中 | 第三方复核 | 测量四问, 样本, 构造样本盲区 | 做降级实验的 stub 把一组两个方法都给全了，于是「只给一半会怎样」这一格从未进样本。 |
+| [2026-08-wcag-threshold-answered-another-question](incidents/2026-08-wcag-threshold-answered-another-question.md) | 2026-08 | 命中 | 第三方复核 | 测量四问, 判据, 证据升级时判据要重选 | 「浅底上 32% 白字看不见」从目测推断升级成 WCAG 对比率，顺手用了 4.5:1 这条无障碍标准线。 |
+
+- 类型：命中 9
+- 发现方式：第三方复核 5、实验 2、自查 2
+- 标签：测量四问 9、总体 3、判据 2、样本 2、A/B 1、报分母 1、构造样本盲区 1、真值有偏 1、覆盖不了的两种意思 1、证据升级时判据要重选 1、量具 1、量具在总体里 1、随观测增长 1
