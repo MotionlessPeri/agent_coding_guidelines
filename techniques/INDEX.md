@@ -12,7 +12,6 @@
 | 使用性能工具或调试器 | [性能分析](profiling-workflow.md)、[调试器脚本](debugger-scripting.md) |
 | C++ 覆盖率与 CRAP 实测 | [覆盖率测量](cpp-coverage-and-crap-measurement.md) |
 | 刻画闭源或无文档 API 参数 | [黑箱刻画](blackbox-api-characterization.md) |
-| 在 DCC 宿主真界面里端到端验证插件 | [DCC 插件界面自动测试](dcc-plugin-gui-e2e-automation.md) |
 | 安装、使用或排查 Model Worker MCP | [Model Worker MCP](model-worker-mcp.md) |
 | 安装、使用或排查 Lane Router | [Lane Router](lane-router.md) |
 | CI 向 P4 部署 | [P4 部署](ci-deploy-to-p4.md) |

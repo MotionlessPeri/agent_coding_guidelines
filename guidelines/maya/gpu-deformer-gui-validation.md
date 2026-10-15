@@ -132,4 +132,3 @@ GPU 数值一致后再测交互时序：
   interval union、work sum，并用旁路消融判断真实 wall 收益上限
 - [`../cpp/windows-native-crash-hang-evidence.md`](../cpp/windows-native-crash-hang-evidence.md) —— GUI 崩溃 / hang 时的 dump 取证（本篇 GPU 通过判定的补充面）
 - [`../../skills/maya/reverse-maya-closed-nodes/SKILL.md`](../../skills/maya/reverse-maya-closed-nodes/SKILL.md) —— 诊断闭源 / GPU 节点行为的分层证据工作流
-- [`../../techniques/dcc-plugin-gui-e2e-automation.md`](../../techniques/dcc-plugin-gui-e2e-automation.md) —— 框架无关的真界面端到端测试：本篇是一次性 fixture，那篇是分步命令通道 + 点没有脚本接口的插件按钮

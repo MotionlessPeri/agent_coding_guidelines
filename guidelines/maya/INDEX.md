@@ -30,7 +30,6 @@ hidden contracts。靠踩坑得到、Maya 官方文档没明说的客观约束�
 |---|---|
 | [`gpu-deformer-gui-validation.md`](gpu-deformer-gui-validation.md) | `mayapy` 不能证明 GPU Override 真执行；GPU Active + 每节点新 success marker + 非零形变 + CPU 对照四重 Gate / `deformerEvaluator` 加载顺序 / CPU 读回污染 / `maya.exe -script bootstrap.mel` + Qt timer / licensing 与 crash 分类 / auxiliary mesh buffer 与显式 CPU fallback / 半初始化节点先由 validate 拒绝、conditional generation 最后提交 |
 | [`parallel-deformer-performance-profiling.md`](parallel-deformer-performance-profiling.md) | Parallel Evaluation 下区分 wall time、interval union 和 per-frame work sum / nested scope 与单节点 outer duration 不直接归因 / ready 与非零激发 Gate / bypass-frozen 消融测 wall 收益上限 / P50-P95 与长尾复测 |
-| [`../../techniques/dcc-plugin-gui-e2e-automation.md`](../../techniques/dcc-plugin-gui-e2e-automation.md)（框架无关 technique） | agent 自己驱动 DCC 真界面跑插件端到端测试：启动脚本 + 主线程命令通道分步执行 / UI Automation 按控件名找按钮、投递鼠标消息（插件没有脚本接口也能点）/ 判据用宿主求值。MotionBuilder 实测，Maya 下控件名能否同样查到未验证 |
 
 ### Mesh 拓扑 / 数值复现
 
