@@ -3,7 +3,8 @@ class: experience
 scope: gui-or-rendering-tools
 triggers: [GUI, 视口, 画面, 截图, 离屏, offscreen, 像素, 冒烟, 渲染层, Qt, pyqtgraph, ImGui, 画面对不对]
 born: "2026-07，写下时的模型未记录"
-retested: []
+retested:
+  - "2026-10-15 claude-fable-5-1，claude -p 全新会话、无工具：V1 pass、V2 pass；见 docs/evaluations/experience-retest-2026-10-15.md"
 incidents:
   - 2026-07-offscreen-gl-segfault-in-smoke
   - 2026-07-pure-function-gate-with-gl-smoke-only

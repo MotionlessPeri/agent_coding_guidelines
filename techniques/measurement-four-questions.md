@@ -3,7 +3,8 @@ class: experience
 scope: universal
 triggers: [读数, 测量, 对照组, 分母, 样本, 探针, 阈值, 判据, 真值, A/B, 命中数, 扫描结论]
 born: "2026-08，写下时的模型未记录"
-retested: []
+retested:
+  - "2026-10-15 claude-fable-5-1，claude -p 全新会话、无工具：Q1 fail、Q2 fail；见 docs/evaluations/experience-retest-2026-10-15.md"
 incidents:
   - 2026-08-four-probe-failures-one-day
   - 2026-08-filter-clause-judged-dead-by-constructed-sample

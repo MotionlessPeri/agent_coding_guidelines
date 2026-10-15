@@ -3,7 +3,8 @@ class: experience
 scope: multi-lane-projects
 triggers: [lane, 拓扑, 切 lane, 重切, 开新 lane, 接缝, role description, 裁撤 lane, 并行派活, 多会话]
 born: "2026-09，写下时的模型未记录"
-retested: []
+retested:
+  - "2026-10-15 claude-fable-5-1，claude -p 全新会话、无工具：L1 pass、L2 partial；见 docs/evaluations/experience-retest-2026-10-15.md"
 incidents:
   - 2026-08-lane-boundaries-crossed-repo-boundaries
   - 2026-08-four-cross-lane-errors-all-on-seams
