@@ -3,7 +3,8 @@ class: experience
 scope: universal
 triggers: [heredoc, 反斜杠, 转义, sed, 生成代码, 生成文件, 落盘, py_compile, 代码块, 静默失败, 卡死]
 born: "2026-08，写下时的模型未记录"
-retested: []
+retested:
+  - "2026-10-15 claude-fable-5-1，claude -p 全新会话、无工具：G1 fail、G2 partial；见 docs/evaluations/experience-retest-2026-10-15.md"
 incidents:
   - 2026-08-heredoc-ate-a-backslash
   - 2026-08-sed-choked-on-windows-path

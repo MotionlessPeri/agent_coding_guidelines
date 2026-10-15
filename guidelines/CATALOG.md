@@ -7,11 +7,11 @@
 | 页面 | 作用域 | 触发词 | 诞生 | 最近复测 | 事故数 |
 |---|---|---|---|---|---|
 | [guidelines/code/diagnose-before-fixing.md](code/diagnose-before-fixing.md) | universal | bug, 修复, 根因, 八成是, 直接改, 校验器告警, 框架报警, 打不开, 卡住, 复现不了, 诊断日志, 取证 | 2026-06，写下时的模型未记录 | 2026-10-15 claude-fable-5-1，claude -p 全新会话、无工具：D1 pass、D2 pass、D3 fail；见 docs/evaluations/experience-retest-2026-10-15.md | 4 |
-| [guidelines/code/generating-code-through-shell.md](code/generating-code-through-shell.md) | universal | heredoc, 反斜杠, 转义, sed, 生成代码, 生成文件, 落盘, py_compile, 代码块, 静默失败, 卡死 | 2026-08，写下时的模型未记录 | 未复测 | 4 |
+| [guidelines/code/generating-code-through-shell.md](code/generating-code-through-shell.md) | universal | heredoc, 反斜杠, 转义, sed, 生成代码, 生成文件, 落盘, py_compile, 代码块, 静默失败, 卡死 | 2026-08，写下时的模型未记录 | 2026-10-15 claude-fable-5-1，claude -p 全新会话、无工具：G1 fail、G2 partial；见 docs/evaluations/experience-retest-2026-10-15.md | 4 |
 | [guidelines/code/gui-visual-machine-gating.md](code/gui-visual-machine-gating.md) | gui-or-rendering-tools |  |  | 未复测 | 0 |
-| [guidelines/code/premises-not-in-the-text.md](code/premises-not-in-the-text.md) | universal | 前提, HEAD, 当前树, 本仓的配置, 行号, 最近, 至今, 刚才, 唯一, 一律, 全部, 从不, 永久, 配方, 实测, 压缩, 改写, 宣发 | 2026-08，写下时的模型未记录 | 未复测 | 8 |
+| [guidelines/code/premises-not-in-the-text.md](code/premises-not-in-the-text.md) | universal | 前提, HEAD, 当前树, 本仓的配置, 行号, 最近, 至今, 刚才, 唯一, 一律, 全部, 从不, 永久, 配方, 实测, 压缩, 改写, 宣发 | 2026-08，写下时的模型未记录 | 2026-10-15 claude-fable-5-1，claude -p 全新会话、无工具：P1 pass、P2 pass；见 docs/evaluations/experience-retest-2026-10-15.md | 8 |
 | [guidelines/code/reporting-limits-and-null-results.md](code/reporting-limits-and-null-results.md) | universal | 报结论, 做不到, 不支持, 能力边界, 框架不支持, 没变, 没接上, 不起作用, 零命中, 找不到, 不存在, 没发生, 搜了没有, ABSENT, 这个数, 搬数字, 聚合统计量, p95, 均值 | 2026-08，写下时的模型未记录 | 2026-10-15 claude-fable-5-1，claude -p 全新会话、无工具：R1 pass、R2 partial、R3 pass、R4 pass、R5 pass；见 docs/evaluations/experience-retest-2026-10-15.md | 24 |
-| [guidelines/code/reuse-before-implementing.md](code/reuse-before-implementing.md) | universal | 复用, 已有实现, 抽 helper, 重复代码, copy-paste, 新建文件, 新建类, 参考实现, samples, devkit, SDK, 过早抽象 | 2026-05，写下时的模型未记录；2026-10-13 按判断力改写 | 未复测 | 5 |
+| [guidelines/code/reuse-before-implementing.md](code/reuse-before-implementing.md) | universal | 复用, 已有实现, 抽 helper, 重复代码, copy-paste, 新建文件, 新建类, 参考实现, samples, devkit, SDK, 过早抽象 | 2026-05，写下时的模型未记录；2026-10-13 按判断力改写 | 2026-10-15 claude-fable-5-1，claude -p 全新会话、无工具：U1 pass、U2 pass；见 docs/evaluations/experience-retest-2026-10-15.md | 5 |
 | [guidelines/collaboration/lane-topology-design.md](collaboration/lane-topology-design.md) | multi-lane-projects |  |  | 未复测 | 0 |
 | [techniques/measurement-four-questions.md](../techniques/measurement-four-questions.md) | universal |  |  | 未复测 | 0 |
 

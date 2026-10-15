@@ -3,7 +3,8 @@ class: experience
 scope: universal
 triggers: [前提, HEAD, 当前树, 本仓的配置, 行号, 最近, 至今, 刚才, 唯一, 一律, 全部, 从不, 永久, 配方, 实测, 压缩, 改写, 宣发]
 born: "2026-08，写下时的模型未记录"
-retested: []
+retested:
+  - "2026-10-15 claude-fable-5-1，claude -p 全新会话、无工具：P1 pass、P2 pass；见 docs/evaluations/experience-retest-2026-10-15.md"
 incidents:
   - 2026-08-recipe-pinned-to-head
   - 2026-08-autocrlf-was-system-level

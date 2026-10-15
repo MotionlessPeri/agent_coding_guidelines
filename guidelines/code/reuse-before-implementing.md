@@ -3,7 +3,8 @@ class: experience
 scope: universal
 triggers: [复用, 已有实现, 抽 helper, 重复代码, copy-paste, 新建文件, 新建类, 参考实现, samples, devkit, SDK, 过早抽象]
 born: "2026-05，写下时的模型未记录；2026-10-13 按判断力改写"
-retested: []
+retested:
+  - "2026-10-15 claude-fable-5-1，claude -p 全新会话、无工具：U1 pass、U2 pass；见 docs/evaluations/experience-retest-2026-10-15.md"
 incidents:
   - 2026-05-subprocess-helper-extracted-late
   - 2026-08-wrong-matrix-overwritten-each-frame
