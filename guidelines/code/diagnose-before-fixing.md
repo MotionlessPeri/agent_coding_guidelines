@@ -10,6 +10,7 @@ incidents:
   - 2026-08-validator-warning-pointed-at-local-code
   - 2026-08-stream-died-after-unlogged-user-action
   - 2026-08-host-hang-blamed-on-user-file
+  - 2026-10-coordinator-deferred-diagnostic-evidence
 ---
 
 # 先取证再修：调试不靠猜

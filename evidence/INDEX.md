@@ -4,7 +4,7 @@
 
 ## guidelines/code/diagnose-before-fixing.md
 
-引用本页的事故 4 条。
+引用本页的事故 5 条。
 
 | 事故 | 时间 | 类型 | 发现方式 | 标签 | 现象 |
 |---|---|---|---|---|---|
@@ -12,10 +12,11 @@
 | [2026-08-host-hang-blamed-on-user-file](incidents/2026-08-host-hang-blamed-on-user-file.md) | 2026-08 | 命中 | 用户 | rule-1, 用户产物, 加载器 | 宿主打不开用户交来的场景文件，报出去的话是「这份 fbx 打不开，可能是它坏了」。 |
 | [2026-08-stream-died-after-unlogged-user-action](incidents/2026-08-stream-died-after-unlogged-user-action.md) | 2026-08 | 命中 | 用户 | 操作史, 日志 | 一个下游订阅方的数据流永久失效，日志只有一条格式错误，没有任何操作痕迹。 |
 | [2026-08-validator-warning-pointed-at-local-code](incidents/2026-08-validator-warning-pointed-at-local-code.md) | 2026-08 | 命中 | 实验 | 校验器, 上游数据, 方向性oracle | 重定向框架报「髋部没朝向 +Z 轴 / 手臂不平行于 X 轴」，两条都指向「骨架是怎么建的」，差一步去改建骨代码的朝向。 |
+| [2026-10-coordinator-deferred-diagnostic-evidence](incidents/2026-10-coordinator-deferred-diagnostic-evidence.md) | 2026-10 | 命中 | 用户 | coordination, diagnostic-priority, delivery | 基础流程反复阻塞，协调者已多次报告诊断信息不足，却继续优先安排旧状态追查、恢复和局部修补，直到交付截止后才完成请求关联日志的私有候选，仍未… |
 
-- 类型：命中 4
-- 发现方式：用户 3、实验 1
-- 标签：rule-1 1、上游数据 1、加载器 1、取证 1、操作史 1、方向性oracle 1、日志 1、校验器 1、用户产物 1、盲改 1
+- 类型：命中 5
+- 发现方式：用户 4、实验 1
+- 标签：coordination 1、delivery 1、diagnostic-priority 1、rule-1 1、上游数据 1、加载器 1、取证 1、操作史 1、方向性oracle 1、日志 1、校验器 1、用户产物 1、盲改 1
 
 ## guidelines/code/generating-code-through-shell.md
 
