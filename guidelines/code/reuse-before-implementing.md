@@ -11,6 +11,7 @@ incidents:
   - 2026-08-rotation-order-declared-never-read
   - 2026-08-lock-scope-outgrown-by-function-body
   - 2026-08-mobu-samples-had-the-exact-device-example
+  - 2026-10-rewrite-lost-business-invariants
 ---
 
 # Reuse Before Implementing
@@ -75,6 +76,8 @@ incidents:
 | 抽完发现只有一处 caller 用得到 | 用真实调用场景检查接口是否自然；只有一个调用方的函数也可以因职责清晰而值得提取 |
 
 ## 证据
+
+重写业务流程时未守住旧实现提交边界与失败后可继续工作的实例，见[事故记录](../../evidence/incidents/2026-10-rewrite-lost-business-invariants.md)；这是一次复盘，不证明旧实现或所有异步调用都具备整体回滚能力。
 
 事故记录见本页 frontmatter 的 `incidents`，统计由 `kb.py index` 生成。helper 抽得太晚的那次来自一个 UE 插件项目三个月的开发期；「错误实现原地无害」的两种形态来自同一仓库、机制不同的两次；锁的范围那次来自一个 DCC 插件；「先查随装 samples」在 UE 域早有单独条目，MotionBuilder 那次是第二击。
 

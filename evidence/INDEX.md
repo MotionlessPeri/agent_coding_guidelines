@@ -103,7 +103,7 @@
 
 ## guidelines/code/reuse-before-implementing.md
 
-引用本页的事故 5 条。
+引用本页的事故 6 条。
 
 | 事故 | 时间 | 类型 | 发现方式 | 标签 | 现象 |
 |---|---|---|---|---|---|
@@ -112,10 +112,11 @@
 | [2026-08-mobu-samples-had-the-exact-device-example](incidents/2026-08-mobu-samples-had-the-exact-device-example.md) | 2026-08 | 命中 | 自查 | 复用, 框架侧reference-impl, 随装samples | 一个「设备插件怎么写、跨版本有无差异」的问题，本来要靠旧版本经验加网络搜索推测。 |
 | [2026-08-rotation-order-declared-never-read](incidents/2026-08-rotation-order-declared-never-read.md) | 2026-08 | 命中 | 自查 | 复用, 错误实现无害潜伏, 全链一致地错 | 配置文件声明了旋转序，解析进字段后再无任何读取点，全链走框架默认序。 |
 | [2026-08-wrong-matrix-overwritten-each-frame](incidents/2026-08-wrong-matrix-overwritten-each-frame.md) | 2026-08 | 命中 | 自查 | 复用, 错误实现无害潜伏, 输出被覆盖 | 一个「局部转全局」的矩阵函数把入参在函数内覆盖后自乘，算出的是父变换的平方，骨骼自身的成员从未参与。它有注释、命名合理、被真实调用，功能也… |
+| [2026-10-rewrite-lost-business-invariants](incidents/2026-10-rewrite-lost-business-invariants.md) | 2026-10 | 命中 | 用户 | reuse, business-invariants, atomicity, regression | 重写后的应用虽有本地数据库事务，却在旧任务结束后仍因旧会话就绪条件拒绝下一次派工；协调者未及时对照旧实现，基础流程长期未交付。 |
 
-- 类型：命中 5
-- 发现方式：自查 4、用户 1
-- 标签：复用 5、错误实现无害潜伏 2、全链一致地错 1、框架侧reference-impl 1、输出被覆盖 1、重复堆叠 1、随装samples 1、隐含假设随演化失效 1
+- 类型：命中 6
+- 发现方式：自查 4、用户 2
+- 标签：复用 5、错误实现无害潜伏 2、atomicity 1、business-invariants 1、regression 1、reuse 1、全链一致地错 1、框架侧reference-impl 1、输出被覆盖 1、重复堆叠 1、随装samples 1、隐含假设随演化失效 1
 
 ## guidelines/collaboration/lane-topology-design.md
 
