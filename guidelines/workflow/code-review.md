@@ -5,6 +5,35 @@ scope: universal
 
 # Code Review Guidelines
 
+## Scope and Independent Review Evidence
+
+- Establish the scope baseline from the original user request, subsequent explicit
+  decisions, exclusions, and existing capabilities. Keep the author's inferences
+  separate; neither their plan nor tests they added can turn an inference into a
+  user requirement.
+- Review the actual diff and affected execution paths against that baseline.
+  Apply the [scope deletion test](../code/constraints.md#plan-scope-integrity) to
+  added behavior, state, interfaces and lifecycle mechanisms. Evaluate deletion
+  against the requested outcome, not an extra condition introduced by the proposal.
+  Existing implementation and sunk effort do not prove the behavior is needed.
+- When independent review is required, the reviewer forms a scope judgment from
+  the source requirements and existing capabilities before evaluating the author's
+  justification. Check both unnecessary additions and loss of required behavior;
+  the reviewer cannot expand scope through a finding.
+- Identify the baseline and candidate actually reviewed, using commits or file
+  digests appropriate to the work. A later change needs review of the affected
+  conclusions before that changed candidate is described as reviewed. A matching
+  hash identifies content; it does not authenticate a reviewer's judgment.
+- Keep author self-checks, independent findings, and execution checks distinct.
+  Missing independent review, an author's `approved` field, or passing tests must
+  not be reported as independent scope approval. Reuse valid review evidence for
+  unchanged material rather than restarting unrelated checks.
+
+These instructions do not install an enforcement mechanism or require independent
+review for every edit. Where a project requires one, name the actual protected
+action and executor; comparison and trial criteria are in the
+[scope-control reference](../../references/agent-knowledge/scope-control.md).
+
 ## Merge Commit Review
 
 When reviewing a feature branch that has merged the main branch (or any upstream branch)
