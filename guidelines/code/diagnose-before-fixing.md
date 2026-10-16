@@ -32,6 +32,10 @@ incidents:
 
 证据收敛到单一根因后才写 fix；fix 后再取证，确认是那个根因被解决而不是症状被掩盖；诊断日志在确认生效之前不删。
 
+## 信息不足时的协调责任
+
+“无法定位”需要转成具体取证工作，不能反复作为等待理由；加入日志也要验证最终读取端能用它回答定位问题。协调者如何排序、检查推进和处理必要恢复，统一遵循[协调者的工作优先级](../workflow/agent-lifecycle.md#协调者的工作优先级)。这不要求先查清全部历史，也不将受控验证通过等同于现场已具备诊断能力。
+
 ## 反模式
 
 | 反模式 | 为什么错 |
@@ -48,7 +52,7 @@ incidents:
 
 ## 证据
 
-事故记录在 [`evidence/incidents/`](../../evidence/README.md)，清单在本页 frontmatter 的 `incidents`，统计见生成的 [`evidence/INDEX.md`](../../evidence/INDEX.md)。四条判据各来自一次命中，其中「打不开先查自己」那次与报结论规则 1 共用同一条记录。单项目各一次，机制清楚可复述；apply-and-refine。
+事故记录在 [`evidence/incidents/`](../../evidence/README.md)，清单在本页 frontmatter 的 `incidents`，统计见生成的 [`evidence/INDEX.md`](../../evidence/INDEX.md)。四条诊断判据各来自一次命中，其中「打不开先查自己」那次与报结论规则 1 共用同一条记录；协调者延后补齐诊断证据的事故另列。各案例的适用范围以原记录为准；协调优先级的纠正尚待实际工作验证。
 
 ## 相关
 

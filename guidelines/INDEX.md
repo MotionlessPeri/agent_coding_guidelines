@@ -10,7 +10,7 @@
 |---|---|
 | 维护指令库、区分知识/流程/规范、更新证据与旧结论 | [内容边界](workflow/instruction-content.md)、[知识促升与维护](workflow/knowledge-promotion.md)、[参考资料](../references/README.md) |
 | 本地提交、推送或版本操作 | [提交约定](workflow/commits.md)、[授权与生命周期](workflow/agent-lifecycle.md) |
-| 继续长任务、处理重复失败或范围变化 | [授权与生命周期](workflow/agent-lifecycle.md)、[交接](workflow/handoffs.md) |
+| 继续长任务、协调优先级、处理信息不足、重复失败或范围变化 | [授权与生命周期](workflow/agent-lifecycle.md)、[协调者的工作优先级](workflow/agent-lifecycle.md#协调者的工作优先级)、[交接](workflow/handoffs.md) |
 | 新增或修改文档 | [文档归属与同步](workflow/documentation.md)、[行文](writing/prose-and-register.md)、[私人记录](collaboration/private-docs-policy.md) |
 | 代码审查与修正 | [审查规范](workflow/code-review.md)、[任务范围](code/constraints.md) |
 | 需求有影响结果的歧义 | [澄清边界](code/clarify-before-implementing.md)、[未写出的前提](code/premises-not-in-the-text.md) |
