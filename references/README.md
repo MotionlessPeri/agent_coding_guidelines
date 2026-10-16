@@ -6,6 +6,7 @@
 |---|---|
 | UE 渲染管线、性能、故障与扩展点 | [UE 渲染资料](ue-rendering/README.md)，注意版本及各章节核验状态 |
 | 知识管理、RAG、LLM Wiki、工作流引擎怎样分工 | [Agent 知识组织](agent-knowledge/README.md) |
+| 业务命令的原子提交、重复调用、通知失败和恢复后继续工作 | [业务命令可靠性](software-engineering/business-command-reliability.md) |
 | 知道症状，但不知道本仓文件名或英文关键词 | [按问题找资料](agent-knowledge/find-relevant-guidance.md) |
 
 ## 核验与维护

@@ -21,6 +21,7 @@
 |---|---|---|---|---|---|
 | [guidelines/code/complexity-coverage-metrics.md](code/complexity-coverage-metrics.md) | universal |  |  | 未复测 | 0 |
 | [guidelines/code/dual-layer-data-ownership.md](code/dual-layer-data-ownership.md) | universal |  |  | 未复测 | 0 |
+| [references/software-engineering/business-command-reliability.md](../references/software-engineering/business-command-reliability.md) | business-software |  |  | 未复测 | 0 |
 
 ## norm
 
