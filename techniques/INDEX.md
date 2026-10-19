@@ -13,8 +13,8 @@
 | C++ 覆盖率与 CRAP 实测 | [覆盖率测量](cpp-coverage-and-crap-measurement.md) |
 | 刻画闭源或无文档 API 参数 | [黑箱刻画](blackbox-api-characterization.md) |
 | 安装、使用或排查 Model Worker MCP | [Model Worker MCP](model-worker-mcp.md) |
-| 安装、使用或排查 Lane Router；使用问题看板/议题收件箱 | [Lane Router](lane-router.md) |
-| 发布看板答复或问题、继续多轮讨论、处理网页回复、记录个人使用偏好 | [议题看板使用指导](lane-router-issues.md) |
+| 安装、使用或排查 Lane Router | [Lane Router](lane-router.md) |
+| 用问答（Lane Router 网页 `/issues`）发布答复或问题、继续多轮讨论、处理网页回复、记录个人使用偏好 | [问答使用指导](lane-router-issues.md) |
 | CI 向 P4 部署 | [P4 部署](ci-deploy-to-p4.md) |
 | 配置 Claude Code 自主权限 | [Claude Code 权限](claude-code-autonomous-permissions.md) |
 | 维护本语料库：查断链、生成目录、按章节查资料、记事故 | [kb 工具](../scripts/kb/README.md)、[证据层](../evidence/README.md) |
