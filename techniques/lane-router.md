@@ -41,7 +41,7 @@ lane-router-codex
 lane-router-codex resume <thread-id>
 ```
 
-launcher 会按需启动 Router process，并把 stock Codex TUI 连接到本地 adapter。不要手动启动 Router、固定它的 PID/端口，或把历史 discovery 值写进脚本。新 thread 使用调用 `lane-router-codex` 时的当前目录；`resume` 保留原 thread 的工作目录。
+launcher 会按需启动 Router 核心进程和 Codex 宿主进程，并把 stock Codex TUI 连接到宿主的 bridge。宿主持有 Codex app-server，生命周期与 Router 核心分开：Router 核心重启时开着的 Codex 对话照常，期间 lane 工具立即报「Lane Router is not running」，核心回来后宿主自动重连；宿主自己重启时 Codex 对话会断开，需要 `resume`。不要手动启动 Router 或宿主、固定它们的 PID/端口，或把历史 discovery 值写进脚本。新 thread 使用调用 `lane-router-codex` 时的当前目录；`resume` 保留原 thread 的工作目录。
 
 ### Claude Code
 
@@ -360,16 +360,16 @@ Lane Router 是 coordination transport，不是业务程序的逐步控制器。
 | `lane-router-codex` 找不到 | 运行 `Get-Command lane-router-codex`；若不存在，在当前 Lane Router repo 重新 build 并 `npm link`。 |
 | Claude 看不到 tools | 运行 `claude mcp get lane` 和 `claude mcp list`；确认绝对 `dist` 路径仍存在且已构建。 |
 | Claude tools 可用但没有自动通知 | 先看 MCP 日志 `~/.cache/claude-cli-nodejs/<cwd>/mcp-logs-lane/*.jsonl`：有 `Channel notifications skipped: channels not enabled by org policy` ⇒ 这台机器缺托管设置，按上文建 `managed-settings.json`；没有这行 ⇒ 确认本次启动使用 `claude --dangerously-load-development-channels server:lane`，并已接受首次 development warning。另：会话刚（重）启动那一瞬间到达的通知不会唤醒它（消息不丢，下一次唤醒会一并带出），不是故障。 |
-| Codex launcher 启动失败 | 直接读取 launcher 暴露的 Router stderr；不要把启动失败简化成“等待超时”，也不要凭历史 PID 手动处理进程。 |
+| Codex launcher 启动失败 | 直接读取 launcher 暴露的 Router 或 Codex 宿主 stderr（宿主的启动输出追加在 Router 数据目录的 `codex-host.log`）；不要把启动失败简化成“等待超时”，也不要凭历史 PID 手动处理进程。 |
 | `lane-router-rotate` 返回成功但没有新窗口 | 检查是否使用包含 Windows `Start-Process` 修复的构建，并核对是否存在 `PowerShell → rotation-terminal-child → CLI` 进程链；Node 的 `spawn` 事件本身不是可见窗口证据。 |
 | `lane-router-lane open` 报 `not found` | 正在运行的 Router 是没有 resume 查询端点的旧构建。等用户决定受控重启 Router，不要自行结束共享进程。 |
 | `lane-router-lane open` 报 `already online` | 目标 lane 的 channel 还开着（terminal 没关或刚关不久），这是正常拒绝语义，不是故障。 |
 | `lane-router-lane open` 要求 `--cwd` | 该 lane 在 cwd 记录功能上线后还没跑过任何 turn。让它跑一个 turn 再开，或显式传原项目目录。 |
 | 同一封信每个 turn 都来叫（消息反复提醒） | 通知泵在**每个 turn 结束时**对仍在 `pending` 的信重发通知——这是兜底，防首次通知丢失。所以一条 lane 若为了「表示还没做完」扣住一封信不 ack，就会每个 turn 把自己叫醒一次，直到有人来：空转 turn、刷屏。2026-10-12 真机撞过，连叫三次。修法：读完就 ack（ack 不等于做完，见上表），进度走 worklog。 |
 | repo 移动或更新后失效 | 重新 build；Claude 重新检查/注册绝对 `dist` 路径，Codex 重新检查 `npm link`。 |
-| 代理环境变化但已运行的 Router 未采用 | 代理补全只在创建新 Router process 时发生。不要自行结束共享 Router；先确认没有其他使用者，再由用户或维护者决定受控重启。 |
+| 代理环境变化但已运行的 Router 未采用 | 代理补全只在创建新 Router 或新 Codex 宿主进程时发生；Codex 模型请求走的是宿主里的 app-server，所以要生效的是宿主。不要自行结束共享 Router 或宿主；先确认没有其他使用者，再由用户或维护者决定受控重启（宿主用 `restart-router.ps1 -CodexHost`）。 |
 
-日常使用不需要 Lane Router 管理 CLI、Windows service、固定端口或手工进程管理。Claude MCP 和 Codex launcher 都会 ensure Router；额外管理面不属于 V1。
+日常使用不需要 Lane Router 管理 CLI、Windows service、固定端口或手工进程管理。Claude MCP 和 Codex launcher 都会 ensure Router，Router 核心和 Codex launcher 会 ensure Codex 宿主；额外管理面不属于 V1。部署后宿主的代码若也变了，宿主不会自己换代（它跨核心重启存活），看板会提示构建不同，换代用 `restart-router.ps1 -CodexHost`，这会断开开着的 Codex 对话。
 
 ## 验证状态与边界
 
