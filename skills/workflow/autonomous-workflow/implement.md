@@ -11,7 +11,9 @@ task baseline and ownership decisions; applicable project checks and prior evide
 ## Actions
 
 1. Implement the current unit within its accepted boundaries. Carry forward its
-   canonical milestone ID/name when one exists.
+   canonical milestone ID/name when one exists. For a unit with several steps, a
+   one-line-per-step plan in the form `step → verify: check` is enough to keep each
+   step paired with its own completion check.
 2. Choose verification by the behavior at risk, following the applicable project
    verification and test-purpose rules:
 

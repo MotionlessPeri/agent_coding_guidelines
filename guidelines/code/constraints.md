@@ -32,6 +32,8 @@ scope: universal
 - Avoid over-engineering. Only make changes that are directly requested or clearly necessary.
 - Don't add features, abstractions, or configurability beyond what the current task needs.
 - Three similar lines of code is better than a premature abstraction.
+- Before handing over, compare the size of the change with the size of the problem: if 200 lines solve
+  what 50 could, rewrite it.
 
 ### Plan scope integrity
 
