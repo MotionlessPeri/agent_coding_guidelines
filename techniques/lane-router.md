@@ -59,7 +59,7 @@ claude mcp list
 claude --dangerously-load-development-channels server:lane
 ```
 
-自定义 Channel 当前是 research preview；首次启动需由用户确认 local development warning。不要使用旧的 `--channels server:lane` 写法。
+自定义 Channel 当前是 research preview；**每次**启动都需由用户在 development warning 弹窗上确认（不是只有首次；本机 Claude Code 2.1.304 核实没有设置能免，正规免法见 Vikunja LR-24 的插件路线）。不要使用旧的 `--channels server:lane` 写法。
 
 **每台跑 lane 的机器还必须有一份托管设置开启 channel**，否则 flag 加了也白加：Claude 客户端会把 channel 通知**静默丢弃**——工具全能用、发送方看到的 `notificationState` 也是 `sent`，只有 MCP 日志（`~/.cache/claude-cli-nodejs/<cwd>/mcp-logs-lane/*.jsonl`）里那行 `Channel notifications skipped: channels not enabled by org policy` 说了实话。文件内容就一行 `{ "channelsEnabled": true }`，位置按系统：
 
@@ -77,12 +77,12 @@ Claude 的 user-scope MCP 保存的是 `dist` 的绝对路径。仓库移动、`
 | 工具 | 用途与约束 |
 |---|---|
 | `lane_directory(project)` | 只读列出同 project 的 lane 和角色说明；无需用户确认。拓扑变更前先调用它，优先复用职责匹配的 lane。 |
-| `lane_attach_current(address, role_description?)` | 创建、接替、轮换 lane 或修改角色说明。调用前必须在普通对话中解释拓扑变化并取得用户明确确认；不要添加机械式 `confirmed` 参数。接替现有 lane 且不改角色时省略 `role_description`。 |
+| `lane_attach_current(address, role_description?)` | 创建、接替、轮换 lane 或修改角色说明。**创建新 lane、自己换代轮换（不改角色）不需要用户确认**；**接替另一条仍有 live 会话的 lane、或修改已有 lane 的角色说明，调用前要在普通对话中说明并取得用户明确确认**；拿不准算接替。不要添加机械式 `confirmed` 参数。接替现有 lane 且不改角色时省略 `role_description`。 |
 | `lane_send(target, kind, body, reply_to?)` | 向目标 `pending` mailbox 写入不可修改的消息。普通消息用 `normal`；修正旧消息用 `correction` 并以 `reply_to` 指向原 message ID。 |
 | `lane_ack(message_ids)` | 读完、纳入自己的工作状态之后就 ack，批量把每个 ID 从 `pending` resolve。**ack 是通信层的「已收到并读懂」，不是「任务做完」**：等人裁定、活还没干完，照样先 ack，用自己的 worklog / 回信跟踪进度。只有真没读到或没读懂的才留着不 ack。原因见故障排查「同一封信每个 turn 都来叫」。 |
-| `lane_restore_project(lanes?)` | 已绑定的 caller 一键恢复本 project 其他离线 lane 的原 conversation（机器重启场景；不传 `lanes` 恢复全部 peer）。只在用户明确要求重开 lane 时调用；它不是拓扑变更，不走 attach 的确认流程。旧 Codex thread 无法刷新工具清单时，用兼容 CLI `lane-router-restore-project [lane-address ...]`（需要 shell 里有 `CODEX_THREAD_ID`）。 |
+| `lane_restore_project(lanes?)` | 已绑定的 caller 一键恢复本 project 其他离线 lane 的原 conversation（机器重启场景；不传 `lanes` 恢复全部 peer）。**当前任务需要够到离线的 peer 时即可调用，不必先问用户；只唤醒真要用到的，别成批投机唤醒。**它不是拓扑变更。旧 Codex thread 无法刷新工具清单时，用兼容 CLI `lane-router-restore-project [lane-address ...]`（需要 shell 里有 `CODEX_THREAD_ID`）。 |
 
-lane 是长期 role/context 边界，不要为每个临时 task 创建一条 lane。创建、接替、轮换和修改 `role_description` 都是持久拓扑变化；先查目录、提出具体建议、取得确认，再 attach。当前 conversation 已绑定另一条 active lane 时，Router 会拒绝隐式换绑。
+lane 分三层，先问「subagent 够不够」：**subagent**（Agent 工具）给不需要和用户对话、不需要被找到的内部活；**任务 lane** 给边界清楚、但要和用户澄清几轮或要跑一阵、要能被找到 / 唤醒的需求——由收到需求的角色 lane 直接开（不必先问用户，但要在原议题说明开了谁、为什么），角色说明首句写「任务 lane：为问答 `<议题>` 开，归属 `<父 lane>`，完成条件 …，完成即归档」，做完交付后归档是完成的一部分（现在用 `lane-router-lane archive`，需先关窗；自归档路径见 Vikunja LR-27）；**角色 lane** 是长期职责。创建新 lane 和自己换代轮换不需要确认；接替另一条仍 live 的 lane、修改已有 lane 的 `role_description` 才要先查目录、说明并取得确认。当前 conversation 已绑定另一条 active lane 时，Router 会拒绝隐式换绑。
 
 ### 接替与轮换的闭环检查
 
@@ -196,7 +196,7 @@ lane-router-lane open <project>/<lane> [--cwd <dir>] [--terminal <wt|powershell|
 ```
 
 - 调用方不需要知道目标 lane 是什么 agent：`open` 从 Router 的 binding 记录读出 backend 与 conversation id。当前只支持 claude；codex 报"暂不支持"，可手动 `lane-router-codex resume <thread-id>`。
-- **`new` 是拓扑变更**：调用方 conversation 必须先在对话中说明并取得用户明确确认，再调命令——与 `lane_attach_current` 的政策一致，命令不设机械式 confirm 参数。命令开出新 terminal，bootstrap prompt 指示新对话读 AGENTS.md、查目录、带 `role_description` attach、报告就绪后等待指令。地址已存在时报错并提示改用 `open`。`--cwd` 默认取调用命令时的目录。
+- **`new` 不再需要用户先确认**（与 `lane_attach_current` 的政策一致：只有接替仍 live 的别的 lane、改已有角色说明才要确认；命令不设机械式 confirm 参数）。命令开出新 terminal，bootstrap prompt 指示新对话读 AGENTS.md、查目录、带 `role_description` attach、**读透角色与项目现状后报告就绪；没有被授权的任务就等指令或等点名的活，不自己造活**。地址已存在时报错并提示改用 `open`。`--cwd` 默认取调用命令时的目录。
 - **`new` 返回后 lane 不会立刻出现在目录里**：命令成功只说明新 terminal / CLI 已启动，不说明 bootstrap turn 已完成或 `lane_attach_current` 已调用。新模型还要读创建 prompt、仓库 `AGENTS.md` 与适用规范、查询目录，再主动 attach；这一段可能持续几十秒到数分钟，期间 `lane_directory` 查不到新地址是正常状态。**不要因为命令没有输出或目录暂时没有地址而再次执行同一条 `new`**，否则会开出重复 terminal。先观察原窗口是否仍在初始化，并等待它报告 ready；只有原窗口明确启动失败或已经退出、且目录仍无该 lane 时，才能重试。
 - **`open` 只恢复离线 lane**：目标在线（channel 仍开着）时拒绝；lane 不存在提示走 `new`；lane 存在但无 active binding 提示走轮换流程——`open` 不会顺手升级成接替。恢复在 Router 记录的工作目录进行（该记录由 lifecycle hook 随每次 turn 上报），Router 没有记录时要求显式 `--cwd`。恢复后 channel 重连，pending 通知会自动重发。
 - 三条开窗命令（`lane-router-lane new` / `lane-router-lane open` / `lane-router-rotate`）都遵循同一验证纪律：窗口开了不算 CLI 启动成功；CLI 启动成功也不等于 lane attach 完成。`new` 以新窗口报告 ready 或目录出现预期 binding 为完成证据，不能拿短时间的目录空缺当失败证据。
@@ -346,7 +346,7 @@ Lane Router 是 coordination transport，不是业务程序的逐步控制器。
 
 1. 外部执行者先落盘部署结果，记录产物、服务健康与原 binding 保全情况，再唤醒会话。其他保留运行的业务由原负责人核验，不重放业务输入。
 2. 核对当前恢复信息中的原 thread、cwd 和在线状态；对需重开的原会话执行 `lane-router-lane open <project>/<lane> --terminal wt`，再用 `lane-router-lane tell` 提醒读取部署结果和原恢复点。已经在线的不重复开窗，刚开窗尚未上线的先等待初始化；不创建、轮换或改绑 lane。
-3. 各 lane 读完整提醒、部署结果和自身恢复点，确认 thread/cwd，按停机前已有授权执行约定第一步并回报实际动作。原本等用户决定或没有新任务的，恢复原等待状态，不另造工作；处理完提醒后 ACK。
+3. 各 lane 读完整提醒、部署结果和自身恢复点，确认 thread/cwd，**先处理 pending mailbox 与问答（已点名的活），再接着停机前已授权、有 ETA 的任务继续**，并回报实际动作。只有原本在等用户决定、或没有任何已授权任务的，才恢复等待状态；都不自己发明新活；处理完提醒后 ACK。
 4. 恢复负责人汇总每条 lane 的原会话信息、实际继续步骤或准确等待状态，与 `open`/`tell` 结果分开记录。本次10条原在线会话均有实际回执，另1条原离线空闲 lane 按约保持原状态。
 
 本次部署并非全程无人干预：原外部 exec 在停机后备份完成时以 code 1 退出，之后由用户在同一外部 thread 要求继续，才沿原脚本接续完成，没有重复停机、备份或启动。该次前台续接使用同一 thread 的 `resume` 和 `--no-daemon`；原退出根因未定，不能把此参数当成普遍修复，也不能从 WMI 进程祖先独立推断模型及工具会话必然跨停机存活。
@@ -359,7 +359,7 @@ Lane Router 是 coordination transport，不是业务程序的逐步控制器。
 |---|---|
 | `lane-router-codex` 找不到 | 运行 `Get-Command lane-router-codex`；若不存在，在当前 Lane Router repo 重新 build 并 `npm link`。 |
 | Claude 看不到 tools | 运行 `claude mcp get lane` 和 `claude mcp list`；确认绝对 `dist` 路径仍存在且已构建。 |
-| Claude tools 可用但没有自动通知 | 先看 MCP 日志 `~/.cache/claude-cli-nodejs/<cwd>/mcp-logs-lane/*.jsonl`：有 `Channel notifications skipped: channels not enabled by org policy` ⇒ 这台机器缺托管设置，按上文建 `managed-settings.json`；没有这行 ⇒ 确认本次启动使用 `claude --dangerously-load-development-channels server:lane`，并已接受首次 development warning。另：会话刚（重）启动那一瞬间到达的通知不会唤醒它（消息不丢，下一次唤醒会一并带出），不是故障。 |
+| Claude tools 可用但没有自动通知 | 先看 MCP 日志 `~/.cache/claude-cli-nodejs/<cwd>/mcp-logs-lane/*.jsonl`：有 `Channel notifications skipped: channels not enabled by org policy` ⇒ 这台机器缺托管设置，按上文建 `managed-settings.json`；没有这行 ⇒ 确认本次启动使用 `claude --dangerously-load-development-channels server:lane`，并且**每次启动都要在「WARNING: Loading development channels」弹窗上点「I am using this for local development」**——本机 Claude Code 2.1.304 核实：这个 `DevChannelsDialog` 每次启动都弹、不记忆，没有设置或环境变量能免（唯一正规免法是把 lane 做成插件列进 `allowedChannelPlugins`，见 Vikunja LR-24）；弹窗期间到达的通知不会唤醒会话。另：会话刚（重）启动那一瞬间到达的通知不会唤醒它（消息不丢，下一次唤醒会一并带出），不是故障——再发一封信即可叫醒。 |
 | Codex launcher 启动失败 | 直接读取 launcher 暴露的 Router 或 Codex 宿主 stderr（宿主的启动输出追加在 Router 数据目录的 `codex-host.log`）；不要把启动失败简化成“等待超时”，也不要凭历史 PID 手动处理进程。 |
 | `lane-router-rotate` 返回成功但没有新窗口 | 检查是否使用包含 Windows `Start-Process` 修复的构建，并核对是否存在 `PowerShell → rotation-terminal-child → CLI` 进程链；Node 的 `spawn` 事件本身不是可见窗口证据。 |
 | `lane-router-lane open` 报 `not found` | 正在运行的 Router 是没有 resume 查询端点的旧构建。等用户决定受控重启 Router，不要自行结束共享进程。 |
