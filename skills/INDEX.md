@@ -45,6 +45,6 @@ Skill 是包装；下表的“主要内容”描述它提供什么，不决定�
 
 `skills/<category>/<name>/` 是本仓源码，`SKILL.md` 保留名称、触发范围、必要边界和最短阅读路线；大段知识、模板或阶段细节放同目录附件。附件只按当前需要读取，不能在入口要求全部读完。
 
-保留可移植的 `name`、`description` frontmatter，不为三分类新增自造的自动触发字段。新增技能在此注册，根 `AGENTS.md` 只保留目录入口。外部插件和 Superpowers 由各自来源维护，不属于本目录。
+保留可移植的 `name`、`description` frontmatter，不为三分类新增自造的自动触发字段。`description` 是常驻的 context pointer，写法见[给 agent 写文档](../guidelines/workflow/writing-for-agents.md)。新增技能在此注册，根 `AGENTS.md` 只保留目录入口。外部插件和 Superpowers 由各自来源维护，不属于本目录。
 
 [`scripts/sync-skills.ps1`](../scripts/sync-skills.ps1) 将整个技能目录扁平同步到 Claude 的 `~/.claude/skills/<name>/` 和 Codex 的 `~/.agents/skills/<name>/`。同目录附件随包复制；规范库路径仍从消费项目接入指针解析，不把安装目录当作规范库根。

@@ -9,6 +9,7 @@
 | 当前工作 | 资料 |
 |---|---|
 | 维护指令库、区分知识/流程/规范、更新证据与旧结论 | [内容边界](workflow/instruction-content.md)、[知识促升与维护](workflow/knowledge-promotion.md)、[参考资料](../references/README.md) |
+| 写或改 skill、`AGENTS.md`、索引条目等给 agent 读的文档 | [给 agent 写文档](workflow/writing-for-agents.md) |
 | 本地提交、推送或版本操作 | [提交约定](workflow/commits.md)、[授权与生命周期](workflow/agent-lifecycle.md) |
 | 继续长任务、协调优先级、处理信息不足、重复失败或范围变化 | [授权与生命周期](workflow/agent-lifecycle.md)、[协调者的工作优先级](workflow/agent-lifecycle.md#协调者的工作优先级)、[交接](workflow/handoffs.md) |
 | 新增或修改文档 | [文档归属与同步](workflow/documentation.md)、[行文](writing/prose-and-register.md)、[私人记录](collaboration/private-docs-policy.md) |
