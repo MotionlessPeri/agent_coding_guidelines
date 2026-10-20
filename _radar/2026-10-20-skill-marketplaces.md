@@ -59,7 +59,7 @@
 
 1. **第三方 skill 进本仓**：只走「目录发现 → 源码下载到隔离目录 → 人工读 SKILL.md 与全部脚本 → `_radar` 登记（commit sha、许可证、证据等级）→ 手工复制或改写进 `skills/`」。不接任何自动同步或自动安装（`npx skills add`、skill-installer、find-skills 的 `-g -y`）。优先官方市场，第三方目录只当索引；无许可证的不进仓；进仓的钉 commit sha。
 2. **任务中途远程加载 MCP**：公司机器直接排除。Claude Code 管理设置可机械执行（`strictKnownMarketplaces` 白名单 + `disableSideloadFlags` + `allowedMcpServers`，见 code.claude.com/docs/en/plugins/org），建议 main 评估是否在公司机器落 `managed-settings.json`。
-3. **家里的个人探索**：建议选 (b)——可装可试，但 (i) 不跑 `skillselion-mcp setup`（它改 `settings.json` 加常驻 hook）；(ii) `DO_NOT_TRACK=1`；(iii) 试完要进本仓的仍走第 1 条。**等用户在问答裁决**（用户 2026-10-20 回复「没看懂」，已追加解释，尚未定）。
+3. **家里的个人探索**：建议选 (b)——可装可试，但 (i) 不跑 `skillselion-mcp setup`（它改 `settings.json` 加常驻 hook）；(ii) `DO_NOT_TRACK=1`；(iii) 试完要进本仓的仍走第 1 条。**用户 2026-10-21 在问答裁决：「家里可以开口子」**，即采纳 (b)；配套三点仍建议执行，落到个人叠加仓由 main 定。
 
 ## 五、诚实边界与待办
 
@@ -67,7 +67,7 @@
 - **抽样不是随机**：10 条按「安装量靠前 + 关键词命中 meta / find / marketplace」挑选，另三条按用户「想看跳出习惯的」要求补入；结论不外推到全目录。
 - **同类站点**：第一轮只看了一眼；用户追问后第二轮补做，见第六节。Skills Directory、SkillsMP、Glama、ClaudeLog 本机连不上，cursor.directory 被 429 限流，均未核。
 - **本轮不促升**：按 `_radar/README.md`，从这里到 `guidelines/` 或 `skills/` 是用户有意识的一步；「值得引进评估」两条的促成门槛是在一次真实 plan 阶段试用一次并与 `supervised-workflow` / `auditing-plan-scope` 划清分工。
-- **等用户裁决**：家里要不要开口子（问答议题问题 1）；三条政策建议是否采纳及由谁落实。
+- **已裁决（2026-10-21，问答）**：家里可以开口子；第六节 A 列的 2（caveman）、3（karpathy-guidelines）、4（writing-for-agents）「收录到 guidelines 里试试」。落地归 main，方案见第七节。政策①②由谁落实仍待 main。
 - **登记去向**：任务书把需用户决定的事路由到问答，本轮未再重复登记到本机 Vikunja；是否补登由 main 定。
 - 原始证据在会话临时目录（`dl-skillselion` 站点页面与 API 转储、`dl-skillselion-mcp\package\index.js`、`dl-skills\*` 含 `PROVENANCE.txt` 的 tree sha、`dl-others` 同类站点页面、`tools\*.py` 只读解析脚本），会话结束后会被清理；按本文的 URL、listing id 与 sha 可重新抓取复核。
 
@@ -100,3 +100,17 @@
 | 未核 | SkillsMP、Glama、ClaudeLog、cursor.directory、Skills Directory | 本机连不上或 429；只有搜索摘要，不作结论 |
 
 **渠道分层建议**：① 查行为以官方为准；② 找「别人怎么用」优先有硬门槛的人工策展与有署名的原则文；③ 排行榜只用来发现名字，然后回 GitHub 读源码；④ MCP 先在官方注册表验命名空间，再看评级或自己读代码；⑤ 进本仓仍走第四节第 1 条。
+
+## 七、用户裁决（2026-10-21）与促升方案（交 main 落地）
+
+用户在问答回复：「我觉得 2 3 4 还不错，我们收录到 guidelines 里试试吧。家里可以开口子」。编号按第六节 A 列（问答第二轮答复的 A 节）理解：2 = caveman，3 = karpathy-guidelines，4 = writing-for-agents。本 lane 按任务书不改 `guidelines/` `techniques/` `skills/` 正文，以下是落地方案；逐项对照过现有文件，去重结论标在「增量」列。
+
+| # | 条目 / 许可证 | 建议落点与形态 | 增量（对照现有文件后） | 不收的部分 | 验证方式 |
+|---|---|---|---|---|---|
+| 2 | caveman（`juliusbrussee/caveman`，Apache-2.0，sha 见 `dl-skills` PROVENANCE） | **个人叠加仓**，与 `dialectic-thinking` / `think-back` 同列「我命名的流程」表：新建 skill（如 `terse-mode`），触发词「简洁模式」「caveman」「少废话」，关闭词「正常模式」。用自己的话重写：先答案后理由再下一步；杀寒暄铺垫收尾；否定词绝不省；一句一意；代码路径数字原样；七种破例；发送前四检。source 行写仓库、许可证、sha | 通用仓 `guidelines/writing/prose-and-register.md` 明确把「对话回复」排除在外（走 per-project 偏好），所以通用仓没有现成落点；它本质是用户偏好，与个人仓「回复一律用中文」兼容（caveman 第 8 条：压缩风格不换语言） | 「ultracave / megacave」别名与 hook 状态汇报（绑它自己的插件机制）。若用户坚持进通用仓：`skills/workflow/`，但 `sync-skills.ps1` 只允许 `name` / `description` frontmatter，得靠 description 触发词 | 试用一到两周，专盯它自己列的失败模式：丢否定词、丢步骤顺序、把问句压成歧义句 |
+| 3 | karpathy-guidelines（`forrestchang/andrej-karpathy-skills`，MIT） | **不新建文件**。规则 3「外科手术」= `guidelines/code/constraints.md` Edit Scope Discipline 逐条已有（相邻代码不动、匹配现有风格、只清自己造成的孤儿、死代码只提不删、每行可追溯）；规则 2「最小代码」= 同文件 Simplicity；规则 1「先想」= `guidelines/code/clarify-before-implementing.md`（说出假设、列并行解释、能更简单就推回）；规则 4「目标驱动」= `validation.md` 与 tdd skills | 只有两小句：(a) 自检句「写了 200 行而 50 行能解决就重写」→ 加进 `constraints.md` Simplicity；(b) 多步任务的轻量计划格式「`步骤 → verify: 检查`，一行一验」→ 加进 `validation.md` 或 `autonomous-workflow`（main 先核那两处是否已有等价句） | 其余三条半：已覆盖，再写就是重复（`knowledge-promotion.md` 排除项）。它让人 mind blow 的是「2.5 KB 讲完」这件事，那是**表达压缩**，不是新规则；如需一页短版给别的 agent 贴，是从现有四份**派生**，不是促升 | 加完两句后跑一遍 `context-budget-audit` 第二轴（约束必要性），确认没把常识写成硬规则 |
+| 4 | writing-for-agents（`mattpocock/skills`，MIT） | **新建** `guidelines/workflow/writing-for-agents.md`（`class: knowledge`，`scope: universal`，带来源），注册到 `guidelines/INDEX.md` 第一行「维护指令库…」；`instruction-content.md`「新增与维护」节加一句指针；`skills/workflow/context-budget-audit/SKILL.md` Step 2 / 第二轴加「no-op 逐句测试」「指针措辞」判据指针；`skills/INDEX.md` 维护段加一句（description 就是 context pointer）。内容用自己的话重写，保留它的术语作 leading word：context pointer 的两项工作与三条写法；两种负载；信息层级三档 + 分支测试 + 共置 + 蔓延；completion criterion 的清晰度与要求度、拉力/阻力、先磨判据后藏步骤（只有跨真实上下文边界才有效）；leading word 与自造词成本；negation 失效 → 写正向、禁令只作硬护栏且配正向；剪枝四条（单一事实源 / 环境是事实源、文档只是缓存 / 相关性 / no-op 逐句测试，判据模型相对，靠跑不靠辩）；沉积 | 与本仓的关系：`context-budget-audit` 第二轴「约束必要性」≈ no-op 测试，但它给了更可操作的判据（「有没有改变默认行为、有争议就跑一遍」）；`adversarial-verification.md` 的「否定式约束盲区」是审查侧，这里是写作侧的同一现象；`documentation.md` 拆分规则按**长度**（3 主题 / 200–300 行），它按**分支与序列**拆，互补；`skills/INDEX.md`「附件按需读取」= 信息层级第三档 | SKILL-MECHANICS 里的 `disable-model-invocation` / router skill 两节：本仓 skill frontmatter 只允许 `name` / `description`，且双宿主共用，机制不对口，只记一句「用户调用 vs 模型调用」的取舍 | 下一次改 skill 或 `AGENTS.md` 时拿它的判据过一遍（description 的 pointer 写法、逐句 no-op），记一条 `evidence` 作首次命中 |
+
+证据等级：三条的内容本身都是「它主张」；本仓 2026-10-13 审计有同向实测（description 常驻成本、附件按需读取）。按 `knowledge-promotion.md`，这属于「有来源的参考综合」，不需要两击，但要写成带来源的知识页，不写成硬规范；两击前不升为 norm。
+
+**执行归属**：按任务书与本 lane 角色说明，正文由 `agent_coding_guidelines/main` 落地；caveman 一项落个人叠加仓，也由 main 协调。本 lane 工作区观察到 `techniques/lane-router.md` 有不属于本 lane 的在途改动，同仓并发编辑按文件分执笔。
