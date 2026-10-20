@@ -65,8 +65,38 @@
 
 - **无对抗核验、无多票**。实测项（API 转储计数、sha256 比对、GitHub 树检查、源码阅读）可复现；三档判定与政策建议是单人一次判断。
 - **抽样不是随机**：10 条按「安装量靠前 + 关键词命中 meta / find / marketplace」挑选，另三条按用户「想看跳出习惯的」要求补入；结论不外推到全目录。
-- **同类站点只看了一眼**：Skills Directory 本次站点连不上，其「120 模式自动扫描」只是它声称；skills.sh 的安装计数去重方式 Vercel 未公开。
+- **同类站点**：第一轮只看了一眼；用户追问后第二轮补做，见第六节。Skills Directory、SkillsMP、Glama、ClaudeLog 本机连不上，cursor.directory 被 429 限流，均未核。
 - **本轮不促升**：按 `_radar/README.md`，从这里到 `guidelines/` 或 `skills/` 是用户有意识的一步；「值得引进评估」两条的促成门槛是在一次真实 plan 阶段试用一次并与 `supervised-workflow` / `auditing-plan-scope` 划清分工。
 - **等用户裁决**：家里要不要开口子（问答议题问题 1）；三条政策建议是否采纳及由谁落实。
 - **登记去向**：任务书把需用户决定的事路由到问答，本轮未再重复登记到本机 Vikunja；是否补登由 main 定。
-- 原始证据在会话临时目录（`dl-skillselion` 站点页面与 API 转储、`dl-skillselion-mcp\package\index.js`、`dl-skills\*` 含 `PROVENANCE.txt` 的 tree sha、`tools\*.py` 只读解析脚本），会话结束后会被清理；按本文的 URL、listing id 与 sha 可重新抓取复核。
+- 原始证据在会话临时目录（`dl-skillselion` 站点页面与 API 转储、`dl-skillselion-mcp\package\index.js`、`dl-skills\*` 含 `PROVENANCE.txt` 的 tree sha、`dl-others` 同类站点页面、`tools\*.py` 只读解析脚本），会话结束后会被清理；按本文的 URL、listing id 与 sha 可重新抓取复核。
+
+## 六、第二轮（用户追问）：「颠覆习惯」候选补抽 + 同类站点与最佳实践站
+
+用户在问答答复问题 2 时说想要「跳出现有 guidelines 和工作习惯、能 mind blow」的东西，并问「还有别的 skill 站或 AI 最佳实践站吗」。本节是对这两问的补做；源码均读 GitHub 原件。
+
+### 6.1 补抽的 skill（含第三节已列的 8、9、10 三条，共 10 条「颠覆」样本）
+
+| 条目 | 大小 / 许可证 | 机制一句话 | 与本仓的关系 | 档 |
+|---|---|---|---|---|
+| `mattpocock/skills#writing-for-agents` | 10.9 KB + 2.6 KB 附件 / MIT | 给 agent 写文档的工程学：context pointer 的措辞决定可达性；context load 对 cognitive load 两种负载；信息层级三档与分支测试；completion criterion 的「拉力/阻力」；leading word；negation 失效要写正向；no-op 逐句测试（判据：有没有改变默认行为）；环境是事实源、文档重述只是缓存；不剪则沉积 | 与 `context-budget-audit`、`instruction-content`、`knowledge-promotion` 同一问题域，多出一套可操作词汇与判据 | **📥 重点评审** |
+| `mattpocock/skills#teach` | 9.7 KB + 4 份格式附件 / MIT | 当前目录当教学工作区：MISSION、learning-records（= 学习版 ADR，用于算最近发展区）、每课一个 HTML、速查参考、不信参数记忆先找资料；区分 fluency 与 storage strength | 超出编码范围；「learning record = ADR」「不信参数记忆」两点可借 | 👁 个人学习用 |
+| `mattpocock/skills#handoff` / `#wait-what` | 940 B / 396 B / MIT | handoff：对话压成交接文档存系统临时目录、列建议 skill、不复制已有产物、脱敏。wait-what：一句话「重新讲，用 ASD-STE100，用 GLOSSARY 术语」 | 「极小 skill」范例；本仓 skill 普遍偏长 | 👁 参考形态 |
+| `rebelytics/one-skill-to-rule-them-all#task-observer` | 45 KB SKILL.md + 400 KB 参考 + 5 脚本 / CC-BY-4.0 | 每次会话首个工具调用前触发，记摩擦与纠正进 observation log，周评审转 skill 更新 | 思路同 `evidence/incidents` + `record-incident`；实现是 context-budget 原则的反面 | ⛔ 不碰，记思路 |
+| `affaan-m/ecc#rules-distill` | 11.8 KB（日文）/ 未核 | 扫描已装 skill，抽「2+ skill、可执行、有违反风险、规则尚无」的原则，LLM 裁决六类处置，人逐条批准 | 「2+ 才算」同构于 two-strike；「确定性收集 + LLM 判断」同构于 `enumerate-then-adjudicate` | 👁 只当参考 |
+
+### 6.2 同类站点与「最佳实践」站（证据等级：读自页面，除注明外）
+
+| 档 | 站点 | 要点 |
+|---|---|---|
+| 官方 | `anthropics/claude-plugins-official`（43k★，Apache-2.0） | 内部插件 + 外部提交表单，「须达到质量与安全标准」，审核流程未公开；官方市场名受保护；装前仍弹信任警告 |
+| 官方 | `anthropics/skills`、code.claude.com 文档、Anthropic 工程博客、`openai/skills` `.curated` | 行为类问题以官方为准 |
+| 官方 | MCP 官方注册表 registry.modelcontextprotocol.io | Registry 工作组维护；只验命名空间归属（GitHub OAuth / DNS），不审代码不评质量，只存元数据；v0.1 API 冻结仍 preview |
+| 标准 | agentskills.io（Anthropic 发起的开放标准，约 45 客户端采用）；agents.md（Linux Foundation 下 Agentic AI Foundation） | 只有规范与格式说明，无策展目录；agents.md 指向 GitHub 搜索 60k+ 示例 |
+| 人工策展 | awesome-claude-code（hesreallyhim，56k★，无官方关联） | 硬门槛「首提交满 14 天且持续开发，或 ≥100★」；只接受人通过 issue 表单推荐、不接 PR；bot 只查格式与许可证；闭源/付费项目只按社区采用度收。最可靠的「别人怎么用」入口 |
+| 原则文 | 12-factor-agents（HumanLayer，26.8k★） | 12 条写 agent 程序的原则，非目录 |
+| 抓取排行 | skills.sh（Vercel） | About 页：安装计数来自 CLI 匿名遥测、opt-in、每小时去重；每个 skill 经合作方例行审计（公开页 Gen Agent Trust Hub / Socket / Snyk），「全部审计不过的排除」；同时声明不保证质量与安全。口径不一：FAQ「completely anonymous」、About「去重」、Vercel 博客「不代表独立用户」 |
+| 抓取排行 | claudemarket.ai | 个人运营，OpenClaw 为主；目录来自公开仓库，兼卖付费 persona / skill 包；无审核说明 |
+| 未核 | SkillsMP、Glama、ClaudeLog、cursor.directory、Skills Directory | 本机连不上或 429；只有搜索摘要，不作结论 |
+
+**渠道分层建议**：① 查行为以官方为准；② 找「别人怎么用」优先有硬门槛的人工策展与有署名的原则文；③ 排行榜只用来发现名字，然后回 GitHub 读源码；④ MCP 先在官方注册表验命名空间，再看评级或自己读代码；⑤ 进本仓仍走第四节第 1 条。
