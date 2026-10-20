@@ -15,6 +15,7 @@
 - 「写小函数 / 单一职责」泛泛原则 —— 已有 `guidelines/code/function-clarity.md`
 - AGENTS.md / CLAUDE.md 存在与基本用法 —— 已是本 repo 的核心 setup
 - 「先读文档再改代码」泛泛建议 —— 已有 `guidelines/code/constraints.md` 等
+- 第三方 skill 目录 / 排行榜站（skillselion、SkillsMP、claudemarket 一类）—— 2026-10-20 已评：安装量全是 skills.sh 镜像、信任信号为空，只当索引；再推只接受「有新的审核机制」这种实质新角度
 
 ## 条目记录
 
@@ -141,3 +142,12 @@
 - 👁 观察 工具层 [huacnlee/autocorrect](https://github.com/huacnlee/autocorrect)(Rust,AST 感知只改字符串与注释,28+ 文件类型,有 GitHub Action,可 --fix)/ [zhlint](https://github.com/zhlint-project/zhlint) / [pangu.vim](https://github.com/hotoo/pangu.vim) —— 「中英文留白」那条规则的可执行形态
 - 👁 观察 [Diátaxis](https://diataxis.fr/)(tutorial / how-to / reference / explanation 四类分离)—— 跟 `documentation.md` 的文档拆分规则正交且更成熟;另有一条 2026 的论点值得记:agent 检索片段塞 context 而非通读,所以文档结构直接决定回答质量(与 context-budget-audit 同向)
 - ❌ 丢弃 [ruanyf/document-style-guide](https://github.com/ruanyf/document-style-guide) / [Maecenas](https://github.com/Maecenas/chinese-document-style-guideline) / [chen3feng](https://github.com/chen3feng/cn-doc-style-guide) / [sparanoid 排版指北](https://github.com/sparanoid/chinese-copywriting-guidelines) —— 内容基本被 yikeke + Fenng 两家覆盖,不必单独跟
+
+### 2026-10-20 首见（用户点名 skillselion.com；临时 lane campaign，站点抓取 + 10 条 skill 源码通读，非 deep-research；详见 `2026-10-20-skill-marketplaces.md`）
+- 👁 观察 skillselion.com 本身 —— 可当索引、不能当信任来源：安装量是 skills.sh 镜像；2000 条样本 `verifiedSafe` / `trustScore` / `scan` / `audit` 全空；许可证 98% 不标；GitHub 元数据落后约六周。其 `skillselion-mcp`（任务中途远程加载）读完源码：搜索词原文外发、服务端可偏置排名、脚本落临时目录并让 agent 照着执行、`setup` 改 `settings.json` 加常驻 hook ⇒ **公司机器排除**。更可信渠道是官方市场（`claude-plugins-official` / `anthropics/skills` / `openai/skills` `.curated`）
+- 📥 雷达中 [`mattpocock/skills#grilling`](https://github.com/mattpocock/skills)（MIT，约 30 万★，1.4M 安装）—— 2 KB 零脚本：把计划画成设计树，按 frontier 分轮逼问，每题附推荐答案、答「yes」即接受，事实自己查、决策留用户。促成门槛：在一次真实 plan 阶段试用，与 `supervised-workflow` / `auditing-plan-scope` 划清分工
+- 📥 雷达中 [`juliusbrussee/caveman`](https://github.com/juliusbrussee/caveman)（Apache-2.0，约 11 万★，582k 安装）—— 极简输出规则，否定词不丢、payload 原样、七种破例。归**个人层偏好**（个人叠加仓），不进通用仓
+- 👁 只当参考 vercel `find-skills`（六步法，但教 `-g -y` 免确认装）/ `skillcreatorai#browse-and-evaluate`（`--dry-run`、一次不超 3 个的护栏写法）/ `neolabhq#agent-evaluation`（与 `adversarial-verification.md` LLM-as-judge 节同源）/ `openai/skills#skill-installer`（官方；Codex 侧「从审过的仓库装」参考实现，有 zip 穿越校验）/ `karpathy-guidelines`（与 `constraints` / `function-clarity` / tdd 重叠）
+- ⛔ 不碰 `starchild-ai-agent#skillmarketplace`（CRITICAL，默认自动装，上游已删而站点仍供缓存）/ `agentpowers`（商业市场 curl 直装 `~/.claude/skills`）/ `bytedance/deer-flow#find-skills`（`-g -y` 静默装 + symlink）
+- 👁 观察（未读源码）`mattpocock/skills` writing-for-agents / teach / handoff；`affaan-m/ecc#rules-distill`；`rebelytics#task-observer`；`alchaincyf/darwin-skill`（CRITICAL）；`anthropics/skills#skill-creator`（官方，审计标 HIGH）
+- 📥 政策建议待裁决（三条，见 digest 第四节）：第三方 skill 只走「发现 → 隔离下载 → 人读全部脚本 → `_radar` 登记 sha 与许可证 → 手工装」；远程加载 MCP 公司排除并可用 Claude Code 管理设置（`strictKnownMarketplaces` + `disableSideloadFlags` + `allowedMcpServers`）机械执行；家里建议「可试、不跑 `setup`、`DO_NOT_TRACK=1`、进仓仍走人审」
