@@ -29,6 +29,7 @@ hidden contracts。靠踩坑得到、Maya 官方文档没明说的客观约束�
 | Guideline | 解决的问题 |
 |---|---|
 | [`gpu-deformer-gui-validation.md`](gpu-deformer-gui-validation.md) | `mayapy` 不能证明 GPU Override 真执行；GPU Active + 每节点新 success marker + 非零形变 + CPU 对照四重 Gate / `deformerEvaluator` 加载顺序 / CPU 读回污染 / `maya.exe -script bootstrap.mel` + Qt timer / licensing 与 crash 分类 / auxiliary mesh buffer 与显式 CPU fallback / 半初始化节点先由 validate 拒绝、conditional generation 最后提交 |
+| [`gui-test-plugin-trust.md`](gui-test-plugin-trust.md) | agent 在交互 Maya 里加载自己编的插件时，信任中心每轮都弹「Untrusted Plugin Loading」：插件覆盖拷进**每项目 × 每 Maya 版本固定一个**的目录 + 固定的 agent 专用 `MAYA_APP_DIR`，用户勾「Apply to all plugins in this location」后点 Allow 一次，之后不再问。脚本不替人点安全确认；关框 = Deny 时 `loadPlugin` 也不报错（Maya 2024 实测） |
 | [`parallel-deformer-performance-profiling.md`](parallel-deformer-performance-profiling.md) | Parallel Evaluation 下区分 wall time、interval union 和 per-frame work sum / nested scope 与单节点 outer duration 不直接归因 / ready 与非零激发 Gate / bypass-frozen 消融测 wall 收益上限 / P50-P95 与长尾复测 |
 
 ### Mesh 拓扑 / 数值复现

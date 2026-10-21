@@ -139,6 +139,18 @@
 - 发现方式：事后复盘 8、第三方复核 2
 - 标签：lane拓扑 10、重划执行 2、brief锚定 1、cwd 1、事件触发 1、共享树 1、存在前提 1、实现权分散 1、审查campaign制 1、平台语义 1、按仓切 1、接缝 1、接缝计数 1、独立复核 1
 
+## guidelines/maya/gui-test-plugin-trust.md
+
+引用本页的事故 1 条。
+
+| 事故 | 时间 | 类型 | 发现方式 | 标签 | 现象 |
+|---|---|---|---|---|---|
+| [2026-10-maya-gui-test-trust-prompt-every-run](incidents/2026-10-maya-gui-test-trust-prompt-every-run.md) | 2026-10 | 命中 | 用户 | maya, gui-test, trust-center | agent 在交互 Maya 2024 里验证插件改动，连跑四轮，每轮加载 `.mll` 都弹「Untrusted Plugin Load… |
+
+- 类型：命中 1
+- 发现方式：用户 1
+- 标签：gui-test 1、maya 1、trust-center 1
+
 ## techniques/adversarial-verification.md
 
 引用本页的事故 1 条。
