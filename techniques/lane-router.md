@@ -53,15 +53,17 @@ claude mcp get lane
 claude mcp list
 ```
 
-普通 `claude` 可以调用五项 Lane Router tools。需要 Channel 在没有用户输入时自动唤醒 lane，Claude Code 2.1.220 使用：
+普通 `claude` 可以调用 Lane Router tools。需要 Channel 在没有用户输入时自动唤醒 lane：**2026-10-21 起（LR-24）lane 走插件通道**，launcher 自动用这个参数，手开会话也这么写：
 
 ```powershell
-claude --dangerously-load-development-channels server:lane
+claude --channels plugin:lane@lane-local
 ```
 
-自定义 Channel 当前是 research preview；**每次**启动都需由用户在 development warning 弹窗上确认（不是只有首次；本机 Claude Code 2.1.304 核实没有设置能免，正规免法见 Vikunja LR-24 的插件路线）。不要使用旧的 `--channels server:lane` 写法。
+前提是这台机器装过 lane 插件并且托管设置放行了它：仓库 `tools/channel-plugin/` 是插件源，`scripts/install-channel-plugin.ps1` 每台机器跑一次（装到 user 作用域、撤掉用户级 `lane` MCP 注册；托管白名单要管理员另写，见下）。跑完用 `claude plugin list` 核一眼 `lane@lane-local` 的 Scope 是 `user`。这样启动**不弹任何确认框**，工具全名前缀是 `mcp__plugin_lane_lane__`（旧前缀 `mcp__lane__` 只在迁移前开的会话里还能见到）。用户级 `lane` 注册和插件不能同时在一个会话里（Router 会拒掉第二条通道，LR-30）。
 
-**每台跑 lane 的机器还必须有一份托管设置开启 channel**，否则 flag 加了也白加：Claude 客户端会把 channel 通知**静默丢弃**——工具全能用、发送方看到的 `notificationState` 也是 `sent`，只有 MCP 日志（`~/.cache/claude-cli-nodejs/<cwd>/mcp-logs-lane/*.jsonl`）里那行 `Channel notifications skipped: channels not enabled by org policy` 说了实话。文件内容就一行 `{ "channelsEnabled": true }`，位置按系统：
+旧写法 `claude --dangerously-load-development-channels server:lane` 只在还没迁移的机器（Linux 虚拟机，LR-58）上用：它每次启动都弹「WARNING: Loading development channels」确认框，没有设置能免。更早的 `--channels server:lane` 不要用。
+
+**每台跑 lane 的机器还必须有一份托管设置开启 channel**，否则 flag 加了也白加：Claude 客户端会把 channel 通知**静默丢弃**——工具全能用、发送方看到的 `notificationState` 也是 `sent`，只有 MCP 日志（`~/.cache/claude-cli-nodejs/<cwd>/mcp-logs-lane/*.jsonl`）里那行 `Channel notifications skipped: channels not enabled by org policy` 说了实话。文件内容：`{ "channelsEnabled": true, "allowedChannelPlugins": [{ "marketplace": "lane-local", "plugin": "lane" }] }`（第二项让 lane 插件的通道免确认框；它会**替换**官方默认的插件白名单，只在托管设置里生效），位置按系统：
 
 | 系统 | 路径（需管理员 / root 写） |
 |---|---|
@@ -359,8 +361,8 @@ Lane Router 是 coordination transport，不是业务程序的逐步控制器。
 | 症状 | 检查与处理 |
 |---|---|
 | `lane-router-codex` 找不到 | 运行 `Get-Command lane-router-codex`；若不存在，在当前 Lane Router repo 重新 build 并 `npm link`。 |
-| Claude 看不到 tools | 运行 `claude mcp get lane` 和 `claude mcp list`；确认绝对 `dist` 路径仍存在且已构建。 |
-| Claude tools 可用但没有自动通知 | 先看 MCP 日志 `~/.cache/claude-cli-nodejs/<cwd>/mcp-logs-lane/*.jsonl`：有 `Channel notifications skipped: channels not enabled by org policy` ⇒ 这台机器缺托管设置，按上文建 `managed-settings.json`；没有这行 ⇒ 确认本次启动使用 `claude --dangerously-load-development-channels server:lane`，并且**每次启动都要在「WARNING: Loading development channels」弹窗上点「I am using this for local development」**——本机 Claude Code 2.1.304 核实：这个 `DevChannelsDialog` 每次启动都弹、不记忆，没有设置或环境变量能免（唯一正规免法是把 lane 做成插件列进 `allowedChannelPlugins`，见 Vikunja LR-24）；弹窗期间到达的通知不会唤醒会话。另：会话刚（重）启动那一瞬间到达的通知不会唤醒它（消息不丢，下一次唤醒会一并带出），不是故障——再发一封信即可叫醒。 |
+| Claude 看不到 tools | 运行 `claude plugin list`：`lane@lane-local` 要在 **user** 作用域且 enabled（只有 local 作用域或没有 ⇒ `claude plugin install lane@lane-local --scope user`）；`claude plugin validate <仓库>/tools/channel-plugin` 要过；仓库里 `dist` 要已构建（插件的 `server.mjs` 按自己在仓库里的位置相对找 `dist`，`${CLAUDE_PLUGIN_ROOT}` 指仓库目录而不是 `~/.claude/plugins/cache` 的副本）。迁移前开的旧会话仍看 `claude mcp get lane`。 |
+| Claude tools 可用但没有自动通知 | 先看 MCP 日志 `%LOCALAPPDATA%\claude-cli-nodejs\Cache\<cwd>\mcp-logs-plugin-lane-lane\*.jsonl`（迁移前的旧会话是 `mcp-logs-lane`）：有 `Channel notifications skipped: channels not enabled by org policy` ⇒ 这台机器缺托管设置或白名单没放行 `lane-local/lane`，按上文写 `managed-settings.json`；要看到 `Channel notifications registered` 才算通了。没有这行 ⇒ 确认本次启动用的是 `claude --channels plugin:lane@lane-local`（launcher 2026-10-21 起自动加）。还在用旧参数 `--dangerously-load-development-channels server:lane` 的机器每次启动都弹「WARNING: Loading development channels」，要点「I am using this for local development」，弹窗期间到达的通知不会唤醒会话。另：会话刚（重）启动那一瞬间到达的通知不会唤醒它（消息不丢，下一次唤醒会一并带出），不是故障——Router 会按退避重发提醒（LR-25），或再发一封信即可叫醒。 |
 | Codex launcher 启动失败 | 直接读取 launcher 暴露的 Router 或 Codex 宿主 stderr（宿主的启动输出追加在 Router 数据目录的 `codex-host.log`）；不要把启动失败简化成“等待超时”，也不要凭历史 PID 手动处理进程。 |
 | `lane-router-rotate` 返回成功但没有新窗口 | 检查是否使用包含 Windows `Start-Process` 修复的构建，并核对是否存在 `PowerShell → rotation-terminal-child → CLI` 进程链；Node 的 `spawn` 事件本身不是可见窗口证据。 |
 | `lane-router-lane open` 报 `not found` | 正在运行的 Router 是没有 resume 查询端点的旧构建。等用户决定受控重启 Router，不要自行结束共享进程。 |
