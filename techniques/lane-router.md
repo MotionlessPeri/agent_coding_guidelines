@@ -80,9 +80,10 @@ Claude 的 user-scope MCP 保存的是 `dist` 的绝对路径。仓库移动、`
 | `lane_attach_current(address, role_description?)` | 创建、接替、轮换 lane 或修改角色说明。**创建新 lane、自己换代轮换（不改角色）不需要用户确认**；**接替另一条仍有 live 会话的 lane、或修改已有 lane 的角色说明，调用前要在普通对话中说明并取得用户明确确认**；拿不准算接替。不要添加机械式 `confirmed` 参数。接替现有 lane 且不改角色时省略 `role_description`。 |
 | `lane_send(target, kind, body, reply_to?)` | 向目标 `pending` mailbox 写入不可修改的消息。普通消息用 `normal`；修正旧消息用 `correction` 并以 `reply_to` 指向原 message ID。 |
 | `lane_ack(message_ids)` | 读完、纳入自己的工作状态之后就 ack，批量把每个 ID 从 `pending` resolve。**ack 是通信层的「已收到并读懂」，不是「任务做完」**：等人裁定、活还没干完，照样先 ack，用自己的 worklog / 回信跟踪进度。只有真没读到或没读懂的才留着不 ack。原因见故障排查「同一封信每个 turn 都来叫」。 |
+| `lane_finish()` | 任务 lane 交付完毕后自己宣告完成，没有参数。前提：角色首句是「任务 lane：」、信都 ack 过、名下问答没有悬而未决的（否则 `LANE_FINISH_BLOCKED` 列出剩余项）。之后 Router 在这条 lane 下一次停下时结束它的进程、关窗并归档，再给它发信会收到 `LANE_FINISHED`。调完它就不要再调任何工具。父 lane 的兜底是 shell 命令 `lane-router-lane close <address>`。 |
 | `lane_restore_project(lanes?)` | 已绑定的 caller 一键恢复本 project 其他离线 lane 的原 conversation（机器重启场景；不传 `lanes` 恢复全部 peer）。**当前任务需要够到离线的 peer 时即可调用，不必先问用户；只唤醒真要用到的，别成批投机唤醒。**它不是拓扑变更。旧 Codex thread 无法刷新工具清单时，用兼容 CLI `lane-router-restore-project [lane-address ...]`（需要 shell 里有 `CODEX_THREAD_ID`）。 |
 
-lane 分三层，先问「subagent 够不够」：**subagent**（Agent 工具）给不需要和用户对话、不需要被找到的内部活；**任务 lane** 给边界清楚、但要和用户澄清几轮或要跑一阵、要能被找到 / 唤醒的需求——由收到需求的角色 lane 直接开（不必先问用户，但要在原议题说明开了谁、为什么），角色说明首句写「任务 lane：为问答 `<议题>` 开，归属 `<父 lane>`，完成条件 …，完成即归档」，做完交付后归档是完成的一部分（现在用 `lane-router-lane archive`，需先关窗；自归档路径见 Vikunja LR-27）；**角色 lane** 是长期职责。创建新 lane 和自己换代轮换不需要确认；接替另一条仍 live 的 lane、修改已有 lane 的 `role_description` 才要先查目录、说明并取得确认。当前 conversation 已绑定另一条 active lane 时，Router 会拒绝隐式换绑。
+lane 分三层，先问「subagent 够不够」：**subagent**（Agent 工具）给不需要和用户对话、不需要被找到的内部活；**任务 lane** 给边界清楚、但要和用户澄清几轮或要跑一阵、要能被找到 / 唤醒的需求——由收到需求的角色 lane 直接开（不必先问用户，但要在原议题说明开了谁、为什么），角色说明首句写「任务 lane：为问答 `<议题>` 开，归属 `<父 lane>`，完成条件 …，完成即归档」（议题 id 和父 lane 地址要带反引号，Router 按这个格式解析归属），做完交付后调 `lane_finish`：它要求信都 ack 过、名下问答没有悬而未决的，之后 Router 在该 lane 下一次停下时结束它的进程（窗口随之关掉）并归档，完成后再给它发信会被拒。父 lane 对忘了宣告或卡住的任务 lane 用 `lane-router-lane close <address>` 兜底；两条都只认首句「任务 lane：」的 lane，常驻 lane 关不掉。2026-10-21 真机验证过；在 Vikunja LR-54 上线前，任务 lane 挂上后会先「等指示」，父 lane 要补一封开工信；**角色 lane** 是长期职责。创建新 lane 和自己换代轮换不需要确认；接替另一条仍 live 的 lane、修改已有 lane 的 `role_description` 才要先查目录、说明并取得确认。当前 conversation 已绑定另一条 active lane 时，Router 会拒绝隐式换绑。
 
 ### 接替与轮换的闭环检查
 
