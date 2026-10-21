@@ -34,6 +34,7 @@ Lane Router 在 lane 开局时把这条规则写进产品说明（Claude 的 MCP
 |---|---|
 | 首次发布对用户问题的答复 | `lane_issue_publish` 使用 `kind: "answer"`，同时提供 `originalQuestion` 和答复 `body`。 |
 | 首次提出需要用户回答的问题 | `lane_issue_publish` 使用 `kind: "question"`，把问题、必要背景和需要用户决定的事项写在 `body` 中。 |
+| 问答配卡（2026-10-21 起） | 这件活在 Vikunja 有卡的，`lane_issue_publish` 带 `task: "LR-n"`（卡号，`^[A-Z][A-Z0-9]*-\d+$`）；之后补或清用 `lane_issue_update` 的 `set_task`（`task` 或 `null`，只有所属 lane 能改）。**一条问答最多一张卡，一张卡最多一条问答**（Router 拒第二张：`TASK_ALREADY_SET` / `TASK_TAKEN`）。用户在一条问答里反馈几件事时，那条不挂卡：每件活开一条子问答配一张卡（正文第一行链回父问答 id），再回父问答列出卡号；只说一件事的问答直接配卡。卡那边同时把「来源问答」`source_issue` 填成这条问答。 |
 | 用户还没理解，需要解释 | 沿原 `issueId` 调 `lane_issue_append`，使用 `kind: "explanation"` 并关联实际 `questionId`；解释不等于问题已回答。 |
 | 同一议题补答复或提出下一问 | 使用 `lane_issue_append` 的 `answer` 或 `question`，不为每轮回复重新发布议题；新问题不冒用旧问题的 ID。带 `questionId` 的 `answer` 会把等 lane 答复的那个问题标为已回答。 |
 | 用户在 TUI 回答了问答里的问题 | 用 `tui_user` 保存实际用户原话，再把问题了结；不要把 agent 的转述、文件内容当成用户原话。 |
