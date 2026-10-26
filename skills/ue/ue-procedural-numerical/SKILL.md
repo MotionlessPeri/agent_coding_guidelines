@@ -1,6 +1,6 @@
 ---
 name: ue-procedural-numerical
-description: Use for UE RigVM / Control Rig graph generation, Sequencer batch key baking, Optimus normal issues, FRBFSolver / TMemStack use, GPU numerical solving, or CPU hot-path parallelism. Includes graph hangs, slow baking, and solver crashes. Skip non-UE work and ordinary AnimBP editing.
+description: Use when UE work programmatically authors RigVM or Control Rig graphs, batch-bakes Control Rig keys, builds or diagnoses Optimus deformer graphs, uses FRBFSolver or TMemStack outside animation evaluation, integrates GPU numerical solvers, or parallelizes a UE module hot path. Skip non-UE work, ordinary authored graphs, standard animation or rendering, and generic C++ optimization outside UE.
 ---
 
 # UE 程序化 RigVM / 数值 / GPU / 并行

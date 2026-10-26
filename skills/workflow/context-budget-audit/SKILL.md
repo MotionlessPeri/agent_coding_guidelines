@@ -1,6 +1,6 @@
 ---
 name: context-budget-audit
-description: Use when auditing the context cost or necessity of agent instructions, skill descriptions, or loading rules. Skip ordinary application work.
+description: Use when auditing always-loaded context in an agent-instruction corpus, including AGENTS.md or CLAUDE.md imports, skill descriptions, and hook- or host-injected instructions; also use after a context-budget warning, startup or prompt-cache regression, or before choosing always-loaded versus lazy placement. Skip ordinary application optimization and repositories without agent instructions.
 ---
 
 # Context Budget Audit
@@ -44,6 +44,12 @@ description: Use when auditing the context cost or necessity of agent instructio
 
 字符数、行数都不等于 token 数。只有使用明确对应的 tokenizer 或宿主提供的用量数据时才报告 token，并注明来源与覆盖范围；否则写「token 未测」。不要用每行或每字的固定倍数代替实测，也不要把文本缩短量当作延迟或效果提升。
 
+#### Codex inventory 分支
+
+Codex 的发现面不能只靠扫磁盘。分开记录三份清单：磁盘可发现的 skill、CLI 本地渲染的 skill、当前宿主实际注入模型的 skill。插件 cache 中存在某个 `SKILL.md`，不等于本轮已注入；junction / symlink 也可能让普通递归漏掉整组 skill。
+
+只统计 YAML frontmatter 的 `description`，不把按需加载的正文算进启动预算。每个来源至少记录数量、字符数、UTF-8 bytes，以及源文本与渲染文本的逐项差值；同时按 user / system / plugin / host injection 分组。优先用 `codex debug prompt-input audit` 取得 CLI 本地渲染，再从宿主可见的 `<skills_instructions>` 或等价诊断面核对实际注入。内部预算单位没有源码证据时，不用本机观察值冒充稳定常量。
+
 ### Step 2: Classify
 
 每个 always-loaded 单元打分：
@@ -75,9 +81,12 @@ description: Use when auditing the context cost or necessity of agent instructio
 
 `grep -i "<concept>" guidelines/` 找同一个 concept 在几个 file 重复讲——多数情况可以合并 / 用 `[[name]]` 链接替代。
 
-#### 信号 3: Skill description > ~30 词 / ~200 字
+#### 信号 3: Skill description 把正文摘要塞进触发接口
 
-skill SKILL.md frontmatter 的 `description` 每次 Claude Code matching 都进 context。冗长描述无收益，每个 skill 都浪一点点最后总量很可观。
+skill `SKILL.md` frontmatter 的 `description` 会在正文加载前进入匹配上下文。它只保留任务对象、正触发条件、必要的歧义消解与 skip 边界；步骤、契约清单、实现配方和验证历史留在正文。
+
+- **Claude Code**：`> ~30` 词 / `~200` 字可继续当作 trim 的经验信号，但不是删除 skill 的依据。
+- **Codex**：出现 description budget warning 时，按实际注入的 `description` 总量，以及源文本与渲染文本的差值找最大贡献项。截断后的共同高度可能只是总预算下的分配结果，不能当成单项硬上限；skill 数量也只是间接信号。
 
 #### 信号 4: AGENTS.md "Read This First" 列表 + body 重复
 
@@ -95,6 +104,8 @@ AGENTS.md 自己介绍每个 imported guideline + 然后 `@`-import 把 guidelin
 5. **Relax**(轴 2)——不删内容，把"写死的规则"改成"交给判断力"的表述；判据见下「第二判据轴」。跟 Remove 区分：Remove 因为"没用 / 没人碰"，Relax 因为"模型不需要被这样管"
 
 按 `token saving × confidence`(轴 1) / `over-constraint × confidence`(轴 2)排 top-N，落实施 commit。
+
+报告中的关键结论标记证据等级：`【实测】`写实际命令与输出，`【源码】`写可定位的实现或字段，`【推断】`写竞争解释与尚缺的判别实验。Codex 修改后的验证分两级：先用 CLI 本地渲染确认源 `description` 未被截断，再开一个宿主新对话，确认插件等宿主注入内容加入后仍不告警。只通过本地验证不能代替宿主验证；完整 trigger 对拍见 [`trigger-contracts.md`](trigger-contracts.md)。
 
 ## 第二判据轴：约束必要性(跟加载成本正交)
 
@@ -171,14 +182,14 @@ context 膨胀的根因是「该按需加载的内容被 always-load 了」。Cl
 
 **2026-07-28 收尾（broad-UE → lazy）**：07-19 当轮 broad-UE 14 份保留常驻，判据只到「加载成本」轴。用本次新增的「约束必要性」第二轴 + Claude 5-gen 博文的渐进披露原则复审——这 14 份 ~2500 行在**每个** session 常驻（约占当时 eager footprint 一半），连非 UE 项目也吃，而 `guidelines/ue/INDEX.md` 早已双层覆盖 broad + skill → 停 `@`-import 转 INDEX 懒加载，重度 UE 项目在项目侧 `AGENTS.md` `@`-import 需要的子集拉回（multi-agent Option 2）。`@`-import 进一步降到 **25**（现值 live-query `grep -c '^@' AGENTS.md`，别信定值）。教训：07-19 漏动它不是因为它不浪费，是因为当时判据只看「加载成本 + 常相关」，没问「非 UE session 相不相关」——正是第二轴要补的盲区。
 
-**本 skill 已按需加载**：`AGENTS.md` 保留发现入口，审计任务命中后再读取正文；无需把本文件加入常驻 `@`-import。
+本 skill 已从 always-loaded technique 转为按需加载：常驻的只有 name 与 `description`，正文只在审计任务触发后加载。审计时不要把正文误算进每个 conversation 的启动成本。
 
 ## 外部数值锚（参考，落地前须实测——别照搬）
 
 radar 2026-07-18 从外部 best-practice 文章收的几个具体阈值，可作本 audit 的参考锚，但**数字互相矛盾、blog-only，用前先实测自己的 repo**：
 
 - **always-loaded 索引文件（AGENTS.md / CLAUDE.md）有"甜区"**：一说 ~200 行内每轮全读、过 ~500 行开始 skim 信号密度崩；另一说 ~40 / ~400——**两个数字打架**。历史记录中的本仓体量不代表当前加载量；当前文件及宿主展开情况按 Inventory 重新清点。判据不是抄行数，是**实测**你的索引多长时 harness 开始 skim（可推探针验）。
-- **skill 库 sprawl 上限 ~20 + 周期性退休**：外部经验是攒到 40-50 个但 top 5 占 ~90% 调用、长尾为零 → 硬上限 ~20 + 定期删低调用的。当前 skill 清单用 `rg --files skills -g SKILL.md` 现场枚举，不沿用历史数量。**只取"设个上限 + 到点复查退休"的纪律**——团队维度的量化指标（人均调用率 / owner 字段 / PR 强制）不纳入（属组织政策，见 `knowledge-promotion.md` 排除项）。
+- **skill 库 sprawl 上限 ~20 + 周期性退休**：外部经验是攒到 40-50 个但 top 5 占 ~90% 调用、长尾为零。这个数字只能提醒维护者复查长尾，不能替代实际注入 description 的总量与调用证据，更不能单凭数量删除 skill。skill 数量应 live-query，别在文档里写会过期的现值。
 
 来源：radar `_radar/2026-07-18.md` 候选 #4（digitalapplied / ai.rundatarun，未经对抗核验）。
 

@@ -1,6 +1,6 @@
 ---
 name: ue-custom-graph-editor
-description: Use when creating or debugging a custom UE node-graph editor, or defining ownership between its graph pins and runtime data. Skip edits within built-in Blueprint or Animation graphs.
+description: Use when creating or diagnosing a custom UEdGraph editor in a UE plugin, or deciding ownership between graph pins and a separate runtime model. Skip built-in Blueprint, Material, Animation, and Behavior Tree graphs unless the work creates a new custom graph editor.
 ---
 
 # UE 自定义 Graph Editor

@@ -1,6 +1,6 @@
 ---
 name: ue-ml-animation
-description: Use for UE C++ pose injection via UAnimInstance / FAnimInstanceProxy, offline skeletal animation evaluation, or NNE / ONNX inference, including stale poses and missing output shapes. Skip non-UE work and ordinary AnimBP graph editing.
+description: Use when UE C++ drives skeletal poses through a custom UAnimInstance or FAnimInstanceProxy, evaluates animation without the normal engine loop, or runs ONNX inference through NNE in-engine. Skip non-UE work, standard AnimBP-driven animation, and inference performed outside UE.
 ---
 
 # UE ML / 程序化驱动动画
