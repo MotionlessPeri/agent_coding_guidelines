@@ -41,6 +41,17 @@ lane-router-codex
 lane-router-codex resume <thread-id>
 ```
 
+需要指定模型或 Codex 配置 profile（`--profile <name>` 叠加 `$CODEX_HOME/<name>.config.toml`，常用于在 GLM 与 GPT provider 间切换）时，launcher 会透传 `--model` 与 `--profile`，并按 profile 里的 `model_provider` 向 Router 请求一个 provider 专属 endpoint；该 endpoint 的 bridge 会把 `modelProvider` 注入 `thread/start` / `thread/resume`（TUI 在 remote 模式不会自己发送 provider）：
+
+```powershell
+lane-router-codex --profile gpt
+lane-router-codex --profile glm resume <thread-id>
+```
+
+两个边界：provider 注入是 Router 侧能力，升级 lane-router 后必须受控重启 Router 才生效（旧 Router 上带 `--profile` 启动会直接报错而不是静默走默认 provider）；`lane-router-rotate` / `lane-router-lane open` / restore 重开 lane 时目前不重放 `--profile`，会用默认 endpoint 恢复（GPT lane 被轮换后会回落到基础 config 的 provider/model）。
+
+共享 app-server 在每次 `thread/start` 时重读 `~/.codex/config.toml`，因此改基础 config 的 provider/model 对**新建** thread 立即生效、无需重启 Router（已开 thread 的 resume 不受此影响）；`model_catalog_json` 指向的 models.json 同理跟随 app-server 进程生命周期。
+
 launcher 会按需启动 Router 核心进程和 Codex 宿主进程，并把 stock Codex TUI 连接到宿主的 bridge。宿主持有 Codex app-server，生命周期与 Router 核心分开：Router 核心重启时开着的 Codex 对话照常，期间 lane 工具立即报「Lane Router is not running」，核心回来后宿主自动重连；宿主自己重启时 Codex 对话会断开，需要 `resume`。不要手动启动 Router 或宿主、固定它们的 PID/端口，或把历史 discovery 值写进脚本。新 thread 使用调用 `lane-router-codex` 时的当前目录；`resume` 保留原 thread 的工作目录。
 
 ### Claude Code
@@ -369,6 +380,7 @@ Lane Router 是 coordination transport，不是业务程序的逐步控制器。
 | `lane-router-lane open` 报 `already online` | 目标 lane 的 channel 还开着（terminal 没关或刚关不久），这是正常拒绝语义，不是故障。 |
 | `lane-router-lane open` 要求 `--cwd` | 该 lane 在 cwd 记录功能上线后还没跑过任何 turn。让它跑一个 turn 再开，或显式传原项目目录。 |
 | 同一封信每个 turn 都来叫（消息反复提醒） | 通知泵在**每个 turn 结束时**对仍在 `pending` 的信重发通知——这是兜底，防首次通知丢失。所以一条 lane 若为了「表示还没做完」扣住一封信不 ack，就会每个 turn 把自己叫醒一次，直到有人来：空转 turn、刷屏。2026-10-12 真机撞过，连叫三次。修法：读完就 ack（ack 不等于做完，见上表），进度走 worklog。 |
+| Codex 报 `stream disconnected before completion` | 先检查 durable 结果、mailbox、Git 和 rollout 记录；这个错误不能证明任务未执行或 lane 没在工作。相同 conversation 最多重试一次；再次出现时按 [`lane-router-stream-disconnect-recovery.md`](lane-router-stream-disconnect-recovery.md) 取证并轮换。 |
 | repo 移动或更新后失效 | 重新 build；Claude 重新检查/注册绝对 `dist` 路径，Codex 重新检查 `npm link`。 |
 | 代理环境变化但已运行的 Router 未采用 | 代理补全只在创建新 Router 或新 Codex 宿主进程时发生；Codex 模型请求走的是宿主里的 app-server，所以要生效的是宿主。不要自行结束共享 Router 或宿主；先确认没有其他使用者，再由用户或维护者决定受控重启（宿主用 `restart-router.ps1 -CodexHost`）。 |
 

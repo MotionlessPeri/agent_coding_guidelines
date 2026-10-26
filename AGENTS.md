@@ -41,3 +41,7 @@
 - skill 源码在 `skills/<category>/<name>/`；使用[同步脚本](scripts/sync-skills.ps1)安装。规范库外的插件、Superpowers 与宿主注入内容分开管理；文件更新不等于当前对话已卸载旧内容。
 - `_radar/` 是[待审外部资料](_radar/README.md)，不自动升级为规范。`references/` 的源码路径、符号和版本断言须有可复核依据；[UE 渲染资料](references/ue-rendering/README.md)已有配套校验，不能直接信任自动化调研结果。
 - `docs/plans/` 用于项目选择保留的实施计划；[2026-10-13 审计](docs/audits/2026-10-13-context-and-instruction-audit.md)是历史测量记录，仅复查该次审计时读取。
+
+> [`techniques/codex-thread-reasoning-effort.md`](techniques/codex-thread-reasoning-effort.md) 记录 Codex 单会话推理强度的设置、回读验证及当前轮次限制；只在用户要求调整推理强度或界面无法调整时按需读取，不 `@`-import。
+
+> [`techniques/lane-router.md`](techniques/lane-router.md) 是 Lane Router 的安装、Claude/Codex 接入、四项对话工具、mailbox 处理、恢复与故障排查手册；Codex 出现 `stream disconnected before completion` 时再读其专门恢复流程 [`techniques/lane-router-stream-disconnect-recovery.md`](techniques/lane-router-stream-disconnect-recovery.md)。两份文档只在安装、配置、使用或排查 Lane Router 时按需读取，不 `@`-import；role-lane 的通用拆分与协调方法仍由 `role-lane-coordination` skill 承担。
