@@ -32,14 +32,23 @@
 
 Serena 和 OpenWiki 都要绑定具体仓库，所以在该仓库目录里注册、只对该目录生效。
 
-**Claude Code**（`--scope local` 写进 `~/.claude.json` 的项目条目，不进仓库，不需要别人批准）：
+**Claude Code**（`--scope local` 写进 `~/.claude.json` 的项目条目，不进仓库，不需要别人批准）。bash / zsh / pwsh 7.3 以上：
 
-```powershell
+```bash
 cd <仓库根>
 claude mcp add --scope local serena -- serena start-mcp-server --context claude-code --project-from-cwd --enable-web-dashboard false
 claude mcp add --scope local openwiki -e OPENWIKI_TELEMETRY_DISABLED=1 -- openwiki mcp --host claude
-# 可选：建完图以后
-claude mcp add --scope local graphify -- graphify-mcp graphify-out/graph.json
+claude mcp add --scope local graphify -- graphify-mcp graphify-out/graph.json   # 可选，建完图以后
+claude mcp list
+```
+
+Windows PowerShell 5.1 会吞掉 `--`，上面的命令报 `unknown option '--context'`。改用 `add-json`，JSON 里的引号写成 `\"`，JSON 里不留空格：
+
+```powershell
+cd <仓库根>
+claude mcp add-json --scope local serena '{\"type\":\"stdio\",\"command\":\"serena\",\"args\":[\"start-mcp-server\",\"--context\",\"claude-code\",\"--project-from-cwd\",\"--enable-web-dashboard\",\"false\"]}'
+claude mcp add-json --scope local openwiki '{\"type\":\"stdio\",\"command\":\"openwiki\",\"args\":[\"mcp\",\"--host\",\"claude\"],\"env\":{\"OPENWIKI_TELEMETRY_DISABLED\":\"1\"}}'
+claude mcp add-json --scope local graphify '{\"type\":\"stdio\",\"command\":\"graphify-mcp\",\"args\":[\"graphify-out/graph.json\"]}'
 claude mcp list
 ```
 
