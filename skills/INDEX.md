@@ -30,6 +30,7 @@ Skill 是包装；下表的“主要内容”描述它提供什么，不决定�
 | [multi-session-coordination](collaboration/multi-session-coordination/SKILL.md) | 带协调 hooks 的 Claude Code 同仓会话 | Codex 会话、无 hooks 的环境或擅自收走他人改动 |
 | [role-lane-coordination](collaboration/role-lane-coordination/SKILL.md) | 多个持久 lane 的分工与交接 | 每个临时子任务都新增持久 lane |
 | [record-incident](workflow/record-incident/SKILL.md) | 把一次误判按模板记成一条事故并挂到经验页 | 从一条事故直接派生规则或改动规范 |
+| [project-takeover](workflow/project-takeover/SKILL.md) | 接手别人做到一半的仓库：盘点现状、graphify 建图、Serena 查引用、OpenWiki 写 wiki、知识库记总览 | 自己一直在写的仓库、只改一处的小修，或未经用户同意把生成物提交进别人的仓库 |
 
 ## 规范应用为主
 
