@@ -22,10 +22,12 @@ Lane Router 让同一台可信机器上的长期 Claude/Codex 对话以稳定地
 前提是 Node.js `>=22.12`，并且 Lane Router 仓库已经构建。首次安装或仓库更新后，在 `<lane-router-repo>` 中运行：
 
 ```powershell
-npm ci
+npm install
 npm run build
 npm link
 ```
+
+共享 Router 正从这棵树运行时不要用 `npm ci`：它先删 `node_modules`，`better-sqlite3` 的 `.node` 被运行中的进程占用删不掉，会把目录删坏一半（2026-10-19 实遇）。隔离克隆或确认没有 Router 在跑时，`npm ci` 才安全。
 
 ### Codex
 
@@ -209,7 +211,7 @@ lane-router-lane new  <project>/<lane> --role "<角色说明>" [--backend claude
 lane-router-lane open <project>/<lane> [--cwd <dir>] [--terminal <wt|powershell|cmd>]
 ```
 
-- 调用方不需要知道目标 lane 是什么 agent：`open` 从 Router 的 binding 记录读出 backend 与 conversation id。当前只支持 claude；codex 报"暂不支持"，可手动 `lane-router-codex resume <thread-id>`。
+- 调用方不需要知道目标 lane 是什么 agent：`open` 从 Router 的 binding 记录读出 backend 与 conversation id，claude 与 codex 都能恢复（lane-router `ade4344`，2026-08-27 起；2026-10-18 真机恢复用它重开过 Codex 会话，见「共享运行链的部署与恢复」）。更早的构建对 codex 报「暂不支持」，那时只能手动 `lane-router-codex resume <thread-id>`。
 - **`new` 不再需要用户先确认**（与 `lane_attach_current` 的政策一致：只有接替仍 live 的别的 lane、改已有角色说明才要确认；命令不设机械式 confirm 参数）。命令开出新 terminal，bootstrap prompt 指示新对话读 AGENTS.md、查目录、带 `role_description` attach、**读透角色与项目现状后报告就绪；没有被授权的任务就等指令或等点名的活，不自己造活**。地址已存在时报错并提示改用 `open`。`--cwd` 默认取调用命令时的目录。
 - **`new` 返回后 lane 不会立刻出现在目录里**：命令成功只说明新 terminal / CLI 已启动，不说明 bootstrap turn 已完成或 `lane_attach_current` 已调用。新模型还要读创建 prompt、仓库 `AGENTS.md` 与适用规范、查询目录，再主动 attach；这一段可能持续几十秒到数分钟，期间 `lane_directory` 查不到新地址是正常状态。**不要因为命令没有输出或目录暂时没有地址而再次执行同一条 `new`**，否则会开出重复 terminal。先观察原窗口是否仍在初始化，并等待它报告 ready；只有原窗口明确启动失败或已经退出、且目录仍无该 lane 时，才能重试。
 - **`open` 只恢复离线 lane**：目标在线（channel 仍开着）时拒绝；lane 不存在提示走 `new`；lane 存在但无 active binding 提示走轮换流程——`open` 不会顺手升级成接替。恢复在 Router 记录的工作目录进行（该记录由 lifecycle hook 随每次 turn 上报），Router 没有记录时要求显式 `--cwd`。恢复后 channel 重连，pending 通知会自动重发。
@@ -287,6 +289,8 @@ notification 可以重复，直到对应 ID 被 ack。只在对话里说“已�
 写操作使用稳定的 `operationKey`；重试保持同键同内容，响应不明时先查询事实，不能换键盲重试。工具只使用当前已绑定 lane 的身份，不代填或冒用其他会话身份。
 
 详细参数、旧 Codex 会话的 JSON 文件 CLI、客户端刷新和故障处理，见本机 Lane Router checkout 中 `docs/manual-tests.md` 的“用户议题收件箱：使用与操作”。新 Codex 动态工具、旧会话 CLI 与 Claude/ZCode 刷新后的真实往返要分别验证；工具清单、部署或自动测试通过，均不能代替这些现场结果。
+
+知识库（`lane_kb_search` / `lane_kb_record`）：本机所有 lane 共用的一处 LLM wiki，一个主题一页；写入只能经 `lane_kb_record` 先 `check` 再 `commit`。什么时候查、什么时候记，以 lane 连上 Router 时收到的说明为准，本手册不另写。
 
 ## 单向投递与双向协作
 
@@ -375,7 +379,7 @@ Lane Router 是 coordination transport，不是业务程序的逐步控制器。
 | Claude 看不到 tools | 运行 `claude plugin list`：`lane@lane-local` 要在 **user** 作用域且 enabled（只有 local 作用域或没有 ⇒ `claude plugin install lane@lane-local --scope user`）；`claude plugin validate <仓库>/tools/channel-plugin` 要过；仓库里 `dist` 要已构建（插件的 `server.mjs` 按自己在仓库里的位置相对找 `dist`，`${CLAUDE_PLUGIN_ROOT}` 指仓库目录而不是 `~/.claude/plugins/cache` 的副本）。迁移前开的旧会话仍看 `claude mcp get lane`。 |
 | Claude tools 可用但没有自动通知 | 先看 MCP 日志 `%LOCALAPPDATA%\claude-cli-nodejs\Cache\<cwd>\mcp-logs-plugin-lane-lane\*.jsonl`（迁移前的旧会话是 `mcp-logs-lane`）：有 `Channel notifications skipped: channels not enabled by org policy` ⇒ 这台机器缺托管设置或白名单没放行 `lane-local/lane`，按上文写 `managed-settings.json`；要看到 `Channel notifications registered` 才算通了。没有这行 ⇒ 确认本次启动用的是 `claude --channels plugin:lane@lane-local`（launcher 2026-10-21 起自动加）。还在用旧参数 `--dangerously-load-development-channels server:lane` 的机器每次启动都弹「WARNING: Loading development channels」，要点「I am using this for local development」，弹窗期间到达的通知不会唤醒会话。另：会话刚（重）启动那一瞬间到达的通知不会唤醒它（消息不丢，下一次唤醒会一并带出），不是故障——Router 会按退避重发提醒（LR-25），或再发一封信即可叫醒。 |
 | Codex launcher 启动失败 | 直接读取 launcher 暴露的 Router 或 Codex 宿主 stderr（宿主的启动输出追加在 Router 数据目录的 `codex-host.log`）；不要把启动失败简化成“等待超时”，也不要凭历史 PID 手动处理进程。 |
-| `lane-router-rotate` 返回成功但没有新窗口 | 检查是否使用包含 Windows `Start-Process` 修复的构建，并核对是否存在 `PowerShell → rotation-terminal-child → CLI` 进程链；Node 的 `spawn` 事件本身不是可见窗口证据。 |
+| `lane-router-rotate` 返回成功但没有新窗口 | 检查是否使用包含 Windows `Start-Process` 修复的构建，并核对是否存在 `PowerShell → terminal-child → CLI` 进程链（2026-08-18 之前叫 `rotation-terminal-child`）；Node 的 `spawn` 事件本身不是可见窗口证据。 |
 | `lane-router-lane open` 报 `not found` | 正在运行的 Router 是没有 resume 查询端点的旧构建。等用户决定受控重启 Router，不要自行结束共享进程。 |
 | `lane-router-lane open` 报 `already online` | 目标 lane 的 channel 还开着（terminal 没关或刚关不久），这是正常拒绝语义，不是故障。 |
 | `lane-router-lane open` 要求 `--cwd` | 该 lane 在 cwd 记录功能上线后还没跑过任何 turn。让它跑一个 turn 再开，或显式传原项目目录。 |
@@ -392,4 +396,4 @@ Lane Router 是 coordination transport，不是业务程序的逐步控制器。
 
 以下行为有设计和自动测试覆盖，但本轮没有完成真实 Claude lifecycle harness 验证：busy turn 中的 correction、退出后恢复、安全接替等待 `Stop`。使用这些边界时应按 Lane Router 仓库的 `docs/manual-tests.md` 执行真实手工验证，不能把 fake backend 或自动测试结果写成真实 CLI/TUI/Channel 已通过。
 
-`lane-router-lane`（2026-08-18）：参数、拒绝分支、terminal 脚本生成与 resume 命令构建有自动测试；hook payload 携带 `cwd` 已真机抓取核销，`--resume` 默认保留 session id 已由官方 CLI 文档核销。端到端（新建全流程、恢复全流程、pending 重发、`--terminal` 三档真开窗）尚未真机执行——需要共享 Router 先受控重启到含 resume 端点的构建，用例见 Lane Router 仓库 `docs/manual-tests.md` 的 `TC-LANE-*`。
+`lane-router-lane`（2026-08-18）：参数、拒绝分支、terminal 脚本生成与 resume 命令构建有自动测试；hook payload 携带 `cwd` 已真机抓取核销，`--resume` 默认保留 session id 已由官方 CLI 文档核销。端到端已有两段真机记录：恢复全流程 2026-10-18 执行过（见「共享运行链的部署与恢复」）；`new --terminal wt` 新建全流程 2026-10-20 在本仓开临时调研 lane 时跑过。pending 重发与 `--terminal` 另外两档没有单独记录，用例见 Lane Router 仓库 `docs/manual-tests.md` 的 `TC-LANE-*`。
