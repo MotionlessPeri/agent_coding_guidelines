@@ -93,7 +93,7 @@ Claude 的 user-scope MCP 保存的是 `dist` 的绝对路径。仓库移动、`
 |---|---|
 | `lane_directory(project)` | 只读列出同 project 的 lane 和角色说明；无需用户确认。拓扑变更前先调用它，优先复用职责匹配的 lane。 |
 | `lane_attach_current(address, role_description?)` | 创建、接替、轮换 lane 或修改角色说明。**创建新 lane、自己换代轮换（不改角色）不需要用户确认**；**接替另一条仍有 live 会话的 lane、或修改已有 lane 的角色说明，调用前要在普通对话中说明并取得用户明确确认**；拿不准算接替。不要添加机械式 `confirmed` 参数。接替现有 lane 且不改角色时省略 `role_description`。 |
-| `lane_send(target, kind, body, reply_to?)` | 向目标 `pending` mailbox 写入不可修改的消息。普通消息用 `normal`；修正旧消息用 `correction` 并以 `reply_to` 指向原 message ID。 |
+| `lane_send(target, kind, body, reply_to?, cc?)` | 向目标 `pending` mailbox 写入不可修改的消息。普通消息用 `normal`；修正旧消息用 `correction` 并以 `reply_to` 指向原 message ID。`cc` 列出要收同一正文的其他 lane：每个收件方各得一份副本、各自 ack，返回值每个收件方一条记录（2026-10-27 实测）。正文里点名别的 lane 不会送达，Router 不读正文。 |
 | `lane_ack(message_ids)` | 读完、纳入自己的工作状态之后就 ack，批量把每个 ID 从 `pending` resolve。**ack 是通信层的「已收到并读懂」，不是「任务做完」**：等人裁定、活还没干完，照样先 ack，用自己的 worklog / 回信跟踪进度。只有真没读到或没读懂的才留着不 ack。原因见故障排查「同一封信每个 turn 都来叫」。 |
 | `lane_finish()` | 任务 lane 交付完毕后自己宣告完成，没有参数。前提：角色首句是「任务 lane：」、信都 ack 过、名下问答没有悬而未决的（否则 `LANE_FINISH_BLOCKED` 列出剩余项）。之后 Router 在这条 lane 下一次停下时结束它的进程、关窗并归档，再给它发信会收到 `LANE_FINISHED`。调完它就不要再调任何工具。父 lane 的兜底是 shell 命令 `lane-router-lane close <address>`。 |
 | `lane_restore_project(lanes?)` | 已绑定的 caller 一键恢复本 project 其他离线 lane 的原 conversation（机器重启场景；不传 `lanes` 恢复全部 peer）。**当前任务需要够到离线的 peer 时即可调用，不必先问用户；只唤醒真要用到的，别成批投机唤醒。**它不是拓扑变更。旧 Codex thread 无法刷新工具清单时，用兼容 CLI `lane-router-restore-project [lane-address ...]`（需要 shell 里有 `CODEX_THREAD_ID`）。 |
@@ -179,7 +179,7 @@ Windows 上创建交互式独立 terminal 时，不要把 Node `spawn` 的 `spaw
 
 **④ 收件人列表：机械形态不可用，退回纪律形态但要"失败可见"**
 
-`lane_send` 的 **`cc` 字段在 schema 里，而运行中的 Router 拒收它**（`unrecognized_keys`）——**两条 lane 独立观测**。⇒ 📌 由此得一条工具事实：**别把 schema 当能力证明**，它跟"文档说支持"同一档，要实测。（提出 `cc` 那条建议的 lane 自陈：「我读到的是『schema 里有』，说出口的是『这个机制可用』——差一层」，并指出这种错的代价形态最坏：**真问题配假解法**，会让人以为问题已有着落而停止找真修法。⇒ **推荐一个机制给别人之前，自己先用一次。**）
+`lane_send` 的 **`cc` 字段在 schema 里，而当时（2026-08-21）运行中的 Router 拒收它**（`unrecognized_keys`）——**两条 lane 独立观测**。后来查明是跑着的 Router 还没换到实现 `cc` 的构建（lane-router `019cadd`，08-20）；2026-10-27 实测：带 `cc` 发出被接受，每个收件方各返回一条投递记录，离线收件方记 `no_channel`、副本落在它的 pending 信箱。⇒ 📌 由此得一条工具事实：**别把 schema 当能力证明**，它跟"文档说支持"同一档，要实测——schema 可能领先于正在跑的构建。（提出 `cc` 那条建议的 lane 自陈：「我读到的是『schema 里有』，说出口的是『这个机制可用』——差一层」，并指出这种错的代价形态最坏：**真问题配假解法**，会让人以为问题已有着落而停止找真修法。⇒ **推荐一个机制给别人之前，自己先用一次。**）
 
 ⇒ 退回纪律形态时选**失败会被别人看见**的那个：**把完整收件人列表写进每封正文**。它仍靠人写那一行，但**漏发对收件人可见**（别人看到列表里少了一个该在的名字就能反问）；而"念在心里"的形态，漏发时没有任何人能看出来。⇒ 实测两次漏发都发生在逐条 send 的形态下，第二次就在被命名之后半小时 ——**收下一条纪律 ≠ 执行它**，中间那步（把它变成一个动作）不会自己发生。
 
