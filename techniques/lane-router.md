@@ -52,7 +52,7 @@ lane-router-codex --profile glm resume <thread-id>
 
 共享 app-server 在每次 `thread/start` 时重读 `~/.codex/config.toml`，因此改基础 config 的 provider/model 对**新建** thread 立即生效、无需重启 Router（已开 thread 的 resume 不受此影响）；`model_catalog_json` 指向的 models.json 同理跟随 app-server 进程生命周期。
 
-launcher 会按需启动 Router 核心进程和 Codex 宿主进程，并把 stock Codex TUI 连接到宿主的 bridge。宿主持有 Codex app-server，生命周期与 Router 核心分开：Router 核心重启时开着的 Codex 对话照常，期间 lane 工具立即报「Lane Router is not running」，核心回来后宿主自动重连；宿主自己重启时 Codex 对话会断开，需要 `resume`。不要手动启动 Router 或宿主、固定它们的 PID/端口，或把历史 discovery 值写进脚本。新 thread 使用调用 `lane-router-codex` 时的当前目录；`resume` 保留原 thread 的工作目录。
+launcher 会按需启动 Router 核心进程和 Codex 宿主进程，并把 stock Codex TUI 连接到宿主的 bridge。宿主持有 Codex app-server，生命周期与 Router 核心分开：Router 核心重启时开着的 Codex 对话照常，期间 lane 工具立即报「Lane Router is not running」，核心回来后宿主自动重连；宿主自己重启时 Codex 对话会断开，需要 `resume`。不要手动启动 Router 或宿主，也不要把 PID、端口或历史 discovery 值写进脚本。Router 端口默认随机，可以在数据目录的 `config.json` 用 `port` 固定（见 Lane Router 仓库 `docs/manual-tests.md`「本机主入口的固定端口」）；固定以后，客户端和脚本仍然一律读 `discovery.json` 寻址。Codex 宿主的端口仍然随机。新 thread 使用调用 `lane-router-codex` 时的当前目录；`resume` 保留原 thread 的工作目录。
 
 ### Claude Code
 
@@ -384,7 +384,7 @@ Lane Router 是 coordination transport，不是业务程序的逐步控制器。
 | repo 移动或更新后失效 | 重新 build；Claude 重新检查/注册绝对 `dist` 路径，Codex 重新检查 `npm link`。 |
 | 代理环境变化但已运行的 Router 未采用 | 代理补全只在创建新 Router 或新 Codex 宿主进程时发生；Codex 模型请求走的是宿主里的 app-server，所以要生效的是宿主。不要自行结束共享 Router 或宿主；先确认没有其他使用者，再由用户或维护者决定受控重启（宿主用 `restart-router.ps1 -CodexHost`）。 |
 
-日常使用不需要 Lane Router 管理 CLI、Windows service、固定端口或手工进程管理。Claude MCP 和 Codex launcher 都会 ensure Router，Router 核心和 Codex launcher 会 ensure Codex 宿主；额外管理面不属于 V1。部署后宿主的代码若也变了，宿主不会自己换代（它跨核心重启存活），看板会提示构建不同，换代用 `restart-router.ps1 -CodexHost`，这会断开开着的 Codex 对话。
+日常使用不需要 Lane Router 管理 CLI、Windows service 或手工进程管理。要让问答、图、知识库的链接在 Router 重启后仍能打开，就在 `config.json` 设 `port`：选系统随机端口段之外（Windows 49152–65535，Linux 默认 32768–60999）、不在浏览器 bad-port 名单上的端口。端口被占用时 Router 报 `EADDRINUSE`、起不来，不会退回随机端口，也不会去杀占用者。Claude MCP 和 Codex launcher 都会 ensure Router，Router 核心和 Codex launcher 会 ensure Codex 宿主；额外管理面不属于 V1。部署后宿主的代码若也变了，宿主不会自己换代（它跨核心重启存活），看板会提示构建不同，换代用 `restart-router.ps1 -CodexHost`，这会断开开着的 Codex 对话。
 
 ## 验证状态与边界
 
