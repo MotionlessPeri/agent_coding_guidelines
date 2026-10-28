@@ -35,9 +35,9 @@ description: 用户说「接手这个项目」「接手仓库」「别人做到�
 
 ## 5. 知识库：接手总览
 
-有 lane-router 知识库（`lane_kb_search` / `lane_kb_record`）的环境，用 `lane_kb_record` 建一页「<仓库名> 接手总览」，正文第一行写 `asOf: <YYYY-MM-DD>，commit <短 sha>`，然后是现状盘点的结论、wiki 入口路径、代码图路径、盘点和写 wiki 时发现的疑点。没有知识库的环境跳过，把同样内容并进现状盘点那一页。
+有 lane-router 知识库（`lane_kb_search` / `lane_kb_record`）的环境，用 `lane_kb_record` 建一页「<仓库名> 接手总览」：截至日写在 `asOf` 字段，正文第一行写 `commit <短 sha>`，然后是现状盘点的结论、wiki 入口路径、代码图路径、盘点和写 wiki 时发现的疑点；引用别的知识库页用 `[[页标题]]`。工具清单里没有 `asOf` 参数的（知识库部署前开的旧会话），才把日期也写进正文第一行。没有知识库的环境跳过，把同样内容并进现状盘点那一页。
 
-完成判据：`lane_kb_search` 能搜到这页；页里每个路径都能打开；提交号与仓库 `git rev-parse HEAD` 一致。
+完成判据：`lane_kb_search` 能搜到这页；读回这一页时 `asOf` 有值；页里每个路径都能打开；提交号与仓库 `git rev-parse HEAD` 一致。
 
 ## 约定
 

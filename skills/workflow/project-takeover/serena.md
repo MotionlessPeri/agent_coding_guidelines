@@ -22,7 +22,7 @@ Serena 是 MCP 服务，底层是语言服务器（Python 用 pyright，TypeScri
 
 ## 接口：REPL 还是 tools
 
-Serena 2 默认 `agent_interface: REPL`，只暴露一个 `serena_repl` 工具，让模型写 Python 调 `lsp.find_symbol(...)` 这类 API。模型写不好 REPL 调用时，启动加 `--agent-interface tools`，每个操作一个工具：`find_symbol`、`find_referencing_symbols`、`find_declaration`、`find_implementations`、`get_symbols_overview`。接手阶段只用这几个读工具。
+Serena 2 默认 `agent_interface: REPL`，只暴露一个 `serena_repl` 工具，让模型写 Python 调 `lsp.find_symbol(...)` 这类 API。模型写不好 REPL 调用时，启动加 `--agent-interface tools`，每个操作一个工具：`find_symbol`、`find_referencing_symbols`、`find_declaration`、`find_implementations`、`get_symbols_overview`。接手阶段只用这几个读工具。REPL 返回的 `start_line` / `end_line` 和引用处的行号都从 0 起，记成 `文件:行` 时加 1。
 
 ## 用法：graphify 圈范围，Serena 逐个确认
 
@@ -37,6 +37,9 @@ Serena 2 默认 `agent_interface: REPL`，只暴露一个 `serena_repl` 工具�
 1. `.serena/project.yml` 的 `language_servers` 是否为空（成因见上）。实测一次：空列表时会话内 MCP 报 `CONNECT_TIMEOUT`，填上 `[typescript]` 并 `serena project index` 后 `claude mcp list` 报 Connected；没做单变量验证，空列表和下面第 2 条可能同时在起作用。
 2. 第一次启动要下载语言服务器，可能超过宿主的 MCP 启动超时。先用 `serena project create ... --index` 或 `serena project index` 在命令行把它下完。
 3. 本会话中途才注册或才修好的 MCP，Claude Code 和 Codex 都不会在当前会话里出现，要重开会话。所以这一整步的准备都放在开 lane 之前，由开 lane 的人在仓库目录做好。
+4. 会话刚开的头几秒 MCP 还在连，这时搜工具清单会说没有 serena；等几秒再搜，不要当成没注册。
+
+改后的路线新会话实测通过（2026-10-28）：仓库里 `language_servers: [typescript]`、建过索引、MCP 以本地作用域注册，在该目录新开一个 Sonnet 会话只做第 3 步，`serena_repl` 几秒内出现，`find_symbol` 定位到类定义，`find_referencing_symbols` 返回 12 个文件 27 处引用，整个会话 44 秒、7 个回合。
 
 ## 坑
 

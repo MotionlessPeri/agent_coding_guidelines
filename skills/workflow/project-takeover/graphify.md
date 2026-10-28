@@ -38,7 +38,7 @@ graphify cluster-only <根> --no-label      # 分群并生成 GRAPH_REPORT.md，
 
 超过 5000 个节点时 `graph.html` 自动改成按群聚合的视图；不需要可加 `--no-viz`。
 
-要群名能读（「相机采集源」而不是「Community 17」），用本机 `claude` 命令起名，花当前订阅额度：
+要群名能读（「订单结算」而不是「Community 17」），用本机 `claude` 命令起名，花当前订阅额度：
 
 ```
 graphify label <根> --backend=claude-cli
