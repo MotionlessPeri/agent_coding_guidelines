@@ -25,6 +25,10 @@ node_modules/
 
 不排除的后果：打包进仓库的三维库、压缩 JS 的短变量名会占掉大半模块群，`god-nodes` 前排全是 `sys`、`numpy`、`json`。
 
+## 测试目录：留着，看 god-nodes 时跳过测试框架
+
+默认不排除 `tests/`：测试到实现的边让 `affected` 能顺带列出要跟着改的测试。代价是测试框架会占住 `god-nodes` 前排：一个 TypeScript 仓库里 `vitest` 以 245 条边排第一，边全部来自 tests。看前排时跳过 `vitest`、`jest`、`pytest`、`unittest` 这类名字，往下数实现代码的节点；第 2 步的判据只管实现代码的节点。只要实现、不要测试关联时，再把 `tests/` 写进 `.graphifyignore`。
+
 ## 建图
 
 ```
@@ -49,7 +53,7 @@ graphify label <根> --backend=claude-cli
 命令默认找当前目录下的 `graphify-out/graph.json`，不在根目录就带 `--graph <根>/graphify-out/graph.json`。
 
 ```
-graphify god-nodes --top 20              # 架构枢纽；前排出现标准库名说明排除没做好
+graphify god-nodes --top 20              # 架构枢纽；前排出现标准库名说明排除没做好，测试框架名来自 tests 跳过即可
 graphify explain "ClassOrFunction"       # 一个节点和它的邻居，带文件和行号
 graphify affected "ClassOrFunction" --depth 2   # 改它波及谁；设计文档、交接文档里提到它的也会列出
 graphify query "how does X get Y"        # 关键词定位后做 BFS，输出限 2000 token

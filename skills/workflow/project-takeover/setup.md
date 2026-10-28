@@ -32,6 +32,14 @@
 
 Serena 和 OpenWiki 都要绑定具体仓库，所以在该仓库目录里注册、只对该目录生效。
 
+先把 Serena 的项目配置和索引建好，再注册（原因见 [serena.md](serena.md)「连不上」）：
+
+```
+serena project create <仓库根> --ls typescript --index      # 语言按仓库给，可多个 --ls
+```
+
+仓库里已有 `.serena/project.yml` 的，先看 `language_servers:` 非空。
+
 **Claude Code**（`--scope local` 写进 `~/.claude.json` 的项目条目，不进仓库，不需要别人批准）。bash / zsh / pwsh 7.3 以上：
 
 ```bash
@@ -71,7 +79,7 @@ args = ["graphify-out/graph.json"]
 
 **其他走 MCP 的 agent**（接 DeepSeek、GLM 等）：同样的三条 stdio 命令。Serena 的 `--context` 换成 `agent`；OpenWiki 的 `--host` 是任意小写标识，只用来记谁写的页。
 
-注册是给**下一个**会话用的：Claude Code 里当前会话不会自动拿到新注册的 MCP，要重开会话（或 `/mcp` 里重连）；Codex 同样要重开。所以注册放在开工前，由开 lane 的人在目标目录先做好。
+注册是给**下一个**会话用的：Claude Code 里当前会话不会自动拿到新注册的 MCP，要重开会话（或 `/mcp` 里重连）；Codex 同样要重开。所以注册放在开工前，由开 lane 的人在目标目录先做好。Claude Code 里 MCP 工具可能只列出名字、不带参数定义（延迟加载），调用前先 `ToolSearch` 取 `select:<工具名>` 的 schema。
 
 Windows 上宿主报「连不上」：`openwiki`、`graphify-mcp` 是 `.cmd` / `.exe` 垫片，有的宿主不会经 `cmd` 启动。改成 `cmd /c openwiki mcp --host claude`，或直接指 `node <npm 全局目录>\node_modules\openwiki\dist\cli\cli.js mcp --host claude`。
 
@@ -85,7 +93,7 @@ Serena 第一次启动会自动下载语言服务器（Python 用 pyright，Type
 | `.serena/`（`project.yml`、缓存、memories） | Serena | 本地配置 |
 | `openwiki/` | OpenWiki | 生成的 wiki 和 `.claims` 证据 |
 | `.github/workflows/openwiki-update.yml` | OpenWiki | **删掉**：它每天用 OpenAI 重新生成，把代码发出去 |
-| `AGENTS.md` / `CLAUDE.md` 里 `<!-- OPENWIKI:START -->` 到 `END` 一段 | OpenWiki | 按项目规矩定去留；别人的仓库默认 `git checkout --` 还原 |
+| `AGENTS.md` / `CLAUDE.md` 里 `<!-- OPENWIKI:START -->` 到 `END` 一段 | OpenWiki | 按项目规矩定去留；别人的仓库默认 `git checkout --` 还原。只有一行 `@AGENTS.md` 的 `CLAUDE.md` 会被再加一行 `@AGENTS.md`，成了重复导入 |
 
 把前三项加进 `.git/info/exclude`（不改仓库里被跟踪的 `.gitignore`）：
 

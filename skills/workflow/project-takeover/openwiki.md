@@ -12,13 +12,23 @@
 
 ## 生成
 
+五个调用的真实参数（0.7.2，schema 是 strict 的，多一个键就被拒）：
+
 ```
 openwiki_begin({ root: "<git 顶层绝对路径>", mode: "init", language: "zh-CN" })
+    → 返回 runId、language、phase；之后每个调用都要带这个 runId
+openwiki_submit_plan({ runId, pages: [{ path, title, purpose, seedPaths?, relatedPages?, instructions? }], deletePages? })
+openwiki_next_page({ runId })
+    → 返回 jobId 和这一页的任务；用宿主自己的工具写好页面文件后
+openwiki_submit_page({ runId, jobId, claims: [{ statement, evidence: [{ resource: "repo://路径#L起-L止" }] }], confirmedClaimIds?, retractedClaimIds? })
+openwiki_finish({ runId })
 ```
 
-`language` 用 BCP-47 码；页面语言由它定，lane 按返回的 `language` 写。
+- `language` 用 BCP-47 码；页面语言由它定，lane 按 `openwiki_begin` 返回的 `language` 写。
+- `submit_plan` 没有 `root`，也没有计划层的 `instructions`：`instructions` 只能写在某一页上、只对那页生效。OpenWiki 自带 SKILL.md 里的「global instructions」说的就是这个页级字段，别按字面找一个全局参数。
+- 每页 `title` 必填，`path` 形如 `/openwiki/<组>/<页>.md`，init 必须含 `/openwiki/quickstart.md`。
 
-**规划页数按代码量定**，不按目录数：每个有意义的子系统或工作流一页，加一页 `quickstart.md`（「想做某件事先读哪页」）。参考值：7 万行规划 19 页、158 条带证据的事实，页面讲清了机制和为什么这样设计，可用；28 万行只规划 12 页、每页 2 到 5 条事实，只能当地图。
+**规划页数按代码量定**，不按目录数：每个有意义的子系统或工作流一页，加一页 `quickstart.md`（「想做某件事先读哪页」）。参考值：7 万行规划 19 页、158 条带证据的事实，页面讲清了机制和为什么这样设计，可用；2.65 万行 TypeScript 规划 12 页、130 余条事实，核心页读了实现，介于地图和可用之间；28 万行只规划 12 页、每页 2 到 5 条事实，只能当地图。
 
 **核心模块读实现，不只读注释和 README**：入口函数、状态在哪、失败怎么处理、和谁通信。只读文件头的那次，每页只剩 2 到 5 条事实。每页至少有一条「为什么这样设计」或「改这里要注意什么」，没有就说明读得不够深。
 
@@ -28,7 +38,7 @@ openwiki_begin({ root: "<git 顶层绝对路径>", mode: "init", language: "zh-C
 
 1. `openwiki_finish` 返回 `complete` 才算完。
 2. **删掉 `.github/workflows/openwiki-update.yml`**：它每天定时用 OpenAI 重新生成，仓库推到 GitHub 并配了密钥就会把代码发出去。
-3. `AGENTS.md`（有 `CLAUDE.md` 时也改）里会多一段 `<!-- OPENWIKI:START -->` 到 `<!-- OPENWIKI:END -->`，讲什么时候查 wiki。别人的仓库默认 `git checkout -- AGENTS.md CLAUDE.md` 还原；留不留由项目定。
+3. `AGENTS.md`（有 `CLAUDE.md` 时也改）里会多一段 `<!-- OPENWIKI:START -->` 到 `<!-- OPENWIKI:END -->`，讲什么时候查 wiki。`CLAUDE.md` 原本只有一行 `@AGENTS.md` 的仓库，它会再加一行 `@AGENTS.md` 连同那段，等于把 `AGENTS.md` 导入两次。别人的仓库默认 `git checkout -- AGENTS.md CLAUDE.md` 还原，两个文件一起看 `git diff`；留不留由项目定。
 4. 抽查核心页：证据校验只查「引用的行还在不在」，不查「这些行支不支持这句话」。源码里过时的注释会被原样抄进来，实测抓到一处照搬过时模块头注释。
 5. `openwiki/` 留本地，进 `.git/info/exclude`；用户同意后才提交进别人的仓库。
 
@@ -58,4 +68,4 @@ openwiki_begin({ root: "<git 顶层绝对路径>", mode: "update" })
 
 ## 额度参考
 
-7 万行、Sonnet：生成 30 分钟、约 16 美元等价；新会话里更新约 10 分钟。28 万行读得浅的那次：23 分钟、约 7 美元等价。开跑前按这个比例告诉用户预计用量。
+7 万行、Sonnet：生成 30 分钟、约 16 美元等价；新会话里更新约 10 分钟。2.65 万行 TypeScript、Sonnet、12 页核心页读实现：约 50 万 token。28 万行读得浅的那次：23 分钟、约 7 美元等价。开跑前按这个比例告诉用户预计用量。

@@ -19,11 +19,11 @@ description: 用户说「接手这个项目」「接手仓库」「别人做到�
 
 照 [graphify.md](graphify.md) 从代码的**导入根目录**建图，排除第三方目录和压缩文件；不跑 `graphify install`。
 
-完成判据：`graphify-out/graph.json` 与 `GRAPH_REPORT.md` 存在；`god-nodes` 前十个里没有标准库和第三方名字；第 1 步里最近在改的模块能在图里找到。
+完成判据：`graphify-out/graph.json` 与 `GRAPH_REPORT.md` 存在；`god-nodes --top 20` 里实现代码的节点没有标准库和第三方名字（`vitest`、`pytest` 这类测试框架名来自 tests，跳过不算）；第 1 步里最近在改的模块能在图里找到。
 
 ## 3. Serena：精确查引用
 
-照 [serena.md](serena.md) 启动 Serena，对第 1 步「最近在改」和第 2 步核心节点里的符号逐个查定义与引用。graphify 先粗圈影响范围，Serena 逐个确认。
+照 [serena.md](serena.md) 启动 Serena，对第 1 步「最近在改」和第 2 步核心节点里的符号逐个查定义与引用。graphify 先粗圈影响范围，Serena 逐个确认。会话里没有 Serena 工具或连不上，按 serena.md「连不上」处理后重开会话，不在会话里绕路。
 
 完成判据：对每个要动的符号，能说出引用它的文件和行；graphify 圈出的范围被 Serena 确认过或缩小过。
 

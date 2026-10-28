@@ -11,8 +11,14 @@ Serena 是 MCP 服务，底层是语言服务器（Python 用 pyright，TypeScri
 - `--project-from-cwd`：从当前目录往上找最近的 `.serena/project.yml` 或 `.git` 当项目根。项目根要和 graphify 的导入根一致，根不对同样认不出跨文件引用。
 - `--context`：Claude Code 用 `claude-code`，Codex 用 `codex`，其他 agent 用 `agent`。
 - `--enable-web-dashboard false`：不然每次启动开一个浏览器页。
-- 第一次激活会自动建 `.serena/project.yml`，里面 `language_servers:` 按检测到的文件填；多语言仓库看一眼有没有把 `python`、`typescript`、`cpp` 都列上，没有就手动加。
-- 大仓库先 `serena project index` 建符号缓存，之后查得快。
+- **注册 MCP 之前**先在仓库根建项目并建索引，语言显式给出（不给 `--ls` 它会交互问「要不要再开别的语言」）：
+
+  ```
+  serena project create <仓库根> --ls typescript --ls python --index
+  ```
+
+  `--index` 顺带把语言服务器下载好、建好符号缓存，之后 MCP 启动快、查得快。仓库里已经有 `.serena/project.yml` 的，打开看 `language_servers:` 是不是空列表，空的就手填语言再 `serena project index <仓库根>`。
+- 不要靠 MCP 首次启动来生成 `project.yml`：`--project-from-cwd` 激活没有配置的目录时走异步探测，先写一份 `language_servers: []` 落盘，探测完再改写（`serena/agent.py` 里 `add_project_from_path(..., asynchronous_autogen=True)`）。进程在这之间被结束，比如 `claude mcp list` 探活后立刻断开，文件就停在空列表；空列表下所有符号工具都报没有语言服务器。
 
 ## 接口：REPL 还是 tools
 
@@ -23,6 +29,14 @@ Serena 2 默认 `agent_interface: REPL`，只暴露一个 `serena_repl` 工具�
 1. 从第 1 步「最近在改」和第 2 步 `god-nodes` / `affected` 里列出要确认的符号。
 2. 每个符号：`find_symbol` 定位（名字路径形如 `ClassName/method_name`），`find_referencing_symbols` 列引用，读引用处的几行确认是真调用。
 3. 记下 `文件:行`。graphify 说有而 Serena 没有的，多半是文本巧合；Serena 有而 graphify 没有的，多半是别名调用。
+
+## 连不上
+
+会话里 Serena 工具不出现或报连接超时，按顺序查，查完重开会话，不在当前会话里等：
+
+1. `.serena/project.yml` 的 `language_servers` 是否为空（成因见上）。实测一次：空列表时会话内 MCP 报 `CONNECT_TIMEOUT`，填上 `[typescript]` 并 `serena project index` 后 `claude mcp list` 报 Connected；没做单变量验证，空列表和下面第 2 条可能同时在起作用。
+2. 第一次启动要下载语言服务器，可能超过宿主的 MCP 启动超时。先用 `serena project create ... --index` 或 `serena project index` 在命令行把它下完。
+3. 本会话中途才注册或才修好的 MCP，Claude Code 和 Codex 都不会在当前会话里出现，要重开会话。所以这一整步的准备都放在开 lane 之前，由开 lane 的人在仓库目录做好。
 
 ## 坑
 
